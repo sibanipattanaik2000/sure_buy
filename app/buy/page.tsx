@@ -19,6 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
+import Link from "next/link";
 type Product = {
   id: number;
   brand: string;
@@ -49,7 +50,7 @@ const products: Product[] = [
     reviews: 124,
     warranty: "6 Months",
     color: "Black",
-     image: "/images/iphone-15.png",
+    image: "/images/iphone-15.png",
   },
   {
     id: 2,
@@ -64,7 +65,7 @@ const products: Product[] = [
     reviews: 89,
     warranty: "6 Months",
     color: "Black",
-     image: "/images/iphone-15.png",
+    image: "/images/iphone-15.png",
   },
   {
     id: 3,
@@ -79,7 +80,7 @@ const products: Product[] = [
     reviews: 176,
     warranty: "6 Months",
     color: "Purple",
-     image: "/images/iphone-15.png",
+    image: "/images/iphone-15.png",
   },
   {
     id: 4,
@@ -94,7 +95,7 @@ const products: Product[] = [
     reviews: 72,
     warranty: "6 Months",
     color: "Green",
-     image: "/images/iphone-15.png",
+    image: "/images/iphone-15.png",
   },
   {
     id: 5,
@@ -109,7 +110,7 @@ const products: Product[] = [
     reviews: 93,
     warranty: "12 Months",
     color: "Silver",
-     image: "/images/iphone-15.png",
+    image: "/images/iphone-15.png",
   },
   {
     id: 6,
@@ -124,7 +125,7 @@ const products: Product[] = [
     reviews: 51,
     warranty: "6 Months",
     color: "Silver",
-     image: "/images/iphone-15.png",
+    image: "/images/iphone-15.png",
   },
   {
     id: 7,
@@ -139,7 +140,7 @@ const products: Product[] = [
     reviews: 64,
     warranty: "6 Months",
     color: "Blue",
-     image: "/images/iphone-15.png",
+    image: "/images/iphone-15.png",
   },
   {
     id: 8,
@@ -154,26 +155,19 @@ const products: Product[] = [
     reviews: 42,
     warranty: "6 Months",
     color: "Black",
-     image: "/images/iphone-15.png",
+    image: "/images/iphone-15.png",
   },
 ];
 
 const categories = [
   { name: "All", icon: null },
   { name: "Smartphones", icon: Smartphone },
-//   { name: "Laptops", icon: Laptop },
+  //   { name: "Laptops", icon: Laptop },
   { name: "Tablets", icon: Tablet },
   { name: "Smartwatches", icon: Watch },
 ];
 
-const brands = [
-  "Apple",
-  "Samsung",
-  "OnePlus",
-  "Google",
-  "Xiaomi",
-  "Dell",
-];
+const brands = ["Apple", "Samsung", "OnePlus", "Google", "Xiaomi", "Dell"];
 
 export default function BuyPage() {
   const [category, setCategory] = useState("All");
@@ -232,7 +226,7 @@ export default function BuyPage() {
     );
   };
 
-const { wishlist, toggleWishlist } = useWishlist();
+  const { wishlist, toggleWishlist } = useWishlist();
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-[#111827]">
@@ -383,11 +377,7 @@ const { wishlist, toggleWishlist } = useWishlist();
         <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
           {/* FILTER SIDEBAR */}
 
-          <aside
-            className={`${
-              mobileFilters ? "block" : "hidden"
-            } lg:block`}
-          >
+          <aside className={`${mobileFilters ? "block" : "hidden"} lg:block`}>
             <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-5">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">Filters</h2>
@@ -463,9 +453,7 @@ const { wishlist, toggleWishlist } = useWishlist();
                   <ShieldCheck className="shrink-0 text-indigo-600" size={19} />
 
                   <div>
-                    <p className="text-xs font-bold">
-                      Every device is checked
-                    </p>
+                    <p className="text-xs font-bold">Every device is checked</p>
 
                     <p className="mt-1 text-[11px] leading-5 text-gray-500">
                       Multi-point quality inspection before listing.
@@ -521,14 +509,9 @@ const { wishlist, toggleWishlist } = useWishlist();
 
             {filteredProducts.length === 0 ? (
               <div className="rounded-3xl border border-gray-200 bg-white p-16 text-center">
-                <Search
-                  size={35}
-                  className="mx-auto text-gray-300"
-                />
+                <Search size={35} className="mx-auto text-gray-300" />
 
-                <h3 className="mt-5 text-xl font-bold">
-                  No devices found
-                </h3>
+                <h3 className="mt-5 text-xl font-bold">No devices found</h3>
 
                 <p className="mt-2 text-sm text-gray-500">
                   Try changing your search or filters.
@@ -540,11 +523,24 @@ const { wishlist, toggleWishlist } = useWishlist();
                   <ProductCard
                     key={product.id}
                     product={product}
-                    liked={wishlist.some((item) => item.id === String(product.id))}
+                    liked={wishlist.some(
+                      (item) => item.id === String(product.id),
+                    )}
+                    // onWishlist={() =>
+                    //   toggleWishlist({
+                    //     ...product,
+                    //     id: String(product.id),
+                    //   })
+                    // }
+
                     onWishlist={() =>
                       toggleWishlist({
-                        ...product,
                         id: String(product.id),
+                        name: product.name,
+                        brand: product.brand,
+                        price: product.price,
+                        image: product.image,
+                        storage: product.storage,
                       })
                     }
                   />
@@ -645,7 +641,7 @@ function ProductCard({
 
         {/* TEMPORARY PRODUCT VISUAL */}
 
-        <div className="relative flex h-36 w-24 items-center justify-center rounded-[1.7rem] border-[5px] border-gray-700 bg-gradient-to-br from-gray-700 to-gray-950 shadow-xl transition duration-500 group-hover:scale-105 sm:h-40 sm:w-28">
+        {/* <div className="relative flex h-36 w-24 items-center justify-center rounded-[1.7rem] border-[5px] border-gray-700 bg-gradient-to-br from-gray-700 to-gray-950 shadow-xl transition duration-500 group-hover:scale-105 sm:h-40 sm:w-28">
           <Smartphone
             size={55}
             strokeWidth={1}
@@ -653,8 +649,14 @@ function ProductCard({
           />
 
           <div className="absolute right-[-3px] top-8 h-10 w-1 rounded-full bg-gray-600" />
+        </div> */}
+        <div className="relative flex h-36 w-28 items-center justify-center transition duration-500 group-hover:scale-105 sm:h-40 sm:w-32">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="h-full w-full object-contain"
+          />
         </div>
-
         {/* Condition */}
 
         <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold shadow-sm backdrop-blur">
@@ -671,18 +673,12 @@ function ProductCard({
           </p>
 
           <div className="flex items-center gap-1 text-[10px] font-bold">
-            <Star
-              size={12}
-              fill="currentColor"
-              className="text-yellow-500"
-            />
+            <Star size={12} fill="currentColor" className="text-yellow-500" />
             {product.rating}
           </div>
         </div>
 
-        <h2 className="mt-1 text-sm font-bold sm:text-base">
-          {product.name}
-        </h2>
+        <h2 className="mt-1 text-sm font-bold sm:text-base">{product.name}</h2>
 
         <p className="mt-1 text-xs text-gray-500">
           {product.storage} • {product.color}
@@ -719,10 +715,13 @@ function ProductCard({
 
         {/* BUTTON */}
 
-        <button className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-bold text-white transition hover:bg-indigo-600">
+        <Link
+          href={`/buy/${product.id}`}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-bold text-white transition hover:bg-indigo-600"
+        >
           View details
           <ArrowRight size={14} />
-        </button>
+        </Link>
       </div>
     </article>
   );
