@@ -1,21 +1,15 @@
 "use client";
 import Link from "next/link";
-import {
-  Heart,
-  Menu,
-  UserRound,
-  X,
-  Zap,
-} from "lucide-react";
+import { Heart, Menu, UserRound, X, Zap } from "lucide-react";
 import ProductSearch from "./ProductSearch";
 import { useWishlist } from "../context/WishlistContext";
+import { useCart } from "../context/CartContext";
 export default function Header() {
-    const { wishlistCount } = useWishlist();
-
+  const { wishlistCount } = useWishlist();
+  const { cartCount } = useCart();
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200/70 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 lg:px-8">
-
         {/* LOGO */}
 
         <Link
@@ -29,7 +23,7 @@ export default function Header() {
 
           <div className="leading-none">
             <span className="text-[21px] font-black tracking-[-0.04em] text-gray-950">
-             Phone
+              Phone
             </span>
 
             <span className="text-[21px] font-black tracking-[-0.04em] text-indigo-600">
@@ -52,7 +46,7 @@ export default function Header() {
 
           <NavLink href="/buy" label="Buy" />
 
-          <NavLink href="/sell" label="Sell" highlight />
+          <NavLink href="/sell" label="Sell" />
 
           {/* <NavLink href="/repair" label="Repair" />
 
@@ -62,10 +56,9 @@ export default function Header() {
         {/* ACTIONS */}
 
         <div className="hidden items-center gap-2 lg:flex">
-
           {/* SEARCH */}
 
-         <ProductSearch />
+          <ProductSearch />
 
           {/* WISHLIST */}
 
@@ -82,8 +75,38 @@ export default function Header() {
             {/* Wishlist count */}
 
             <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[8px] font-bold text-white">
-            {wishlistCount}
+              {wishlistCount}
             </span>
+          </Link>
+
+          {/* CART */}
+
+          <Link
+            href="/cart"
+            aria-label="Shopping cart"
+            className="group relative flex h-10 w-10 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-950"
+          >
+            <svg
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="transition duration-200 group-hover:scale-110"
+            >
+              <circle cx="9" cy="20" r="1" />
+              <circle cx="20" cy="20" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+
+            {cartCount > 0 && (
+              <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[8px] font-bold text-white">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            )}
           </Link>
 
           {/* ACCOUNT */}

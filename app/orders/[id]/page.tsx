@@ -127,25 +127,6 @@ export default function OrderDetailsPage() {
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
-      {/* HEADER */}
-
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
-          <Link
-            href="/buy"
-            className="flex items-center gap-2 text-sm font-bold text-gray-600 transition hover:text-black"
-          >
-            <ArrowLeft size={17} />
-            Continue shopping
-          </Link>
-
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
-            <ShieldCheck size={16} className="text-green-600" />
-            Secure order
-          </div>
-        </div>
-      </header>
-
       <section className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
         {/* TITLE */}
 

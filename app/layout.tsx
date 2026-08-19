@@ -4,6 +4,7 @@ import Header from "./components/header";
 import Footer from "./components/footer";
 import { WishlistProvider } from "./context/WishlistContext";
 import { CheckoutProvider } from "./context/CheckoutContext";
+import { CartProvider } from "./context/CartContext";
 export const metadata: Metadata = {
   title: {
     default: "PhoneBuy | Buy, Sell & Repair Devices",
@@ -32,8 +33,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <WishlistProvider>
-          <Header />
+          <CartProvider>
+            <Header />
           <CheckoutProvider>{children}</CheckoutProvider>
+          </CartProvider>
           <Footer />
         </WishlistProvider>
       </body>

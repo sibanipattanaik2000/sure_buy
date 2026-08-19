@@ -1,10 +1,13 @@
+"use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   return (
     <main className="min-h-[calc(100vh-72px)] bg-gray-50 px-5 py-16">
       <div className="mx-auto max-w-md">
-
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-black tracking-tight text-gray-950">
             Welcome back
@@ -16,9 +19,13 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-
-          <form className="space-y-5">
-
+          <form
+            className="space-y-5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              router.push("/");
+            }}
+          >
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">
                 Email
@@ -27,7 +34,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 placeholder="you@example.com"
-                className="h-12 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                className="h-12 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-700"
               />
             </div>
 
@@ -48,7 +55,7 @@ export default function LoginPage() {
               <input
                 type="password"
                 placeholder="••••••••"
-                className="h-12 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                className="h-12 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-700"
               />
             </div>
 
@@ -58,14 +65,11 @@ export default function LoginPage() {
             >
               Sign in
             </button>
-
           </form>
 
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-gray-100" />
-            <span className="text-xs text-gray-400">
-              OR
-            </span>
+            <span className="text-xs text-gray-400">OR</span>
             <div className="h-px flex-1 bg-gray-100" />
           </div>
 
@@ -78,7 +82,6 @@ export default function LoginPage() {
               Create account
             </Link>
           </p>
-
         </div>
       </div>
     </main>

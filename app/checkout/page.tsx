@@ -1,9 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
+  FormEvent,
+  useState,
+} from "react";
+
+import Link from "next/link";
+import { useCart } from "../context/CartContext";
+import {
   ArrowRight,
   Check,
   CreditCard,
@@ -12,43 +16,74 @@ import {
   ShieldCheck,
   Truck,
   Wallet,
+  Minus,
+  Plus,
 } from "lucide-react";
+
 import { useRouter } from "next/navigation";
-import { DeliveryAddress, useCheckout } from "../context/CheckoutContext";
+
+import {
+  DeliveryAddress,
+  useCheckout,
+} from "../context/CheckoutContext";
 
 export default function CheckoutPage() {
   const router = useRouter();
 
-  const { checkout, setAddress, setPaymentMethod } = useCheckout();
+  const {
+    checkout,
+    setAddress,
+    setPaymentMethod,
+  } = useCheckout();
+const { clearCart } = useCart();
+  const {
+    products,
+    paymentMethod,
+  } = checkout;
 
-  const { product, selectedStorage, selectedColor, paymentMethod } = checkout;
+  const [form, setForm] =
+    useState<DeliveryAddress>({
+      fullName: "",
+      phone: "",
+      pincode: "",
+      address: "",
+      area: "",
+      city: "",
+      state: "",
+    });
 
-  const [form, setForm] = useState<DeliveryAddress>({
-    fullName: "",
-    phone: "",
-    pincode: "",
-    address: "",
-    area: "",
-    city: "",
-    state: "",
-  });
+  const [error, setError] =
+    useState("");
 
-  const [error, setError] = useState("");
+  const [placingOrder, setPlacingOrder] =
+    useState(false);
 
-  const [placingOrder, setPlacingOrder] = useState(false);
+  /*
+   * EMPTY CHECKOUT
+   */
 
-  if (!product) {
+  if (
+    !products ||
+    products.length === 0
+  ) {
     return (
       <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
         <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-            <ShieldCheck size={25} className="text-indigo-600" />
+            <ShieldCheck
+              size={25}
+              className="text-indigo-600"
+            />
           </div>
 
-          <h1 className="mt-5 text-2xl font-black text-gray-900">Your checkout is empty</h1>
+          <h1 className="mt-5 text-2xl font-black text-gray-900">
+            Your checkout is empty
+          </h1>
 
           <p className="mt-2 text-sm leading-6 text-gray-500">
-            Choose a product before proceeding to checkout.
+            Choose a product before
+            proceeding to checkout.
           </p>
 
           <Link
@@ -58,37 +93,112 @@ export default function CheckoutPage() {
             Browse products
             <ArrowRight size={16} />
           </Link>
+
         </div>
       </main>
     );
   }
 
-  const subtotal = product.price;
-  const deliveryCharge = 0;
-  const total = subtotal + deliveryCharge;
+  /*
+   * =====================================================
+   * TOTALS
+   * =====================================================
+   *
+   * Every calculation includes quantity.
+   */
 
-  const handleChange = (field: keyof DeliveryAddress, value: string) => {
+  const subtotal =
+    products.reduce(
+      (sum, product) =>
+        sum +
+        product.price *
+          Math.max(
+            1,
+            product.quantity || 1,
+          ),
+      0,
+    );
+
+  const originalTotal =
+    products.reduce(
+      (sum, product) =>
+        sum +
+        product.originalPrice *
+          Math.max(
+            1,
+            product.quantity || 1,
+          ),
+      0,
+    );
+
+  const savings =
+    originalTotal - subtotal;
+
+  const deliveryCharge = 0;
+
+  const total =
+    subtotal + deliveryCharge;
+
+  /*
+   * TOTAL NUMBER OF PHYSICAL ITEMS
+   */
+
+  const totalQuantity =
+    products.reduce(
+      (sum, product) =>
+        sum +
+        Math.max(
+          1,
+          product.quantity || 1,
+        ),
+      0,
+    );
+
+  /*
+   * HANDLE INPUT
+   */
+
+  const handleChange = (
+    field: keyof DeliveryAddress,
+    value: string,
+  ) => {
     setForm((current) => ({
       ...current,
       [field]: value,
     }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  /*
+   * SUBMIT
+   */
+
+  const handleSubmit = (
+    event: FormEvent<HTMLFormElement>,
+  ) => {
     event.preventDefault();
 
     setError("");
 
+    if (placingOrder) {
+      return;
+    }
+
+    /*
+     * ADDRESS VALIDATION
+     */
+
     if (
-      !form.fullName ||
-      !form.phone ||
-      !form.pincode ||
-      !form.address ||
-      !form.area ||
-      !form.city ||
-      !form.state
+      !form.fullName.trim() ||
+      !form.phone.trim() ||
+      !form.pincode.trim() ||
+      !form.address.trim() ||
+      !form.area.trim() ||
+      !form.city.trim() ||
+      !form.state.trim()
     ) {
-      setError("Please fill in all delivery address details.");
+      setError(
+        "Please fill in all delivery address details.",
+      );
 
       window.scrollTo({
         top: 0,
@@ -98,53 +208,87 @@ export default function CheckoutPage() {
       return;
     }
 
+    /*
+     * PHONE
+     */
+
     if (form.phone.length !== 10) {
-      setError("Please enter a valid 10-digit mobile number.");
+      setError(
+        "Please enter a valid 10-digit mobile number.",
+      );
 
       return;
     }
+
+    /*
+     * PIN
+     */
 
     if (form.pincode.length !== 6) {
-      setError("Please enter a valid 6-digit PIN code.");
+      setError(
+        "Please enter a valid 6-digit PIN code.",
+      );
 
       return;
     }
+
+    /*
+     * PAYMENT
+     */
+
+    if (!paymentMethod) {
+      setError(
+        "Please select a payment method.",
+      );
+
+      return;
+    }
+
+    /*
+     * SAVE ADDRESS
+     */
 
     setAddress(form);
 
     setPlacingOrder(true);
 
     /*
-     * Demo checkout flow.
-     * Replace this timeout with your payment gateway /
-     * backend order API when it is available.
+     * DEMO ORDER FLOW
      */
 
     setTimeout(() => {
+        clearCart();
       router.push("/order-success");
     }, 900);
   };
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
-      {/* TOP BAR */}
 
       <form
         onSubmit={handleSubmit}
         className="mx-auto max-w-7xl px-5 py-8 lg:px-8"
       >
+
         {/* TITLE */}
 
-        <div className="mb-8  ">
+        <div className="mb-8">
           <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
             Complete your purchase
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Enter your delivery details and choose your preferred payment
-            method.
+            {totalQuantity}{" "}
+            {totalQuantity === 1
+              ? "item"
+              : "items"}{" "}
+            • Enter your delivery
+            details and choose your
+            preferred payment method.
           </p>
         </div>
+
+        {/* ERROR */}
 
         {error && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600">
@@ -153,32 +297,45 @@ export default function CheckoutPage() {
         )}
 
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+
           {/* LEFT */}
 
           <div className="space-y-7">
+
             {/* ADDRESS */}
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
+
               <div className="flex items-center gap-3">
+
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <MapPin size={20} />
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-black">Delivery address</h2>
+                  <h2 className="text-lg font-black">
+                    Delivery address
+                  </h2>
 
                   <p className="mt-1 text-xs text-gray-500">
                     Where should we deliver your device?
                   </p>
                 </div>
+
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
+
                 <Input
                   label="Full name"
                   placeholder="Enter full name"
                   value={form.fullName}
-                  onChange={(value) => handleChange("fullName", value)}
+                  onChange={(value) =>
+                    handleChange(
+                      "fullName",
+                      value,
+                    )
+                  }
                 />
 
                 <Input
@@ -188,7 +345,13 @@ export default function CheckoutPage() {
                   maxLength={10}
                   type="tel"
                   onChange={(value) =>
-                    handleChange("phone", value.replace(/\D/g, ""))
+                    handleChange(
+                      "phone",
+                      value.replace(
+                        /\D/g,
+                        "",
+                      ),
+                    )
                   }
                 />
 
@@ -199,7 +362,13 @@ export default function CheckoutPage() {
                   maxLength={6}
                   type="tel"
                   onChange={(value) =>
-                    handleChange("pincode", value.replace(/\D/g, ""))
+                    handleChange(
+                      "pincode",
+                      value.replace(
+                        /\D/g,
+                        "",
+                      ),
+                    )
                   }
                 />
 
@@ -207,24 +376,40 @@ export default function CheckoutPage() {
                   label="City"
                   placeholder="Enter city"
                   value={form.city}
-                  onChange={(value) => handleChange("city", value)}
+                  onChange={(value) =>
+                    handleChange(
+                      "city",
+                      value,
+                    )
+                  }
                 />
 
                 <Input
                   label="State"
                   placeholder="Enter state"
                   value={form.state}
-                  onChange={(value) => handleChange("state", value)}
+                  onChange={(value) =>
+                    handleChange(
+                      "state",
+                      value,
+                    )
+                  }
                 />
 
                 <Input
                   label="Area / Locality"
                   placeholder="Enter area"
                   value={form.area}
-                  onChange={(value) => handleChange("area", value)}
+                  onChange={(value) =>
+                    handleChange(
+                      "area",
+                      value,
+                    )
+                  }
                 />
 
                 <div className="sm:col-span-2">
+
                   <label className="text-xs font-bold text-gray-700">
                     House / Flat / Street address
                   </label>
@@ -232,168 +417,346 @@ export default function CheckoutPage() {
                   <textarea
                     value={form.address}
                     onChange={(event) =>
-                      handleChange("address", event.target.value)
+                      handleChange(
+                        "address",
+                        event.target.value,
+                      )
                     }
                     placeholder="House number, building, street..."
                     rows={3}
                     className="mt-2 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white"
                   />
+
                 </div>
+
               </div>
             </section>
 
-            {/* PRODUCT */}
+            {/* PRODUCTS */}
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
+
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-black">Product</h2>
+
+                <div>
+                  <h2 className="text-lg font-black">
+                    Products
+                  </h2>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    {products.length}{" "}
+                    {products.length === 1
+                      ? "product"
+                      : "products"}{" "}
+                    • {totalQuantity}{" "}
+                    total items
+                  </p>
+                </div>
 
                 <Link
-                  href={`/buy/${product.id}`}
+                  href="/cart"
                   className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
                 >
                   Change
                 </Link>
+
               </div>
 
-              <div className="mt-5 flex gap-4">
-                <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="h-full w-full object-contain"
-                  />
-                </div>
+              <div className="mt-5 space-y-5">
 
-                <div className="flex-1">
-                  <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                    {product.brand}
-                  </p>
+                {products.map(
+                  (product) => {
 
-                  <h3 className="mt-1 text-base font-black">{product.name}</h3>
+                    const quantity =
+                      Math.max(
+                        1,
+                        product.quantity ||
+                          1,
+                      );
 
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold">
-                      {selectedStorage}
-                    </span>
+                    const itemTotal =
+                      product.price *
+                      quantity;
 
-                    <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold">
-                      {selectedColor}
-                    </span>
+                    return (
+                      <div
+                        key={
+                          product.cartId
+                        }
+                        className="flex gap-4 border-b border-gray-100 pb-5 last:border-0 last:pb-0"
+                      >
 
-                    <span className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700">
-                      {product.condition}
-                    </span>
-                  </div>
+                        {/* IMAGE */}
 
-                  <p className="mt-3 text-lg font-black">
-                    ₹{product.price.toLocaleString("en-IN")}
-                  </p>
-                </div>
+                        <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
+
+                          <img
+                            src={
+                              product.image
+                            }
+                            alt={
+                              product.name
+                            }
+                            className="h-full w-full object-contain"
+                          />
+
+                        </div>
+
+                        {/* DETAILS */}
+
+                        <div className="min-w-0 flex-1">
+
+                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                            {
+                              product.brand
+                            }
+                          </p>
+
+                          <h3 className="mt-1 text-base font-black">
+                            {
+                              product.name
+                            }
+                          </h3>
+
+                          <div className="mt-2 flex flex-wrap gap-2">
+
+                            <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold">
+                              {
+                                product.storage
+                              }
+                            </span>
+
+                            <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold">
+                              {
+                                product.color
+                              }
+                            </span>
+
+                            <span className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700">
+                              {
+                                product.condition
+                              }
+                            </span>
+
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center gap-3">
+
+                            <p className="text-lg font-black">
+                              ₹
+                              {product.price.toLocaleString(
+                                "en-IN",
+                              )}
+                            </p>
+
+                            <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                              Qty:{" "}
+                              {quantity}
+                            </span>
+
+                            <span className="text-xs font-semibold text-gray-400">
+                              Total: ₹
+                              {itemTotal.toLocaleString(
+                                "en-IN",
+                              )}
+                            </span>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+                    );
+                  },
+                )}
+
               </div>
+
             </section>
 
             {/* PAYMENT */}
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
+
               <div className="flex items-center gap-3">
+
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <CreditCard size={20} />
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-black">Payment method</h2>
+                  <h2 className="text-lg font-black">
+                    Payment method
+                  </h2>
 
                   <p className="mt-1 text-xs text-gray-500">
                     Choose how you want to pay.
                   </p>
                 </div>
+
               </div>
 
               <div className="mt-6 grid gap-3">
+
                 <PaymentOption
-                  active={paymentMethod === "upi"}
-                  onClick={() => setPaymentMethod("upi")}
-                  icon={<Wallet size={19} />}
+                  active={
+                    paymentMethod ===
+                    "upi"
+                  }
+                  onClick={() =>
+                    setPaymentMethod(
+                      "upi",
+                    )
+                  }
+                  icon={
+                    <Wallet size={19} />
+                  }
                   title="UPI"
                   description="Google Pay, PhonePe, Paytm and other UPI apps"
                 />
 
                 <PaymentOption
-                  active={paymentMethod === "card"}
-                  onClick={() => setPaymentMethod("card")}
-                  icon={<CreditCard size={19} />}
+                  active={
+                    paymentMethod ===
+                    "card"
+                  }
+                  onClick={() =>
+                    setPaymentMethod(
+                      "card",
+                    )
+                  }
+                  icon={
+                    <CreditCard
+                      size={19}
+                    />
+                  }
                   title="Credit / Debit Card"
                   description="Secure card payment"
                 />
 
                 <PaymentOption
-                  active={paymentMethod === "emi"}
-                  onClick={() => setPaymentMethod("emi")}
-                  icon={<CreditCard size={19} />}
+                  active={
+                    paymentMethod ===
+                    "emi"
+                  }
+                  onClick={() =>
+                    setPaymentMethod(
+                      "emi",
+                    )
+                  }
+                  icon={
+                    <CreditCard
+                      size={19}
+                    />
+                  }
                   title="EMI"
                   description="Pay monthly with eligible cards"
                 />
 
                 <PaymentOption
-                  active={paymentMethod === "cod"}
-                  onClick={() => setPaymentMethod("cod")}
-                  icon={<Truck size={19} />}
+                  active={
+                    paymentMethod ===
+                    "cod"
+                  }
+                  onClick={() =>
+                    setPaymentMethod(
+                      "cod",
+                    )
+                  }
+                  icon={
+                    <Truck size={19} />
+                  }
                   title="Cash on Delivery"
                   description="Pay when your device arrives"
                 />
+
               </div>
+
             </section>
+
           </div>
 
           {/* RIGHT */}
 
           <aside>
+
             <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black">Price details</h2>
+
+              <h2 className="text-lg font-black">
+                Price details
+              </h2>
 
               <div className="mt-6 space-y-4 text-sm">
+
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Product price</span>
+                  <span className="text-gray-500">
+                    MRP
+                  </span>
 
                   <span className="font-semibold">
-                    ₹{subtotal.toLocaleString("en-IN")}
+                    ₹
+                    {originalTotal.toLocaleString(
+                      "en-IN",
+                    )}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Original price</span>
+                  <span className="text-gray-500">
+                    Discount
+                  </span>
 
-                  <span className="text-gray-400 line-through">
-                    ₹{product.originalPrice.toLocaleString("en-IN")}
+                  <span className="font-semibold text-green-600">
+                    - ₹
+                    {savings.toLocaleString(
+                      "en-IN",
+                    )}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Delivery</span>
+                  <span className="text-gray-500">
+                    Delivery
+                  </span>
 
-                  <span className="font-bold text-green-600">FREE</span>
+                  <span className="font-bold text-green-600">
+                    FREE
+                  </span>
                 </div>
+
               </div>
 
               <div className="my-5 border-t border-gray-100" />
 
               <div className="flex items-center justify-between">
-                <span className="font-black">Total amount</span>
+
+                <span className="font-black">
+                  Total amount
+                </span>
 
                 <span className="text-2xl font-black">
-                  ₹{total.toLocaleString("en-IN")}
+                  ₹
+                  {total.toLocaleString(
+                    "en-IN",
+                  )}
                 </span>
+
               </div>
 
               <div className="mt-5 rounded-2xl bg-green-50 p-4">
+
                 <div className="flex gap-3">
-                  <Check size={18} className="mt-0.5 shrink-0 text-green-600" />
+
+                  <Check
+                    size={18}
+                    className="mt-0.5 shrink-0 text-green-600"
+                  />
 
                   <div>
+
                     <p className="text-xs font-bold text-green-700">
                       You save ₹
-                      {(product.originalPrice - product.price).toLocaleString(
+                      {savings.toLocaleString(
                         "en-IN",
                       )}
                     </p>
@@ -401,18 +764,31 @@ export default function CheckoutPage() {
                     <p className="mt-1 text-[11px] leading-5 text-green-600">
                       Free delivery included.
                     </p>
+
                   </div>
+
                 </div>
+
               </div>
 
               <button
                 type="submit"
-                disabled={placingOrder}
+                disabled={
+                  placingOrder
+                }
                 className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {placingOrder ? "Processing..." : "Place order"}
 
-                {!placingOrder && <ArrowRight size={18} />}
+                {placingOrder
+                  ? "Processing..."
+                  : "Place order"}
+
+                {!placingOrder && (
+                  <ArrowRight
+                    size={18}
+                  />
+                )}
+
               </button>
 
               <div className="mt-5 flex items-center justify-center gap-2 text-[11px] font-semibold text-gray-500">
@@ -421,17 +797,40 @@ export default function CheckoutPage() {
               </div>
 
               <div className="mt-5 grid grid-cols-3 gap-2 border-t border-gray-100 pt-5">
+
                 <MiniTrust
-                  icon={<ShieldCheck size={16} />}
+                  icon={
+                    <ShieldCheck
+                      size={16}
+                    />
+                  }
                   text="Quality checked"
                 />
 
-                <MiniTrust icon={<Truck size={16} />} text="Fast delivery" />
+                <MiniTrust
+                  icon={
+                    <Truck size={16} />
+                  }
+                  text="Fast delivery"
+                />
 
-                <MiniTrust icon={<Check size={16} />} text={product.warranty} />
+                <MiniTrust
+                  icon={
+                    <Check size={16} />
+                  }
+                  text={
+                    products[0]
+                      ?.warranty ||
+                    "Warranty"
+                  }
+                />
+
               </div>
+
             </div>
+
           </aside>
+
         </div>
       </form>
     </main>
@@ -451,19 +850,27 @@ function Input({
   label: string;
   placeholder: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (
+    value: string,
+  ) => void;
   maxLength?: number;
   type?: string;
 }) {
   return (
     <div>
-      <label className="text-xs font-bold text-gray-700">{label}</label>
+      <label className="text-xs font-bold text-gray-700">
+        {label}
+      </label>
 
       <input
         type={type}
         value={value}
         maxLength={maxLength}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) =>
+          onChange(
+            event.target.value,
+          )
+        }
         placeholder={placeholder}
         className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white"
       />
@@ -496,39 +903,68 @@ function PaymentOption({
           : "border-gray-200 bg-white hover:border-gray-300"
       }`}
     >
+
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-          active ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"
+          active
+            ? "bg-indigo-600 text-white"
+            : "bg-gray-100 text-gray-500"
         }`}
       >
         {icon}
       </div>
 
       <div className="flex-1">
-        <p className="text-sm font-bold">{title}</p>
 
-        <p className="mt-1 text-xs text-gray-500">{description}</p>
+        <p className="text-sm font-bold">
+          {title}
+        </p>
+
+        <p className="mt-1 text-xs text-gray-500">
+          {description}
+        </p>
+
       </div>
 
       <div
         className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-          active ? "border-indigo-600 bg-indigo-600" : "border-gray-300"
+          active
+            ? "border-indigo-600 bg-indigo-600"
+            : "border-gray-300"
         }`}
       >
-        {active && <Check size={12} className="text-white" />}
+        {active && (
+          <Check
+            size={12}
+            className="text-white"
+          />
+        )}
       </div>
+
     </button>
   );
 }
 
 /* TRUST */
 
-function MiniTrust({ icon, text }: { icon: React.ReactNode; text: string }) {
+function MiniTrust({
+  icon,
+  text,
+}: {
+  icon: React.ReactNode;
+  text: string;
+}) {
   return (
     <div className="text-center">
-      <div className="flex justify-center text-indigo-600">{icon}</div>
 
-      <p className="mt-2 text-[9px] font-bold text-gray-500">{text}</p>
+      <div className="flex justify-center text-indigo-600">
+        {icon}
+      </div>
+
+      <p className="mt-2 text-[9px] font-bold text-gray-500">
+        {text}
+      </p>
+
     </div>
   );
 }

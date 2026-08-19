@@ -17,9 +17,8 @@ export default function VerifyUserPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [timer, setTimer] = useState(30);
-const router = useRouter();
+  const router = useRouter();
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
   /* RESEND TIMER */
 
   useEffect(() => {
@@ -34,10 +33,7 @@ const router = useRouter();
 
   /* HANDLE OTP INPUT */
 
-  const handleOtpChange = (
-    index: number,
-    value: string
-  ) => {
+  const handleOtpChange = (index: number, value: string) => {
     // Only allow numbers
     if (!/^\d*$/.test(value)) {
       return;
@@ -60,22 +56,16 @@ const router = useRouter();
 
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
-    if (
-      e.key === "Backspace" &&
-      !otp[index] &&
-      index > 0
-    ) {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
   /* HANDLE PASTE */
 
-  const handlePaste = (
-    e: React.ClipboardEvent<HTMLInputElement>
-  ) => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
 
     const pastedData = e.clipboardData
@@ -100,24 +90,22 @@ const router = useRouter();
 
   /* VERIFY OTP */
 
- const handleVerify = (
-  e: React.FormEvent<HTMLFormElement>
-) => {
-  e.preventDefault();
+  const handleVerify = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  const enteredOtp = otp.join("");
+    const enteredOtp = otp.join("");
 
-  if (enteredOtp.length !== 6) {
-    setError("Please enter the complete 6-digit OTP.");
-    return;
-  }
+    if (enteredOtp.length !== 6) {
+      setError("Please enter the complete 6-digit OTP.");
+      return;
+    }
 
-  setSuccess(true);
+    setSuccess(true);
 
-  setTimeout(() => {
-    router.push("/account");
-  }, 1000);
-};
+    setTimeout(() => {
+      router.push("/");
+    }, 1000);
+  };
 
   /* RESEND OTP */
 
@@ -138,36 +126,27 @@ const router = useRouter();
   return (
     <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 px-5 py-12 sm:py-16">
       <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-2">
-
         {/* LEFT SIDE */}
 
         <div className="hidden lg:block">
-
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white shadow-lg">
             <Smartphone size={25} />
           </div>
 
           <h1 className="max-w-lg text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
             Verify your{" "}
-            <span className="text-indigo-600">
-              PhoneBuy account.
-            </span>
+            <span className="text-indigo-600">PhoneBuy account.</span>
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
-            We've sent a verification code to your registered
-            contact. Enter the code to securely verify your
-            PhoneBuy account.
+            We've sent a verification code to your registered contact. Enter the
+            code to securely verify your PhoneBuy account.
           </p>
 
           <div className="mt-10 space-y-5">
-
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50">
-                <ShieldCheck
-                  size={21}
-                  className="text-indigo-600"
-                />
+                <ShieldCheck size={21} className="text-indigo-600" />
               </div>
 
               <div>
@@ -183,34 +162,26 @@ const router = useRouter();
 
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-                <CheckCircle2
-                  size={21}
-                  className="text-green-600"
-                />
+                <CheckCircle2 size={21} className="text-green-600" />
               </div>
 
               <div>
-                <p className="text-sm font-bold text-gray-900">
-                  Almost there
-                </p>
+                <p className="text-sm font-bold text-gray-900">Almost there</p>
 
                 <p className="mt-1 text-xs text-gray-500">
                   Verify once and start using PhoneBuy.
                 </p>
               </div>
             </div>
-
           </div>
         </div>
 
         {/* VERIFICATION CARD */}
 
         <div className="mx-auto w-full max-w-md">
-
           {/* MOBILE HEADER */}
 
           <div className="mb-8 text-center lg:hidden">
-
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-black text-white">
               <Smartphone size={21} />
             </div>
@@ -222,24 +193,18 @@ const router = useRouter();
             <p className="mt-2 text-sm text-gray-500">
               Enter the verification code to continue.
             </p>
-
           </div>
 
           {/* CARD */}
 
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] sm:p-8">
-
             {!success ? (
               <>
                 {/* CARD HEADER */}
 
                 <div className="mb-8 text-center">
-
                   <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-                    <ShieldCheck
-                      size={25}
-                      className="text-indigo-600"
-                    />
+                    <ShieldCheck size={25} className="text-indigo-600" />
                   </div>
 
                   <h2 className="text-2xl font-black tracking-tight text-gray-950">
@@ -247,20 +212,17 @@ const router = useRouter();
                   </h2>
 
                   <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-500">
-                    Enter the 6-digit verification code sent
-                    to your registered mobile number.
+                    Enter the 6-digit verification code sent to your registered
+                    mobile number.
                   </p>
-
                 </div>
 
                 {/* FORM */}
 
                 <form onSubmit={handleVerify}>
-
                   {/* OTP BOXES */}
 
                   <div className="flex justify-center gap-2 sm:gap-3">
-
                     {otp.map((digit, index) => (
                       <input
                         key={index}
@@ -271,15 +233,8 @@ const router = useRouter();
                         inputMode="numeric"
                         maxLength={1}
                         value={digit}
-                        onChange={(e) =>
-                          handleOtpChange(
-                            index,
-                            e.target.value
-                          )
-                        }
-                        onKeyDown={(e) =>
-                          handleKeyDown(index, e)
-                        }
+                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(index, e)}
                         onPaste={handlePaste}
                         aria-label={`OTP digit ${index + 1}`}
                         className={`h-12 w-11 rounded-xl border bg-white text-center text-lg font-bold text-gray-900 outline-none transition sm:h-14 sm:w-12 ${
@@ -289,7 +244,6 @@ const router = useRouter();
                         }`}
                       />
                     ))}
-
                   </div>
 
                   {/* ERROR */}
@@ -305,22 +259,18 @@ const router = useRouter();
                   <button
                     type="submit"
                     className="group mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/20"
-                
                   >
                     Verify account
-
                     <ArrowRight
                       size={17}
                       className="transition-transform group-hover:translate-x-1"
                     />
                   </button>
-
                 </form>
 
                 {/* RESEND */}
 
                 <div className="mt-7 text-center">
-
                   <p className="text-sm text-gray-500">
                     Didn't receive the code?
                   </p>
@@ -328,9 +278,7 @@ const router = useRouter();
                   {timer > 0 ? (
                     <p className="mt-2 text-xs font-semibold text-gray-400">
                       Resend OTP in{" "}
-                      <span className="text-indigo-600">
-                        {timer}s
-                      </span>
+                      <span className="text-indigo-600">{timer}s</span>
                     </p>
                   ) : (
                     <button
@@ -342,13 +290,11 @@ const router = useRouter();
                       Resend OTP
                     </button>
                   )}
-
                 </div>
 
                 {/* BACK */}
 
                 <div className="mt-6 border-t border-gray-100 pt-6 text-center">
-
                   <Link
                     href="/register"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-indigo-600"
@@ -356,19 +302,14 @@ const router = useRouter();
                     <ArrowLeft size={15} />
                     Back to registration
                   </Link>
-
                 </div>
               </>
             ) : (
               /* SUCCESS STATE */
 
               <div className="py-8 text-center">
-
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
-                  <CheckCircle2
-                    size={34}
-                    className="text-green-600"
-                  />
+                  <CheckCircle2 size={34} className="text-green-600" />
                 </div>
 
                 <h2 className="mt-6 text-2xl font-black text-gray-950">
@@ -376,21 +317,18 @@ const router = useRouter();
                 </h2>
 
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-500">
-                  Your PhoneBuy account has been successfully
-                  verified.
+                  Your PhoneBuy account has been successfully verified.
                 </p>
 
                 <Link
-                  href="/account"
+                  href="/"
                   className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 text-sm font-bold text-white transition hover:bg-indigo-700"
                 >
                   Continue to PhoneBuy
                   <ArrowRight size={17} />
                 </Link>
-
               </div>
             )}
-
           </div>
 
           {/* SECURITY */}
@@ -399,7 +337,6 @@ const router = useRouter();
             <ShieldCheck size={14} />
             Secure PhoneBuy verification
           </div>
-
         </div>
       </div>
     </main>

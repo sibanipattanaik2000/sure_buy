@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -7,11 +8,13 @@ import {
   Smartphone,
 } from "lucide-react";
 
+import { useRouter } from "next/navigation";
+
 export default function ForgotPasswordPage() {
+  const router = useRouter();
   return (
     <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 px-5 py-12 sm:py-16">
       <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-2">
-
         {/* LEFT SIDE */}
 
         <div className="hidden lg:block">
@@ -21,22 +24,17 @@ export default function ForgotPasswordPage() {
 
           <h1 className="max-w-lg text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
             Get back to your{" "}
-            <span className="text-indigo-600">
-              PhoneBuy account.
-            </span>
+            <span className="text-indigo-600">PhoneBuy account.</span>
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
-            Forgot your password? Enter your registered email address and
-            we'll help you securely reset your password.
+            Forgot your password? Enter your registered email address and we'll
+            help you securely reset your password.
           </p>
 
           <div className="mt-10 flex items-center gap-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-              <ShieldCheck
-                size={21}
-                className="text-green-600"
-              />
+              <ShieldCheck size={21} className="text-green-600" />
             </div>
 
             <div>
@@ -54,7 +52,6 @@ export default function ForgotPasswordPage() {
         {/* FORM */}
 
         <div className="mx-auto w-full max-w-md">
-
           {/* MOBILE HEADER */}
 
           <div className="mb-8 text-center lg:hidden">
@@ -74,13 +71,9 @@ export default function ForgotPasswordPage() {
           {/* CARD */}
 
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] sm:p-8">
-
             <div className="mb-7">
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50">
-                <Mail
-                  size={20}
-                  className="text-indigo-600"
-                />
+                <Mail size={20} className="text-indigo-600" />
               </div>
 
               <h2 className="text-2xl font-black tracking-tight text-gray-950">
@@ -88,13 +81,20 @@ export default function ForgotPasswordPage() {
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                Enter the email address associated with your PhoneBuy
-                account. We'll send you a password reset link.
+                Enter the email address associated with your PhoneBuy account.
+                We'll send you a password reset link.
               </p>
             </div>
 
-            <form className="space-y-5">
+            <form
+              className="space-y-5"
+              onSubmit={(e) => {
+                e.preventDefault();
 
+                // Later backend will send the real OTP.
+                router.push("/verify-user?mode=reset");
+              }}
+            >
               {/* EMAIL */}
 
               <div>
@@ -123,13 +123,11 @@ export default function ForgotPasswordPage() {
                 className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/20"
               >
                 Send reset link
-
                 <ArrowRight
                   size={17}
                   className="transition-transform duration-200 group-hover:translate-x-1"
                 />
               </button>
-
             </form>
 
             {/* BACK TO LOGIN */}
@@ -143,11 +141,9 @@ export default function ForgotPasswordPage() {
                   size={16}
                   className="transition-transform group-hover:-translate-x-1"
                 />
-
                 Back to login
               </Link>
             </div>
-
           </div>
 
           {/* SECURITY */}
@@ -156,7 +152,6 @@ export default function ForgotPasswordPage() {
             <ShieldCheck size={14} />
             Secure PhoneBuy account recovery
           </div>
-
         </div>
       </div>
     </main>
