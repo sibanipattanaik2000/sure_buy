@@ -52,10 +52,11 @@ export default function OrderSuccessPage() {
       if (storedOrder) {
         const parsed = JSON.parse(storedOrder);
 
-        setOrder({
-          ...parsed,
-          orderId: parsed.orderId || generateOrderId(),
-        });
+       // eslint-disable-next-line react-hooks/set-state-in-effect
+setOrder({
+  ...parsed,
+  orderId: parsed.orderId || generateOrderId(),
+});
 
         return;
       }
@@ -69,17 +70,18 @@ export default function OrderSuccessPage() {
      * preventing hydration mismatch.
      */
 
-    setOrder({
-      orderId: generateOrderId(),
-      productName: "iPhone 15",
-      productImage: "/images/iphone-15.png",
-      brand: "Apple",
-      storage: "128GB",
-      color: "Black",
-      price: 42999,
-      paymentMethod: "UPI",
-      deliveryDate: "3–5 business days",
-    });
+// eslint-disable-next-line react-hooks/set-state-in-effect
+setOrder({
+  orderId: generateOrderId(),
+  productName: "iPhone 15",
+  productImage: "/images/iphone-15.png",
+  brand: "Apple",
+  storage: "128GB",
+  color: "Black",
+  price: 42999,
+  paymentMethod: "UPI",
+  deliveryDate: "3–5 business days",
+});
   }, []);
 
   const copyOrderId = async () => {

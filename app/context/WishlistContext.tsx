@@ -27,14 +27,11 @@ type WishlistContextType = {
   clearWishlist: () => void;
 };
 
-const WishlistContext =
-  createContext<WishlistContextType | undefined>(undefined);
+const WishlistContext = createContext<WishlistContextType | undefined>(
+  undefined,
+);
 
-export function WishlistProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function WishlistProvider({ children }: { children: ReactNode }) {
   const [wishlist, setWishlist] = useState<WishlistPhone[]>([]);
 
   /* Load wishlist saved in browser */
@@ -44,6 +41,7 @@ export function WishlistProvider({
       const savedWishlist = localStorage.getItem("phonebuy-wishlist");
 
       if (savedWishlist) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setWishlist(JSON.parse(savedWishlist));
       }
     } catch (error) {
@@ -55,10 +53,7 @@ export function WishlistProvider({
 
   useEffect(() => {
     try {
-      localStorage.setItem(
-        "phonebuy-wishlist",
-        JSON.stringify(wishlist)
-      );
+      localStorage.setItem("phonebuy-wishlist", JSON.stringify(wishlist));
     } catch (error) {
       console.error("Failed to save wishlist:", error);
     }
@@ -85,23 +80,17 @@ export function WishlistProvider({
   /* Remove phone */
 
   const removeFromWishlist = (id: string) => {
-    setWishlist((current) =>
-      current.filter((phone) => phone.id !== id)
-    );
+    setWishlist((current) => current.filter((phone) => phone.id !== id));
   };
 
   /* Add / remove */
 
   const toggleWishlist = (phone: WishlistPhone) => {
     setWishlist((current) => {
-      const exists = current.some(
-        (item) => item.id === phone.id
-      );
+      const exists = current.some((item) => item.id === phone.id);
 
       if (exists) {
-        return current.filter(
-          (item) => item.id !== phone.id
-        );
+        return current.filter((item) => item.id !== phone.id);
       }
 
       return [...current, phone];
@@ -137,9 +126,7 @@ export function useWishlist() {
   const context = useContext(WishlistContext);
 
   if (!context) {
-    throw new Error(
-      "useWishlist must be used inside WishlistProvider"
-    );
+    throw new Error("useWishlist must be used inside WishlistProvider");
   }
 
   return context;

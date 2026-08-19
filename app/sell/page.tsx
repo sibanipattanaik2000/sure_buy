@@ -10,6 +10,7 @@ import {
   ChevronRight,
   CircleHelp,
   Cpu,
+  Link,
   MapPin,
   ShieldCheck,
   Smartphone,
@@ -92,13 +93,13 @@ export default function SellPage() {
       {/* PAGE HEADER */}
       <section className="border-b border-gray-100 bg-white">
         <div className="mx-auto max-w-5xl px-5 py-10 lg:px-8">
-          <a
+          <Link
             href="/"
             className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-black"
           >
             <ArrowLeft size={16} />
             Back to PhoneBuy
-          </a>
+          </Link>
 
           <div className="max-w-3xl">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700">

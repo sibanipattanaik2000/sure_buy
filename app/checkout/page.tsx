@@ -30,11 +30,13 @@ import {
 export default function CheckoutPage() {
   const router = useRouter();
 
-  const {
-    checkout,
-    setAddress,
-    setPaymentMethod,
-  } = useCheckout();
+const {
+  checkout,
+  setAddress,
+  setPaymentMethod,
+  clearCheckout,
+} = useCheckout();
+
 const { clearCart } = useCart();
   const {
     products,
@@ -172,95 +174,273 @@ const { clearCart } = useCart();
    * SUBMIT
    */
 
-  const handleSubmit = (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
+const handleSubmit = (
+  event: FormEvent<HTMLFormElement>,
+) => {
+  event.preventDefault();
 
-    setError("");
+  setError("");
 
-    if (placingOrder) {
-      return;
-    }
+  if (placingOrder) {
+    return;
+  }
 
+  /*
+   * ADDRESS VALIDATION
+   */
+
+  if (
+    !form.fullName.trim() ||
+    !form.phone.trim() ||
+    !form.pincode.trim() ||
+    !form.address.trim() ||
+    !form.area.trim() ||
+    !form.city.trim() ||
+    !form.state.trim()
+  ) {
+    setError(
+      "Please fill in all delivery address details.",
+    );
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+
+    return;
+  }
+
+  /*
+   * PHONE
+   */
+
+  if (form.phone.length !== 10) {
+    setError(
+      "Please enter a valid 10-digit mobile number.",
+    );
+
+    return;
+  }
+
+  /*
+   * PIN
+   */
+
+  if (form.pincode.length !== 6) {
+    setError(
+      "Please enter a valid 6-digit PIN code.",
+    );
+
+    return;
+  }
+
+  /*
+   * PAYMENT
+   */
+
+  if (!paymentMethod) {
+    setError(
+      "Please select a payment method.",
+    );
+
+    return;
+  }
+
+  /*
+   * SAVE ADDRESS
+   */
+
+  setAddress(form);
+
+  setPlacingOrder(true);
+
+  /*
+   * CREATE ORDER
+   *
+   * The same order is stored in the formats
+   * required by:
+   *
+   * - Order Success
+   * - My Orders
+   * - View Order
+   * - Track Order
+   */
+
+  const orderId = `SB-${Math.floor(
+    10000000 + Math.random() * 90000000,
+  )}`;
+
+  const createdAt = new Date().toISOString();
+
+  const deliveryDate = "3–5 business days";
+
+  const firstProduct = products[0];
+
+  const orderRecord = {
+    id: orderId,
+    orderId,
+
+    productId: firstProduct.id,
+
+    productName: firstProduct.name,
+    brand: firstProduct.brand,
+    image: firstProduct.image,
+
+    storage: firstProduct.storage,
+    color: firstProduct.color,
+
+    price: firstProduct.price,
+
+    paymentMethod,
+    paymentStatus: "Confirmed",
+
+    orderDate: new Date().toLocaleDateString(
+      "en-IN",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      },
+    ),
+
+    createdAt,
+
+    deliveryDate,
+    expectedDelivery: deliveryDate,
+
+    status: "Confirmed",
+
+    product: {
+      id: firstProduct.id,
+      name: firstProduct.name,
+      brand: firstProduct.brand,
+      image: firstProduct.image,
+      storage: firstProduct.storage,
+      color: firstProduct.color,
+      condition: firstProduct.condition,
+      price: firstProduct.price,
+      quantity: Math.max(
+        1,
+        firstProduct.quantity || 1,
+      ),
+    },
+
+    quantity: totalQuantity,
+
+    subtotal,
+    deliveryFee: deliveryCharge,
+    total,
+
+    address: {
+      name: form.fullName,
+      phone: form.phone,
+      address: form.address,
+      city: form.city,
+      state: form.state,
+      pincode: form.pincode,
+    },
+
+    products,
+  };
+
+  try {
     /*
-     * ADDRESS VALIDATION
+     * Save current order.
+     *
+     * View Order and Track Order read this key.
      */
 
-    if (
-      !form.fullName.trim() ||
-      !form.phone.trim() ||
-      !form.pincode.trim() ||
-      !form.address.trim() ||
-      !form.area.trim() ||
-      !form.city.trim() ||
-      !form.state.trim()
-    ) {
-      setError(
-        "Please fill in all delivery address details.",
+    localStorage.setItem(
+      "phonebuy-order",
+      JSON.stringify(orderRecord),
+    );
+
+    /*
+     * Save order history.
+     *
+     * My Orders reads this key.
+     */
+
+    const existingOrdersRaw =
+      localStorage.getItem(
+        "surebuy-orders",
       );
 
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
+    const existingOrders = existingOrdersRaw
+      ? JSON.parse(existingOrdersRaw)
+      : [];
 
-      return;
-    }
+    const orders = Array.isArray(existingOrders)
+      ? existingOrders
+      : [];
+
+    localStorage.setItem(
+      "surebuy-orders",
+      JSON.stringify([
+        orderRecord,
+        ...orders.filter(
+          (order: { id?: string }) =>
+            order.id !== orderId,
+        ),
+      ]),
+    );
 
     /*
-     * PHONE
+     * Save order for Order Success.
      */
 
-    if (form.phone.length !== 10) {
-      setError(
-        "Please enter a valid 10-digit mobile number.",
-      );
-
-      return;
-    }
+    sessionStorage.setItem(
+      "surebuy-order",
+      JSON.stringify({
+        orderId,
+        productName: firstProduct.name,
+        productImage: firstProduct.image,
+        brand: firstProduct.brand,
+        storage: firstProduct.storage,
+        color: firstProduct.color,
+        price: total,
+        paymentMethod,
+        deliveryDate,
+      }),
+    );
 
     /*
-     * PIN
+     * Clear purchased cart items.
+     *
+     * The order has already been saved above,
+     * so clearing the cart cannot lose the order.
      */
 
-    if (form.pincode.length !== 6) {
-      setError(
-        "Please enter a valid 6-digit PIN code.",
-      );
-
-      return;
-    }
+    clearCart();
 
     /*
-     * PAYMENT
+     * Clear checkout storage/state.
      */
 
-    if (!paymentMethod) {
-      setError(
-        "Please select a payment method.",
-      );
-
-      return;
-    }
+    localStorage.removeItem(
+      "phonebuy-checkout",
+    );
 
     /*
-     * SAVE ADDRESS
-     */
-
-    setAddress(form);
-
-    setPlacingOrder(true);
-
-    /*
-     * DEMO ORDER FLOW
+     * Redirect after successful order creation.
      */
 
     setTimeout(() => {
-        clearCart();
       router.push("/order-success");
     }, 900);
-  };
+  } catch (error) {
+    console.error(
+      "Failed to place order:",
+      error,
+    );
+
+    setPlacingOrder(false);
+
+    setError(
+      "Unable to place your order. Please try again.",
+    );
+  }
+};
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
@@ -480,9 +660,10 @@ const { clearCart } = useCart();
 
                     return (
                       <div
-                        key={
-                          product.cartId
-                        }
+                       key={
+  product.cartId ||
+  `${product.id}-${product.storage}-${product.color}-${product.name}`
+}
                         className="flex gap-4 border-b border-gray-100 pb-5 last:border-0 last:pb-0"
                       >
 
