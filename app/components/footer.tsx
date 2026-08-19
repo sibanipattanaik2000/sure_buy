@@ -72,7 +72,7 @@ export default function Footer() {
               </div>
 
               <span className="text-2xl font-black tracking-tight">
-                Phone<span className="text-indigo-400">Buy</span>
+                Phone<span className="text-indigo-400">Bhai</span>
               </span>
             </Link>
 
@@ -86,7 +86,7 @@ export default function Footer() {
             <div className="mt-6 space-y-3">
               <ContactItem
                 icon={<Mail size={15} />}
-                text="support@PhoneBuy.com"
+                text="support@PhoneBhai.com"
               />
 
               <ContactItem
@@ -106,7 +106,7 @@ export default function Footer() {
           <FooterColumn
             title="Company"
             links={[
-              ["About PhoneBuy", "/about"],
+              ["About PhoneBhai", "/about"],
               ["Careers", "/careers"],
               ["Contact", "/contact"],
               ["Our stores", "/stores"],
@@ -208,7 +208,7 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-xs text-gray-600 sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <p>
-            © {new Date().getFullYear()} PhoneBuy Technologies. All rights
+            © {new Date().getFullYear()} PhoneBhai Technologies. All rights
             reserved.
           </p>
 

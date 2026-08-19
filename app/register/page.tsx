@@ -108,7 +108,7 @@ export default function RegisterPage() {
         <div className="hidden lg:block">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700">
             <Zap size={15} />
-            Welcome to PhoneBuy
+            Welcome to PhoneBhai
           </div>
 
           <h1 className="max-w-xl text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
@@ -119,7 +119,7 @@ export default function RegisterPage() {
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
-            Create your PhoneBuy account to buy certified phones,
+            Create your PhoneBhai account to buy certified phones,
             sell your old phone, track orders and manage your
             wishlist.
           </p>
@@ -158,7 +158,7 @@ export default function RegisterPage() {
             </h1>
 
             <p className="mt-2 text-sm text-gray-500">
-              Join PhoneBuy and get started.
+              Join PhoneBhai and get started.
             </p>
           </div>
 
@@ -357,7 +357,7 @@ export default function RegisterPage() {
                   />
 
                   <span className="text-xs leading-5 text-gray-500">
-                    I agree to PhoneBuy's{" "}
+                    I agree to PhoneBhai's{" "}
                     <Link
                       href="/terms"
                       className="font-semibold text-indigo-600"

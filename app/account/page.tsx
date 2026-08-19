@@ -25,7 +25,7 @@ export default function AccountPage() {
           </p>
 
           <h1 className="mt-1 text-3xl font-black tracking-tight text-gray-950">
-            Welcome to PhoneBuy
+            Welcome to PhoneBhai
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
@@ -114,7 +114,7 @@ export default function AccountPage() {
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Your latest PhoneBuy activity
+                Your latest PhoneBhai activity
               </p>
             </div>
 

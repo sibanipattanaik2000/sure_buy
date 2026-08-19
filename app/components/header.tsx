@@ -15,7 +15,7 @@ export default function Header() {
         <Link
           href="/"
           className="group flex items-center gap-2.5"
-          aria-label="PhoneBuy Home"
+          aria-label="PhoneBhai Home"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white shadow-sm transition duration-300 group-hover:scale-105 group-hover:rotate-3">
             <Zap size={18} strokeWidth={2.5} />
@@ -27,7 +27,7 @@ export default function Header() {
             </span>
 
             <span className="text-[21px] font-black tracking-[-0.04em] text-indigo-600">
-              Buy
+              Bhai
             </span>
 
             <p className="mt-1 hidden text-[8px] font-bold uppercase tracking-[0.18em] text-gray-400 sm:block">
@@ -48,9 +48,7 @@ export default function Header() {
 
           <NavLink href="/sell" label="Sell" />
 
-          {/* <NavLink href="/repair" label="Repair" />
-
-          <NavLink href="/about" label="About" /> */}
+          <NavLink href="/about" label="About" /> 
         </nav>
 
         {/* ACTIONS */}

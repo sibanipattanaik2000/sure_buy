@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
 
           <h1 className="max-w-lg text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
             Get back to your{" "}
-            <span className="text-indigo-600">PhoneBuy account.</span>
+            <span className="text-indigo-600">PhoneBhai account.</span>
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                Enter the email address associated with your PhoneBuy account.
+                Enter the email address associated with your PhoneBhai account.
                 We'll send you a password reset link.
               </p>
             </div>
@@ -150,7 +150,7 @@ export default function ForgotPasswordPage() {
 
           <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-400">
             <ShieldCheck size={14} />
-            Secure PhoneBuy account recovery
+            Secure PhoneBhai account recovery
           </div>
         </div>
       </div>

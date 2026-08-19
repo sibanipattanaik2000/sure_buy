@@ -292,7 +292,7 @@ export default function BuyPage() {
         <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
           <div className="max-w-3xl">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600">
-              PhoneBuy Marketplace
+              PhoneBhai Marketplace
             </p>
 
             <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
@@ -593,7 +593,7 @@ export default function BuyPage() {
             </div>
 
             <div className="text-xs text-gray-500">
-              © {new Date().getFullYear()} PhoneBuy. All rights reserved.
+              © {new Date().getFullYear()} PhoneBhai. All rights reserved.
             </div>
           </div>
         </div>

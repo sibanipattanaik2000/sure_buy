@@ -73,7 +73,7 @@ type OrderSuccessData = {
   deliveryDate: string;
 };
 
-const ORDER_STORAGE_KEY = "phonebuy-order";
+const ORDER_STORAGE_KEY = "PhoneBhai-order";
 const ORDERS_STORAGE_KEY = "surebuy-orders";
 const SUCCESS_STORAGE_KEY = "surebuy-order";
 

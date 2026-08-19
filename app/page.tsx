@@ -514,7 +514,7 @@ export default function Home() {
 
             <p className="mt-4 text-gray-500">
               From buying and selling to repairs and after-sales support,
-              PhoneBuy keeps everything in one place.
+              PhoneBhai keeps everything in one place.
             </p>
           </div>
 
@@ -548,13 +548,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WHY PhoneBuy */}
+      {/* WHY PhoneBhai */}
       <section id="why-us" className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
         <div className="rounded-[2.5rem] bg-indigo-600 p-8 sm:p-12 lg:p-16">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
               <p className="text-sm font-bold uppercase tracking-widest text-indigo-200">
-                Why PhoneBuy
+                Why PhoneBhai
               </p>
 
               <h2 className="mt-3 text-4xl font-black tracking-tight text-white sm:text-5xl">
@@ -647,7 +647,7 @@ export default function Home() {
           </div>
 
           <div className="mt-12 border-t border-white/10 pt-6 text-xs text-gray-500">
-            © {new Date().getFullYear()} PhoneBuy. All rights reserved.
+            © {new Date().getFullYear()} PhoneBhai. All rights reserved.
           </div>
         </div>
       </footer> */}

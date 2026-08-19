@@ -63,7 +63,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
    STORAGE KEY
 ========================================================= */
 
-const CART_STORAGE_KEY = "phonebuy_cart";
+const CART_STORAGE_KEY = "PhoneBhai_cart";
 
 /* =========================================================
    PROVIDER

@@ -38,7 +38,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const savedWishlist = localStorage.getItem("phonebuy-wishlist");
+      const savedWishlist = localStorage.getItem("PhoneBhai-wishlist");
 
       if (savedWishlist) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -53,7 +53,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem("phonebuy-wishlist", JSON.stringify(wishlist));
+      localStorage.setItem("PhoneBhai-wishlist", JSON.stringify(wishlist));
     } catch (error) {
       console.error("Failed to save wishlist:", error);
     }

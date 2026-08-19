@@ -98,7 +98,7 @@ export default function SellPage() {
             className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-black"
           >
             <ArrowLeft size={16} />
-            Back to PhoneBuy
+            Back to PhoneBhai
           </Link>
 
           <div className="max-w-3xl">
@@ -573,7 +573,7 @@ function SideInfo() {
   return (
     <aside className="hidden lg:block">
       <div className="sticky top-28 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-bold">Why sell with PhoneBuy?</p>
+        <p className="text-sm font-bold">Why sell with PhoneBhai?</p>
 
         <div className="mt-6 space-y-5">
           <InfoItem

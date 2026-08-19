@@ -14,7 +14,7 @@ export default function LoginPage() {
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Sign in to continue to PhoneBuy
+            Sign in to continue to PhoneBhai
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-sm text-gray-500">
-            Don't have a PhoneBuy account?{" "}
+            Don't have a PhoneBhai account?{" "}
             <Link
               href="/register"
               className="font-bold text-indigo-600 hover:text-indigo-700"

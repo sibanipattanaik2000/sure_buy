@@ -7,12 +7,12 @@ import { CheckoutProvider } from "./context/CheckoutContext";
 import { CartProvider } from "./context/CartContext";
 export const metadata: Metadata = {
   title: {
-    default: "PhoneBuy | Buy, Sell & Repair Devices",
-    template: "%s | PhoneBuy",
+    default: "PhoneBhai | Buy, Sell & Repair Devices",
+    template: "%s | PhoneBhai",
   },
 
   description:
-    "Buy quality-checked devices, sell your old phone or laptop, and get reliable device repair with PhoneBuy.",
+    "Buy quality-checked devices, sell your old phone or laptop, and get reliable device repair with PhoneBhai.",
 
   keywords: [
     "buy used phones",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     "refurbished phones",
     "used laptops",
     "phone repair",
-    "PhoneBuy",
+    "PhoneBhai",
   ],
 };
 

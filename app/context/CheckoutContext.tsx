@@ -93,7 +93,7 @@ const CheckoutContext =
 ========================================================= */
 
 const STORAGE_KEY =
-  "phonebuy-checkout";
+  "PhoneBhai-checkout";
 
 /* =========================================================
    INITIAL STATE

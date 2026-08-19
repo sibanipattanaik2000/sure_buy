@@ -135,12 +135,12 @@ export default function VerifyUserPage() {
 
           <h1 className="max-w-lg text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
             Verify your{" "}
-            <span className="text-indigo-600">PhoneBuy account.</span>
+            <span className="text-indigo-600">PhoneBhai account.</span>
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
             We've sent a verification code to your registered contact. Enter the
-            code to securely verify your PhoneBuy account.
+            code to securely verify your PhoneBhai account.
           </p>
 
           <div className="mt-10 space-y-5">
@@ -169,7 +169,7 @@ export default function VerifyUserPage() {
                 <p className="text-sm font-bold text-gray-900">Almost there</p>
 
                 <p className="mt-1 text-xs text-gray-500">
-                  Verify once and start using PhoneBuy.
+                  Verify once and start using PhoneBhai.
                 </p>
               </div>
             </div>
@@ -317,14 +317,14 @@ export default function VerifyUserPage() {
                 </h2>
 
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-500">
-                  Your PhoneBuy account has been successfully verified.
+                  Your PhoneBhai account has been successfully verified.
                 </p>
 
                 <Link
                   href="/"
                   className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 text-sm font-bold text-white transition hover:bg-indigo-700"
                 >
-                  Continue to PhoneBuy
+                  Continue to PhoneBhai
                   <ArrowRight size={17} />
                 </Link>
               </div>
@@ -335,7 +335,7 @@ export default function VerifyUserPage() {
 
           <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-400">
             <ShieldCheck size={14} />
-            Secure PhoneBuy verification
+            Secure PhoneBhai verification
           </div>
         </div>
       </div>

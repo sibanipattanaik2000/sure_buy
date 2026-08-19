@@ -123,7 +123,7 @@ export default function ResetPasswordPage() {
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
             Choose a strong password to protect your
-            PhoneBuy account and keep your account secure.
+            PhoneBhai account and keep your account secure.
           </p>
 
           <div className="mt-10 flex items-center gap-4">
@@ -191,7 +191,7 @@ export default function ResetPasswordPage() {
               </h2>
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
-                Enter a new password for your PhoneBuy
+                Enter a new password for your PhoneBhai
                 account.
               </p>
 
@@ -407,7 +407,7 @@ export default function ResetPasswordPage() {
 
           <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-400">
             <ShieldCheck size={14} />
-            Secure PhoneBuy account recovery
+            Secure PhoneBhai account recovery
           </div>
 
         </div>

@@ -351,7 +351,7 @@ const handleSubmit = (
      */
 
     localStorage.setItem(
-      "phonebuy-order",
+      "PhoneBhai-order",
       JSON.stringify(orderRecord),
     );
 
@@ -418,7 +418,7 @@ const handleSubmit = (
      */
 
     localStorage.removeItem(
-      "phonebuy-checkout",
+      "PhoneBhai-checkout",
     );
 
     /*
