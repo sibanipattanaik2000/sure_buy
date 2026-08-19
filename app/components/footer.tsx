@@ -91,7 +91,7 @@ export default function Footer() {
 
               <ContactItem
                 icon={<Phone size={15} />}
-                text="+91 00000 00000"
+                text="+91 8079979945"
               />
 
               <ContactItem
@@ -163,29 +163,39 @@ export default function Footer() {
 
 <div className="mt-10 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
 
-  {/* SOCIAL */}
+{/* SOCIAL */}
 
-  <div className="flex items-center gap-2">
-    <SocialButton
-      label="Facebook"
-      icon={<FaFacebook size={15} />}
-    />
+<div className="flex items-center gap-2">
+  <a
+    href="https://www.facebook.com/"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Facebook"
+    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
+  >
+    <FaFacebook size={15} />
+  </a>
 
-    <SocialButton
-      label="Instagram"
-      icon={<FaInstagram size={15} />}
-    />
+  <a
+    href="https://www.instagram.com/"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Instagram"
+    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
+  >
+    <FaInstagram size={15} />
+  </a>
 
-    <SocialButton
-      label="Twitter"
-      icon={<FaTwitter size={15} />}
-    />
-
-    <SocialButton
-      label="LinkedIn"
-      icon={<FaLinkedinIn size={15} />}
-    />
-  </div>
+  <a
+    href="https://x.com/"
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="X"
+    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
+  >
+    <FaXTwitter size={15} />
+  </a>
+</div>
 
   {/* LEGAL */}
 
