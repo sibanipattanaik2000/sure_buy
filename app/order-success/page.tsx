@@ -47,7 +47,7 @@ export default function OrderSuccessPage() {
      */
 
     try {
-      const storedOrder = sessionStorage.getItem("surebuy-order");
+      const storedOrder = sessionStorage.getItem("PhoneBhai-order");
 
       if (storedOrder) {
         const parsed = JSON.parse(storedOrder);
@@ -452,7 +452,7 @@ setOrder({
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          Need help with your order? Contact SureBuy support.
+          Need help with your order? Contact PhoneBhai support.
         </p>
       </section>
     </main>

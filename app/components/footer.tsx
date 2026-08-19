@@ -159,48 +159,81 @@ export default function Footer() {
 
         {/* SOCIAL + LEGAL */}
 
-        <div className="mt-10 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
+      {/* SOCIAL + LEGAL */}
 
-          <div className="flex items-center gap-2">
-            <SocialButton
-              label="Facebook"
-              icon={<FaFacebook size={15} />}
-            />
+<div className="mt-10 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
 
-            <SocialButton
-              label="Instagram"
-              icon={<FaInstagram size={15} />}
-            />
+  {/* SOCIAL */}
 
-            <SocialButton
-              label="Twitter"
-              icon={<FaTwitter size={15} />}
-            />
+  <div className="flex items-center gap-2">
+    <SocialButton
+      label="Facebook"
+      icon={<FaFacebook size={15} />}
+    />
 
-            <SocialButton
-              label="LinkedIn"
-              icon={<FaLinkedinIn size={15} />}
-            />
-          </div>
+    <SocialButton
+      label="Instagram"
+      icon={<FaInstagram size={15} />}
+    />
 
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
-            <Link href="/privacy" className="transition hover:text-white">
-              Privacy
-            </Link>
+    <SocialButton
+      label="Twitter"
+      icon={<FaTwitter size={15} />}
+    />
 
-            <Link href="/terms" className="transition hover:text-white">
-              Terms
-            </Link>
+    <SocialButton
+      label="LinkedIn"
+      icon={<FaLinkedinIn size={15} />}
+    />
+  </div>
 
-            <Link href="/refund" className="transition hover:text-white">
-              Refund Policy
-            </Link>
+  {/* LEGAL */}
 
-            <Link href="/cookies" className="transition hover:text-white">
-              Cookies
-            </Link>
-          </div>
-        </div>
+  <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
+    <Link
+      href="/privacy-policy"
+      className="transition hover:text-white"
+    >
+      Privacy Policy
+    </Link>
+
+    <Link
+      href="/terms-and-conditions"
+      className="transition hover:text-white"
+    >
+      Terms & Conditions
+    </Link>
+
+    <Link
+      href="/cancellation-policy"
+      className="transition hover:text-white"
+    >
+      Cancellation Policy
+    </Link>
+
+    <Link
+      href="/inspection-policy"
+      className="transition hover:text-white"
+    >
+      Inspection & Pricing
+    </Link>
+
+    <Link
+      href="/cookie-policy"
+      className="transition hover:text-white"
+    >
+      Cookies
+    </Link>
+
+    <Link
+      href="/device-handover-policy"
+      className="transition hover:text-white"
+    >
+      Device Handover
+    </Link>
+  </div>
+
+</div>
       </div>
 
       {/* COPYRIGHT */}

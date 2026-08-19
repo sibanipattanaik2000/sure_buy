@@ -10,9 +10,127 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
+  Pencil,
+  ShoppingBag,
+  Truck,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+type Profile = {
+  fullName: string;
+  phone: string;
+  email: string;
+};
+
+type SavedAddress = {
+  fullName: string;
+  phone: string;
+  pincode: string;
+  address: string;
+  area: string;
+  city: string;
+  state: string;
+};
+
+type RecentOrder = {
+  id: string;
+  productName: string;
+  brand: string;
+  image: string;
+  price: number;
+  status: string;
+  orderDate: string;
+};
+
+const PROFILE_KEY =
+  "phonebuy-profile";
+
+const ADDRESS_KEY =
+  "phonebuy-saved-address";
+
+const ORDERS_KEY =
+  "PhoneBhai-orders";
 
 export default function AccountPage() {
+  const [profile, setProfile] =
+    useState<Profile>({
+      fullName: "",
+      phone: "",
+      email: "",
+    });
+
+  const [address, setAddress] =
+    useState<SavedAddress | null>(
+      null,
+    );
+
+  const [orders, setOrders] =
+    useState<RecentOrder[]>([]);
+
+  useEffect(() => {
+    try {
+      const savedProfile =
+        localStorage.getItem(
+          PROFILE_KEY,
+        );
+
+      if (savedProfile) {
+        const parsed =
+          JSON.parse(savedProfile);
+
+        setProfile({
+          fullName:
+            parsed.fullName || "",
+          phone:
+            parsed.phone || "",
+          email:
+            parsed.email || "",
+        });
+      }
+
+      const savedAddress =
+        localStorage.getItem(
+          ADDRESS_KEY,
+        );
+
+      if (savedAddress) {
+        setAddress(
+          JSON.parse(savedAddress),
+        );
+      }
+
+      const savedOrders =
+        localStorage.getItem(
+          ORDERS_KEY,
+        );
+
+      if (savedOrders) {
+        const parsed =
+          JSON.parse(savedOrders);
+
+        if (Array.isArray(parsed)) {
+          setOrders(
+            parsed.slice(0, 3),
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Failed to load account data:",
+        error,
+      );
+    }
+  }, []);
+
+  const displayName =
+    profile.fullName ||
+    "Your Name";
+
+  const displayPhone =
+    profile.phone
+      ? `+91 ${profile.phone}`
+      : "Add your mobile number";
+
   return (
     <main className="min-h-[calc(100vh-72px)] bg-gray-50 px-5 py-10">
       <div className="mx-auto max-w-6xl">
@@ -25,52 +143,68 @@ export default function AccountPage() {
           </p>
 
           <h1 className="mt-1 text-3xl font-black tracking-tight text-gray-950">
-            Welcome to PhoneBhai
+            Welcome{profile.fullName
+              ? `, ${profile.fullName.split(" ")[0]}`
+              : " to PhoneBhai"}
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Manage your profile, orders, wishlist and devices.
+            Manage your profile, orders,
+            wishlist and delivery details.
           </p>
         </div>
 
-        {/* PROFILE CARD */}
+        {/* PROFILE */}
 
-        <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+        <section
+          id="personal-information"
+          className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm"
+        >
           <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
 
             <div className="flex items-center gap-4">
 
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
                 <UserRound size={28} />
               </div>
 
               <div>
                 <h2 className="text-lg font-bold text-gray-950">
-                  Your Name
+                  {displayName}
                 </h2>
 
                 <p className="text-sm text-gray-500">
-                  +91 XXXXX XXXXX
+                  {displayPhone}
                 </p>
+
+                {profile.email && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    {profile.email}
+                  </p>
+                )}
 
                 <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-green-600">
                   <ShieldCheck size={14} />
-                  Verified account
+                  Account details saved
                 </div>
               </div>
 
             </div>
 
-            <button className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+            <Link
+              href="/edit-profile"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-bold text-gray-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+            >
+              <Pencil size={15} />
               Edit Profile
-            </button>
+            </Link>
 
           </div>
-        </div>
+        </section>
 
         {/* QUICK ACTIONS */}
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
           <AccountCard
             href="/orders"
@@ -93,14 +227,104 @@ export default function AccountPage() {
             description="Get the best value"
           />
 
-          <AccountCard
-            href="/addresses"
-            icon={<MapPin size={21} />}
-            title="Addresses"
-            description="Manage delivery details"
-          />
-
         </div>
+
+        {/* SAVED ADDRESS */}
+
+        <section className="mt-8">
+
+          <div className="mb-4">
+            <h2 className="text-xl font-black text-gray-950">
+              Saved delivery address
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Your latest checkout address is
+              saved here for convenience.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+
+            {address ? (
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+
+                <div className="flex gap-4">
+
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <MapPin size={20} />
+                  </div>
+
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black text-gray-950">
+                        {address.fullName}
+                      </h3>
+
+                      <span className="rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-bold text-green-700">
+                        Saved
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-sm leading-6 text-gray-600">
+                      {address.address}
+                      <br />
+                      {address.area}
+                      <br />
+                      {address.city},{" "}
+                      {address.state} -{" "}
+                      {address.pincode}
+                    </p>
+
+                    <p className="mt-2 text-xs font-semibold text-gray-500">
+                      Phone: {address.phone}
+                    </p>
+                  </div>
+
+                </div>
+
+                <Link
+                  href="/checkout"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                >
+                  Use at checkout
+                  <ChevronRight size={15} />
+                </Link>
+
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
+                  <MapPin
+                    size={24}
+                    className="text-gray-400"
+                  />
+                </div>
+
+                <h3 className="mt-4 font-bold text-gray-900">
+                  No saved address yet
+                </h3>
+
+                <p className="mt-2 max-w-md text-sm leading-6 text-gray-500">
+                  Your delivery address will
+                  automatically appear here after
+                  you complete a checkout.
+                </p>
+
+                <Link
+                  href="/buy"
+                  className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-700"
+                >
+                  Explore Phones
+                </Link>
+
+              </div>
+            )}
+
+          </div>
+
+        </section>
 
         {/* RECENT ACTIVITY */}
 
@@ -114,7 +338,7 @@ export default function AccountPage() {
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Your latest PhoneBhai activity
+                Your latest purchases
               </p>
             </div>
 
@@ -127,32 +351,89 @@ export default function AccountPage() {
 
           </div>
 
-          <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          {orders.length > 0 ? (
+            <div className="space-y-3">
 
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
-              <Package
-                size={24}
-                className="text-gray-400"
-              />
+              {orders.map((order) => (
+                <Link
+                  key={order.id}
+                  href={`/orders/${order.id}`}
+                  className="group flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+                >
+
+                  <div className="flex h-20 w-16 shrink-0 items-center justify-center rounded-xl bg-gray-50 p-2">
+                    <img
+                      src={order.image}
+                      alt={order.productName}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      {order.brand}
+                    </p>
+
+                    <h3 className="mt-1 truncate text-sm font-black text-gray-950">
+                      {order.productName}
+                    </h3>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-black">
+                        ₹
+                        {Number(
+                          order.price || 0,
+                        ).toLocaleString(
+                          "en-IN",
+                        )}
+                      </span>
+
+                      <span className="rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-bold text-green-700">
+                        {order.status}
+                      </span>
+                    </div>
+
+                  </div>
+
+                  <ChevronRight
+                    size={18}
+                    className="shrink-0 text-gray-300 transition group-hover:translate-x-1 group-hover:text-indigo-600"
+                  />
+
+                </Link>
+              ))}
+
             </div>
+          ) : (
+            <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
 
-            <h3 className="mt-4 font-bold text-gray-900">
-              No recent activity
-            </h3>
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
+                <ShoppingBag
+                  size={24}
+                  className="text-gray-400"
+                />
+              </div>
 
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">
-              Your purchases, sales and other activities
-              will appear here.
-            </p>
+              <h3 className="mt-4 font-bold text-gray-900">
+                No recent purchases
+              </h3>
 
-            <Link
-              href="/buy"
-              className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
-            >
-              Explore Phones
-            </Link>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">
+                Once you place an order,
+                your recent purchase will
+                appear here.
+              </p>
 
-          </div>
+              <Link
+                href="/buy"
+                className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+              >
+                Explore Phones
+              </Link>
+
+            </div>
+          )}
 
         </section>
 
@@ -174,20 +455,62 @@ export default function AccountPage() {
 
           <div className="divide-y divide-gray-100">
 
-            <SettingRow
-              title="Personal Information"
-              description="Manage your name and contact details"
-            />
+            <a
+              href="#personal-information"
+              className="flex w-full items-center justify-between p-6 text-left transition hover:bg-gray-50"
+            >
+              <div>
+                <p className="text-sm font-bold text-gray-900">
+                  Personal Information
+                </p>
 
-            <SettingRow
-              title="Security"
-              description="Password and account security"
-            />
+                <p className="mt-1 text-xs text-gray-500">
+                  Manage your name and contact details
+                </p>
+              </div>
 
-            <SettingRow
-              title="Notifications"
-              description="Manage your notification preferences"
-            />
+              <ChevronRight
+                size={18}
+                className="text-gray-400"
+              />
+            </a>
+
+            <Link
+              href="/edit-profile"
+              className="flex w-full items-center justify-between p-6 text-left transition hover:bg-gray-50"
+            >
+              <div>
+                <p className="text-sm font-bold text-gray-900">
+                  Profile Settings
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Update your account information
+                </p>
+              </div>
+
+              <ChevronRight
+                size={18}
+                className="text-gray-400"
+              />
+            </Link>
+
+            <div className="flex w-full items-center justify-between p-6">
+              <div>
+                <p className="text-sm font-bold text-gray-900">
+                  Order protection
+                </p>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Secure checkout and order tracking
+                </p>
+              </div>
+
+              <ShieldCheck
+                size={19}
+                className="text-green-600"
+              />
+            </div>
 
           </div>
 
@@ -197,7 +520,20 @@ export default function AccountPage() {
 
         <div className="mt-8 flex justify-center">
 
-          <button className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50">
+          <button
+            type="button"
+            onClick={() => {
+              /*
+               * No authentication system is currently
+               * being removed here because the repository
+               * does not have a single account auth context
+               * tied to this page.
+               */
+              window.location.href =
+                "/";
+            }}
+            className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
+          >
             <LogOut size={17} />
             Logout
           </button>
@@ -209,8 +545,9 @@ export default function AccountPage() {
   );
 }
 
-
-/* ACCOUNT CARD */
+/* =========================================================
+   ACCOUNT CARD
+========================================================= */
 
 function AccountCard({
   href,
@@ -249,37 +586,5 @@ function AccountCard({
         {description}
       </p>
     </Link>
-  );
-}
-
-
-/* SETTINGS ROW */
-
-function SettingRow({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <button className="flex w-full items-center justify-between p-6 text-left transition hover:bg-gray-50">
-
-      <div>
-        <p className="text-sm font-bold text-gray-900">
-          {title}
-        </p>
-
-        <p className="mt-1 text-xs text-gray-500">
-          {description}
-        </p>
-      </div>
-
-      <ChevronRight
-        size={18}
-        className="text-gray-400"
-      />
-
-    </button>
   );
 }

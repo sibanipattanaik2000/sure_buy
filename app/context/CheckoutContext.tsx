@@ -44,7 +44,6 @@ export type DeliveryAddress = {
 
 export type CheckoutData = {
   product: CheckoutProduct | null;
-
   products: CheckoutProduct[];
 
   selectedStorage: string;
@@ -61,19 +60,19 @@ type CheckoutContextType = {
   setProduct: (
     product: CheckoutProduct,
     storage: string,
-    color: string
+    color: string,
   ) => void;
 
   setProductsFromCart: (
-    products: CheckoutProduct[]
+    products: CheckoutProduct[],
   ) => void;
 
   setPaymentMethod: (
-    method: string
+    method: string,
   ) => void;
 
   setAddress: (
-    address: DeliveryAddress
+    address: DeliveryAddress,
   ) => void;
 
   clearCheckout: () => void;
@@ -93,7 +92,16 @@ const CheckoutContext =
 ========================================================= */
 
 const STORAGE_KEY =
-  "PhoneBhai-checkout";
+  "phonebuy-checkout";
+
+/*
+ * Permanent saved delivery address.
+ *
+ * This is intentionally separate from checkout.
+ * Clearing checkout will NOT remove the saved address.
+ */
+export const SAVED_ADDRESS_KEY =
+  "phonebuy-saved-address";
 
 /* =========================================================
    INITIAL STATE
@@ -120,73 +128,75 @@ export function CheckoutProvider({
 }) {
   const [checkout, setCheckout] =
     useState<CheckoutData>(
-      createInitialCheckout()
+      createInitialCheckout(),
     );
 
+  const [hydrated, setHydrated] =
+    useState(false);
+
   /* =======================================================
-     LOAD
+     LOAD CHECKOUT
   ======================================================= */
 
   useEffect(() => {
     try {
       const saved =
         localStorage.getItem(
-          STORAGE_KEY
+          STORAGE_KEY,
         );
 
-      if (!saved) {
-        return;
+      if (saved) {
+        const parsed =
+          JSON.parse(saved);
+
+        if (
+          parsed &&
+          typeof parsed === "object"
+        ) {
+          setCheckout({
+            ...createInitialCheckout(),
+            ...parsed,
+            products:
+              Array.isArray(
+                parsed.products,
+              )
+                ? parsed.products
+                : parsed.product
+                  ? [parsed.product]
+                  : [],
+          });
+        }
       }
-
-      const parsed =
-        JSON.parse(saved);
-
-      if (!parsed || typeof parsed !== "object") {
-        localStorage.removeItem(
-          STORAGE_KEY
-        );
-
-        return;
-      }
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCheckout({
-        ...createInitialCheckout(),
-        ...parsed,
-        products:
-          Array.isArray(parsed.products)
-            ? parsed.products
-            : parsed.product
-            ? [parsed.product]
-            : [],
-      });
     } catch (error) {
       console.error(
         "Failed to load checkout:",
-        error
+        error,
       );
 
       localStorage.removeItem(
-        STORAGE_KEY
+        STORAGE_KEY,
       );
+    } finally {
+      setHydrated(true);
     }
   }, []);
 
   /* =======================================================
-     SAVE
+     SAVE CHECKOUT
   ======================================================= */
 
   useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
     try {
-      /*
-       * Don't keep an empty checkout
-       * object in localStorage.
-       */
       if (
         checkout.products.length === 0 &&
         !checkout.product
       ) {
         localStorage.removeItem(
-          STORAGE_KEY
+          STORAGE_KEY,
         );
 
         return;
@@ -194,15 +204,15 @@ export function CheckoutProvider({
 
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify(checkout)
+        JSON.stringify(checkout),
       );
     } catch (error) {
       console.error(
         "Failed to save checkout:",
-        error
+        error,
       );
     }
-  }, [checkout]);
+  }, [checkout, hydrated]);
 
   /* =======================================================
      SINGLE PRODUCT
@@ -211,19 +221,16 @@ export function CheckoutProvider({
   const setProduct = (
     product: CheckoutProduct,
     storage: string,
-    color: string
+    color: string,
   ) => {
-    const quantity =
-      Math.max(
-        1,
-        product.quantity || 1
-      );
-
     const checkoutProduct = {
       ...product,
       storage,
       color,
-      quantity,
+      quantity: Math.max(
+        1,
+        product.quantity || 1,
+      ),
     };
 
     setCheckout((current) => ({
@@ -249,11 +256,11 @@ export function CheckoutProvider({
   ======================================================= */
 
   const setProductsFromCart = (
-    products: CheckoutProduct[]
+    products: CheckoutProduct[],
   ) => {
     if (!products.length) {
       setCheckout(
-        createInitialCheckout()
+        createInitialCheckout(),
       );
 
       return;
@@ -264,7 +271,7 @@ export function CheckoutProvider({
         ...product,
         quantity: Math.max(
           1,
-          product.quantity || 1
+          product.quantity || 1,
         ),
       }));
 
@@ -274,7 +281,8 @@ export function CheckoutProvider({
     setCheckout((current) => ({
       ...current,
 
-      product: firstProduct,
+      product:
+        firstProduct,
 
       products:
         normalizedProducts,
@@ -292,7 +300,7 @@ export function CheckoutProvider({
   ======================================================= */
 
   const setPaymentMethod = (
-    method: string
+    method: string,
   ) => {
     setCheckout((current) => ({
       ...current,
@@ -305,32 +313,60 @@ export function CheckoutProvider({
   ======================================================= */
 
   const setAddress = (
-    address: DeliveryAddress
+    address: DeliveryAddress,
   ) => {
+    /*
+     * Save it to the current checkout.
+     */
     setCheckout((current) => ({
       ...current,
       address,
     }));
+
+    /*
+     * Also persist it independently
+     * for My Account.
+     */
+    try {
+      localStorage.setItem(
+        SAVED_ADDRESS_KEY,
+        JSON.stringify(address),
+      );
+    } catch (error) {
+      console.error(
+        "Failed to save delivery address:",
+        error,
+      );
+    }
   };
 
   /* =======================================================
-     CLEAR
+     CLEAR CHECKOUT
   ======================================================= */
 
   const clearCheckout = () => {
     const emptyCheckout =
       createInitialCheckout();
 
-    setCheckout(emptyCheckout);
+    setCheckout(
+      emptyCheckout,
+    );
 
     try {
+      /*
+       * IMPORTANT:
+       * This removes only the temporary
+       * checkout session.
+       *
+       * Saved address remains untouched.
+       */
       localStorage.removeItem(
-        STORAGE_KEY
+        STORAGE_KEY,
       );
     } catch (error) {
       console.error(
         "Failed to clear checkout:",
-        error
+        error,
       );
     }
   };
@@ -343,10 +379,15 @@ export function CheckoutProvider({
     <CheckoutContext.Provider
       value={{
         checkout,
+
         setProduct,
+
         setProductsFromCart,
+
         setPaymentMethod,
+
         setAddress,
+
         clearCheckout,
       }}
     >
@@ -365,7 +406,7 @@ export function useCheckout() {
 
   if (!context) {
     throw new Error(
-      "useCheckout must be used inside CheckoutProvider"
+      "useCheckout must be used inside CheckoutProvider",
     );
   }
 

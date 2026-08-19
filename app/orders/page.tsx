@@ -65,7 +65,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     try {
-      const savedOrders = localStorage.getItem("surebuy-orders");
+      const savedOrders = localStorage.getItem("PhoneBhai-orders");
 
       if (savedOrders) {
         const parsedOrders: Order[] = JSON.parse(savedOrders);
@@ -416,7 +416,7 @@ function OrderCard({ order }: { order: Order }) {
         <div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs font-semibold text-green-600">
             <ShieldCheck size={15} />
-            SureBuy quality checked
+            PhoneBhai quality checked
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">

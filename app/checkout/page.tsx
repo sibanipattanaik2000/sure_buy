@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  useEffect,
   useState,
 } from "react";
 
@@ -44,16 +45,57 @@ const { clearCart } = useCart();
   } = checkout;
 
   const [form, setForm] =
-    useState<DeliveryAddress>({
-      fullName: "",
-      phone: "",
-      pincode: "",
-      address: "",
-      area: "",
-      city: "",
-      state: "",
-    });
+  useState<DeliveryAddress>({
+    fullName: "",
+    phone: "",
+    pincode: "",
+    address: "",
+    area: "",
+    city: "",
+    state: "",
+  });
+useEffect(() => {
+  try {
+    const savedAddress =
+      localStorage.getItem(
+        "phonebuy-saved-address",
+      );
 
+    if (!savedAddress) {
+      return;
+    }
+
+    const parsed =
+      JSON.parse(savedAddress);
+
+    if (
+      parsed &&
+      typeof parsed === "object"
+    ) {
+      setForm({
+        fullName:
+          parsed.fullName || "",
+        phone:
+          parsed.phone || "",
+        pincode:
+          parsed.pincode || "",
+        address:
+          parsed.address || "",
+        area:
+          parsed.area || "",
+        city:
+          parsed.city || "",
+        state:
+          parsed.state || "",
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Failed to load saved address:",
+      error,
+    );
+  }
+}, []);
   const [error, setError] =
     useState("");
 
@@ -185,9 +227,7 @@ const handleSubmit = (
     return;
   }
 
-  /*
-   * ADDRESS VALIDATION
-   */
+  /* ADDRESS VALIDATION */
 
   if (
     !form.fullName.trim() ||
@@ -210,9 +250,7 @@ const handleSubmit = (
     return;
   }
 
-  /*
-   * PHONE
-   */
+  /* PHONE */
 
   if (form.phone.length !== 10) {
     setError(
@@ -222,9 +260,7 @@ const handleSubmit = (
     return;
   }
 
-  /*
-   * PIN
-   */
+  /* PIN */
 
   if (form.pincode.length !== 6) {
     setError(
@@ -234,9 +270,7 @@ const handleSubmit = (
     return;
   }
 
-  /*
-   * PAYMENT
-   */
+  /* PAYMENT */
 
   if (!paymentMethod) {
     setError(
@@ -246,187 +280,218 @@ const handleSubmit = (
     return;
   }
 
-  /*
-   * SAVE ADDRESS
-   */
-
-  setAddress(form);
-
-  setPlacingOrder(true);
-
-  /*
-   * CREATE ORDER
-   *
-   * The same order is stored in the formats
-   * required by:
-   *
-   * - Order Success
-   * - My Orders
-   * - View Order
-   * - Track Order
-   */
-
-  const orderId = `SB-${Math.floor(
-    10000000 + Math.random() * 90000000,
-  )}`;
-
-  const createdAt = new Date().toISOString();
-
-  const deliveryDate = "3–5 business days";
-
-  const firstProduct = products[0];
-
-  const orderRecord = {
-    id: orderId,
-    orderId,
-
-    productId: firstProduct.id,
-
-    productName: firstProduct.name,
-    brand: firstProduct.brand,
-    image: firstProduct.image,
-
-    storage: firstProduct.storage,
-    color: firstProduct.color,
-
-    price: firstProduct.price,
-
-    paymentMethod,
-    paymentStatus: "Confirmed",
-
-    orderDate: new Date().toLocaleDateString(
-      "en-IN",
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      },
-    ),
-
-    createdAt,
-
-    deliveryDate,
-    expectedDelivery: deliveryDate,
-
-    status: "Confirmed",
-
-    product: {
-      id: firstProduct.id,
-      name: firstProduct.name,
-      brand: firstProduct.brand,
-      image: firstProduct.image,
-      storage: firstProduct.storage,
-      color: firstProduct.color,
-      condition: firstProduct.condition,
-      price: firstProduct.price,
-      quantity: Math.max(
-        1,
-        firstProduct.quantity || 1,
-      ),
-    },
-
-    quantity: totalQuantity,
-
-    subtotal,
-    deliveryFee: deliveryCharge,
-    total,
-
-    address: {
-      name: form.fullName,
-      phone: form.phone,
-      address: form.address,
-      city: form.city,
-      state: form.state,
-      pincode: form.pincode,
-    },
-
-    products,
-  };
-
   try {
     /*
-     * Save current order.
-     *
-     * View Order and Track Order read this key.
+     * Save address independently so it remains
+     * available inside My Account after checkout
+     * has been cleared.
      */
-
-    localStorage.setItem(
-      "PhoneBhai-order",
-      JSON.stringify(orderRecord),
-    );
+    setAddress(form);
 
     /*
-     * Save order history.
-     *
-     * My Orders reads this key.
+     * Generate one order ID for this purchase.
      */
+    const orderId =
+      `SB-${Math.floor(
+        10000000 +
+          Math.random() *
+            90000000,
+      )}`;
 
-    const existingOrdersRaw =
+    /*
+     * Create the order object expected by
+     * the existing order pages.
+     */
+    const order = {
+      id: orderId,
+      orderId,
+
+      createdAt:
+        new Date().toISOString(),
+
+      productId:
+        products[0]?.id || "",
+
+      productName:
+        products[0]?.name || "",
+
+      brand:
+        products[0]?.brand || "",
+
+      image:
+        products[0]?.image || "",
+
+      storage:
+        products[0]?.storage || "",
+
+      color:
+        products[0]?.color || "",
+
+      condition:
+        products[0]?.condition || "",
+
+      price:
+        products[0]?.price || 0,
+
+      quantity:
+        totalQuantity,
+
+      subtotal,
+
+      deliveryFee:
+        deliveryCharge,
+
+      total,
+
+      paymentMethod,
+
+      paymentStatus:
+        paymentMethod === "cod"
+          ? "Pending"
+          : "Confirmed",
+
+      status:
+        "Confirmed",
+
+      orderDate:
+        new Date().toLocaleDateString(
+          "en-IN",
+          {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          },
+        ),
+
+      deliveryDate:
+        "3–5 business days",
+
+      expectedDelivery:
+        "3–5 business days",
+
+      address: {
+        name:
+          form.fullName,
+
+        phone:
+          form.phone,
+
+        address:
+          `${form.address}, ${form.area}`,
+
+        city:
+          form.city,
+
+        state:
+          form.state,
+
+        pincode:
+          form.pincode,
+      },
+
+      /*
+       * Keep all products for future
+       * multi-item order support.
+       */
+      products:
+        products.map((product) => ({
+          ...product,
+
+          quantity:
+            Math.max(
+              1,
+              product.quantity || 1,
+            ),
+        })),
+    };
+
+    /*
+     * Save the order list.
+     */
+    const existingOrders =
       localStorage.getItem(
-        "surebuy-orders",
+        "PhoneBhai-orders",
       );
 
-    const existingOrders = existingOrdersRaw
-      ? JSON.parse(existingOrdersRaw)
-      : [];
+    const orders =
+      existingOrders
+        ? JSON.parse(existingOrders)
+        : [];
 
-    const orders = Array.isArray(existingOrders)
-      ? existingOrders
-      : [];
+    const updatedOrders =
+      Array.isArray(orders)
+        ? [order, ...orders]
+        : [order];
 
     localStorage.setItem(
-      "surebuy-orders",
-      JSON.stringify([
-        orderRecord,
-        ...orders.filter(
-          (order: { id?: string }) =>
-            order.id !== orderId,
-        ),
-      ]),
+      "PhoneBhai-orders",
+      JSON.stringify(
+        updatedOrders,
+      ),
     );
 
     /*
-     * Save order for Order Success.
+     * Save the latest order for
+     * order-success and order-detail pages.
      */
+    localStorage.setItem(
+      "phonebuy-order",
+      JSON.stringify(order),
+    );
 
+    /*
+     * Keep sessionStorage compatibility
+     * with the existing order-success page.
+     */
     sessionStorage.setItem(
-      "surebuy-order",
+      "PhoneBhai-order",
       JSON.stringify({
         orderId,
-        productName: firstProduct.name,
-        productImage: firstProduct.image,
-        brand: firstProduct.brand,
-        storage: firstProduct.storage,
-        color: firstProduct.color,
-        price: total,
+
+        productName:
+          products[0]?.name || "",
+
+        productImage:
+          products[0]?.image || "",
+
+        brand:
+          products[0]?.brand || "",
+
+        storage:
+          products[0]?.storage || "",
+
+        color:
+          products[0]?.color || "",
+
+        price:
+          total,
+
         paymentMethod,
-        deliveryDate,
+
+        deliveryDate:
+          "3–5 business days",
       }),
     );
 
-    /*
-     * Clear purchased cart items.
-     *
-     * The order has already been saved above,
-     * so clearing the cart cannot lose the order.
-     */
+    setPlacingOrder(true);
 
+    /*
+     * Clear only the purchased cart.
+     */
     clearCart();
 
     /*
-     * Clear checkout storage/state.
+     * Clear the temporary checkout state.
+     *
+     * The saved address remains available
+     * through SAVED_ADDRESS_KEY.
      */
-
-    localStorage.removeItem(
-      "PhoneBhai-checkout",
-    );
-
-    /*
-     * Redirect after successful order creation.
-     */
+    clearCheckout();
 
     setTimeout(() => {
-      router.push("/order-success");
+      router.push(
+        "/order-success",
+      );
     }, 900);
   } catch (error) {
     console.error(
@@ -434,11 +499,11 @@ const handleSubmit = (
       error,
     );
 
-    setPlacingOrder(false);
-
     setError(
-      "Unable to place your order. Please try again.",
+      "Something went wrong while placing your order. Please try again.",
     );
+
+    setPlacingOrder(false);
   }
 };
 

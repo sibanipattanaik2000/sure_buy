@@ -82,7 +82,7 @@ export default function HowItWorksPage() {
                       />
 
                       <p className="mt-4 text-[9px] font-bold uppercase tracking-[0.2em] text-white/70">
-                        SureBuy
+                        PhoneBhai
                       </p>
 
                       <h3 className="mt-2 text-xl font-black">
@@ -257,7 +257,7 @@ export default function HowItWorksPage() {
         <div className="mt-10 space-y-4">
           <Faq
             question="Do I need to know the exact value of my phone?"
-            answer="No. Start by selecting your phone and providing its details. SureBuy will show you an estimated value based on the information provided."
+            answer="No. Start by selecting your phone and providing its details. PhoneBhai will show you an estimated value based on the information provided."
           />
 
           <Faq
@@ -266,8 +266,8 @@ export default function HowItWorksPage() {
           />
 
           <Faq
-            question="Where is SureBuy currently available?"
-            answer="SureBuy is currently focused on mobile-phone services in Bhubaneswar."
+            question="Where is PhoneBhai currently available?"
+            answer="PhoneBhai is currently focused on mobile-phone services in Bhubaneswar."
           />
 
           <Faq

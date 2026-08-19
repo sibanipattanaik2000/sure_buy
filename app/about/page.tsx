@@ -42,7 +42,7 @@ export default function AboutPage() {
               </h1>
 
               <p className="mt-6 max-w-xl text-base leading-7 text-gray-500 sm:text-lg">
-                SureBuy brings established mobile-phone
+                PhoneBhai brings established mobile-phone
                 experience into a fast, transparent and
                 convenient doorstep service. Get a clear
                 estimate, understand the process and sell
@@ -143,7 +143,7 @@ export default function AboutPage() {
                       </div>
 
                       <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/70">
-                        SureBuy
+                        PhoneBhai
                       </p>
 
                       <h3 className="mt-2 text-2xl font-black">
@@ -228,9 +228,9 @@ export default function AboutPage() {
 
           <div>
             <p className="text-base leading-7 text-gray-500">
-              SUREBUY STORE has served more than
+              PhoneBhai STORE has served more than
               30,000 customers in Bhubaneswar.
-              SureBuy extends that experience
+              PhoneBhai extends that experience
               online so sellers can understand
               their phone&apos;s estimated value
               before arranging a visit or pickup.
@@ -327,7 +327,7 @@ export default function AboutPage() {
             <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-gray-400">
               Get an instant estimate for your phone
               and start your selling journey with
-              SureBuy.
+              PhoneBhai.
             </p>
 
             <Link
