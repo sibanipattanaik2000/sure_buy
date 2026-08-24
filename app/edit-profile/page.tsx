@@ -1,74 +1,65 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Check,
-  Mail,
-  Phone,
-  UserRound,
-} from "lucide-react";
-import {
-  FormEvent,
-  useEffect,
-  useState,
-} from "react";
-
+import { ArrowLeft, Check, Mail, Phone, UserRound } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { apiRequest } from "@/app/lib/api";
+import { useRouter } from "next/navigation";
 type Profile = {
   fullName: string;
   phone: string;
   email: string;
 };
 
-const PROFILE_KEY =
-  "phonebuy-profile";
-
 export default function EditProfilePage() {
-  const [form, setForm] =
-    useState<Profile>({
-      fullName: "",
-      phone: "",
-      email: "",
-    });
+  const [form, setForm] = useState<Profile>({
+    fullName: "",
+    phone: "",
+    email: "",
+  });
 
-  const [saved, setSaved] =
-    useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const [error, setError] =
-    useState("");
-
+  const [error, setError] = useState("");
+const router = useRouter();
   useEffect(() => {
-    try {
-      const stored =
-        localStorage.getItem(
-          PROFILE_KEY,
-        );
+    const loadProfile = async () => {
+      try {
+        const response = await apiRequest<{
+          success: boolean;
+          message: string;
+          data: {
+            id: string;
+            firstName: string;
+            lastName: string;
+            email: string;
+            phone?: string;
+            createdAt: string;
+          };
+        }>("/auth/me");
 
-      if (stored) {
-        const parsed =
-          JSON.parse(stored);
+        const user = response.data;
 
         setForm({
-          fullName:
-            parsed.fullName || "",
-          phone:
-            parsed.phone || "",
-          email:
-            parsed.email || "",
+          fullName: `${user.firstName} ${user.lastName}`.trim(),
+          phone: user.phone || "",
+          email: user.email || "",
         });
+      } catch (error) {
+        console.error("Failed to load profile:", error);
+
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load your profile.",
+        );
       }
-    } catch (error) {
-      console.error(
-        "Failed to load profile:",
-        error,
-      );
-    }
+    };
+
+    loadProfile();
   }, []);
 
-  const handleChange = (
-    field: keyof Profile,
-    value: string,
-  ) => {
+  const handleChange = (field: keyof Profile, value: string) => {
     setSaved(false);
     setError("");
 
@@ -78,67 +69,75 @@ export default function EditProfilePage() {
     }));
   };
 
-  const handleSubmit = (
-    event: FormEvent<HTMLFormElement>,
-  ) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     setError("");
     setSaved(false);
 
     if (!form.fullName.trim()) {
-      setError(
-        "Please enter your full name.",
-      );
-
+      setError("Please enter your full name.");
       return;
     }
 
-    if (
-      form.phone &&
-      form.phone.length !== 10
-    ) {
-      setError(
-        "Please enter a valid 10-digit mobile number.",
-      );
-
+    if (form.phone && form.phone.length !== 10) {
+      setError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    if (
-      form.email &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        form.email,
-      )
-    ) {
-      setError(
-        "Please enter a valid email address.",
-      );
-
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setError("Please enter a valid email address.");
       return;
     }
 
     try {
-      localStorage.setItem(
-        PROFILE_KEY,
-        JSON.stringify({
-          fullName:
-            form.fullName.trim(),
+      const nameParts = form.fullName.trim().split(/\s+/);
+
+      const firstName = nameParts[0] || "";
+
+      const lastName = nameParts.slice(1).join(" ");
+
+      const response = await apiRequest<{
+        success: boolean;
+        message: string;
+        data: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+          phone?: string;
+          createdAt: string;
+        };
+      }>("/auth/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email: form.email.trim(),
           phone: form.phone,
-          email:
-            form.email.trim(),
         }),
-      );
+      });
+
+      const user = response.data;
+
+      setForm({
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
+        phone: user.phone || "",
+        email: user.email || "",
+      });
 
       setSaved(true);
+      setTimeout(() => {
+  router.push("/account");
+  router.refresh();
+}, 500);
     } catch (error) {
-      console.error(
-        "Failed to save profile:",
-        error,
-      );
+      console.error("Failed to update profile:", error);
 
       setError(
-        "Unable to save your profile. Please try again.",
+        error instanceof Error
+          ? error.message
+          : "Unable to update your profile.",
       );
     }
   };
@@ -146,7 +145,6 @@ export default function EditProfilePage() {
   return (
     <main className="min-h-screen bg-[#f7f8fa] px-5 py-10">
       <div className="mx-auto max-w-3xl">
-
         {/* HEADER */}
 
         <div className="mt-7">
@@ -159,9 +157,8 @@ export default function EditProfilePage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-gray-500">
-            Keep your personal information
-            up to date for a smoother
-            PhoneBhai experience.
+            Keep your personal information up to date for a smoother PhoneBhai
+            experience.
           </p>
         </div>
 
@@ -171,26 +168,20 @@ export default function EditProfilePage() {
           onSubmit={handleSubmit}
           className="mt-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8"
         >
-
           {/* AVATAR */}
 
           <div className="flex items-center gap-4 border-b border-gray-100 pb-7">
-
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
               <UserRound size={25} />
             </div>
 
             <div>
-              <h2 className="font-black text-gray-950">
-                Personal information
-              </h2>
+              <h2 className="font-black text-gray-950">Personal information</h2>
 
               <p className="mt-1 text-xs text-gray-500">
-                This information is stored
-                locally on this device.
+                Your profile information is securely saved to your account.
               </p>
             </div>
-
           </div>
 
           {/* ERROR */}
@@ -211,7 +202,6 @@ export default function EditProfilePage() {
           )}
 
           <div className="mt-7 space-y-5">
-
             {/* NAME */}
 
             <div>
@@ -223,7 +213,6 @@ export default function EditProfilePage() {
               </label>
 
               <div className="relative mt-2">
-
                 <UserRound
                   size={17}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -233,15 +222,11 @@ export default function EditProfilePage() {
                   id="fullName"
                   value={form.fullName}
                   onChange={(event) =>
-                    handleChange(
-                      "fullName",
-                      event.target.value,
-                    )
+                    handleChange("fullName", event.target.value)
                   }
                   placeholder="Enter your full name"
                   className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white text-gray-900"
                 />
-
               </div>
             </div>
 
@@ -256,7 +241,6 @@ export default function EditProfilePage() {
               </label>
 
               <div className="relative mt-2">
-
                 <Phone
                   size={17}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -268,18 +252,11 @@ export default function EditProfilePage() {
                   maxLength={10}
                   value={form.phone}
                   onChange={(event) =>
-                    handleChange(
-                      "phone",
-                      event.target.value.replace(
-                        /\D/g,
-                        "",
-                      ),
-                    )
+                    handleChange("phone", event.target.value.replace(/\D/g, ""))
                   }
                   placeholder="10-digit mobile number"
                   className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white text-gray-900"
                 />
-
               </div>
             </div>
 
@@ -294,7 +271,6 @@ export default function EditProfilePage() {
               </label>
 
               <div className="relative mt-2">
-
                 <Mail
                   size={17}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -305,24 +281,18 @@ export default function EditProfilePage() {
                   type="email"
                   value={form.email}
                   onChange={(event) =>
-                    handleChange(
-                      "email",
-                      event.target.value,
-                    )
+                    handleChange("email", event.target.value)
                   }
                   placeholder="Enter your email"
                   className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white text-gray-900"
                 />
-
               </div>
             </div>
-
           </div>
 
           {/* ACTIONS */}
 
           <div className="mt-8 flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end">
-
             <Link
               href="/account"
               className="inline-flex h-12 items-center justify-center rounded-xl border border-gray-200 px-6 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
@@ -337,11 +307,8 @@ export default function EditProfilePage() {
               <Check size={17} />
               Save changes
             </button>
-
           </div>
-
         </form>
-
       </div>
     </main>
   );

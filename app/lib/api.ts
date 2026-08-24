@@ -1,27 +1,37 @@
-const API_URL =
+const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000/api";
+  "http://localhost:5000/api/v1";
 
-export async function apiFetch<T>(
+export async function apiRequest<T>(
   endpoint: string,
-  options?: RequestInit,
+  options: RequestInit = {}
 ): Promise<T> {
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("phonebhai-access-token")
+      : null;
+
+  const headers = new Headers(options.headers);
+
+  headers.set("Content-Type", "application/json");
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   const response = await fetch(
-    `${API_URL}${endpoint}`,
+    `${API_BASE_URL}${endpoint}`,
     {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options?.headers || {}),
-      },
-    },
+      headers,
+    }
   );
 
   const data = await response.json();
 
-  if (!response.ok) {
+  if (!response.ok || !data.success) {
     throw new Error(
-      data?.message || "Something went wrong",
+      data.message || "Something went wrong"
     );
   }
 

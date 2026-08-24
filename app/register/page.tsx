@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, ShieldCheck, UserPlus, Zap } from "lucide-react";
+import {
+  ArrowRight,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  UserPlus,
+  Zap,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
@@ -16,10 +23,10 @@ export default function RegisterPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
 
     setForm((prev) => ({
@@ -48,32 +55,26 @@ export default function RegisterPage() {
 
     if (!form.email.trim()) {
       newErrors.email = "Please enter your email address.";
-    } else if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
-    ) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       newErrors.email = "Please enter a valid email address.";
     }
 
     if (!form.phone.trim()) {
       newErrors.phone = "Please enter your mobile number.";
     } else if (!/^[6-9]\d{9}$/.test(form.phone)) {
-      newErrors.phone =
-        "Please enter a valid 10-digit mobile number.";
+      newErrors.phone = "Please enter a valid 10-digit mobile number.";
     }
 
     if (!form.password) {
       newErrors.password = "Please create a password.";
     } else if (form.password.length < 8) {
-      newErrors.password =
-        "Password must contain at least 8 characters.";
+      newErrors.password = "Password must contain at least 8 characters.";
     }
 
     if (!form.confirmPassword) {
-      newErrors.confirmPassword =
-        "Please confirm your password.";
+      newErrors.confirmPassword = "Please confirm your password.";
     } else if (form.password !== form.confirmPassword) {
-      newErrors.confirmPassword =
-        "Passwords do not match.";
+      newErrors.confirmPassword = "Passwords do not match.";
     }
 
     if (!form.terms) {
@@ -86,23 +87,55 @@ export default function RegisterPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    // Backend/API registration will be connected here later.
-    console.log("Registration data:", form);
-    router.push("/verify-user");
+    try {
+      const nameParts = form.name.trim().split(/\s+/);
 
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(" ") || "User";
+
+      const response = await fetch(
+        "http://localhost:5000/api/v1/auth/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            email: form.email,
+            password: form.password,
+            phone: form.phone,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      alert("Account created successfully");
+
+      router.push("/login");
+    } catch (error) {
+      console.error("REGISTER ERROR:", error);
+
+      alert(error instanceof Error ? error.message : "Registration failed");
+    }
   };
 
   return (
     <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 px-5 py-12 sm:py-16">
       <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
-
         {/* LEFT */}
 
         <div className="hidden lg:block">
@@ -113,29 +146,21 @@ export default function RegisterPage() {
 
           <h1 className="max-w-xl text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
             Your smarter way to{" "}
-            <span className="text-indigo-600">
-              buy & sell phones.
-            </span>
+            <span className="text-indigo-600">buy & sell phones.</span>
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
-            Create your PhoneBhai account to buy certified phones,
-            sell your old phone, track orders and manage your
-            wishlist.
+            Create your PhoneBhai account to buy certified phones, sell your old
+            phone, track orders and manage your wishlist.
           </p>
 
           <div className="mt-10 flex items-center gap-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-              <ShieldCheck
-                size={21}
-                className="text-green-600"
-              />
+              <ShieldCheck size={21} className="text-green-600" />
             </div>
 
             <div>
-              <p className="text-sm font-bold text-gray-900">
-                Secure account
-              </p>
+              <p className="text-sm font-bold text-gray-900">Secure account</p>
 
               <p className="mt-1 text-xs text-gray-500">
                 Your personal information stays protected.
@@ -147,7 +172,6 @@ export default function RegisterPage() {
         {/* REGISTER */}
 
         <div className="mx-auto w-full max-w-md">
-
           <div className="mb-8 text-center lg:hidden">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-black text-white">
               <Zap size={20} />
@@ -163,7 +187,6 @@ export default function RegisterPage() {
           </div>
 
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] sm:p-8">
-
             <div className="mb-7 hidden lg:block">
               <h2 className="text-2xl font-black text-gray-950">
                 Create your account
@@ -174,12 +197,7 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            <form
-              className="space-y-5"
-              onSubmit={handleSubmit}
-              noValidate
-            >
-
+            <form className="space-y-5" onSubmit={handleSubmit} noValidate>
               {/* NAME */}
 
               <div>
@@ -254,9 +272,7 @@ export default function RegisterPage() {
 
                 <div
                   className={`flex h-12 overflow-hidden rounded-xl border ${
-                    errors.phone
-                      ? "border-red-400"
-                      : "border-gray-200"
+                    errors.phone ? "border-red-400" : "border-gray-200"
                   }`}
                 >
                   <div className="flex items-center border-r border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-600">
@@ -271,7 +287,7 @@ export default function RegisterPage() {
                     onChange={handleChange}
                     maxLength={10}
                     placeholder="Enter mobile number"
-                    className="min-w-0 flex-1 bg-white px-4 text-sm outline-none"
+                    className="min-w-0 flex-1 bg-white px-4 text-sm outline-none text-gray-900 placeholder:text-gray-400 focus:ring-4 focus:ring-indigo-500/10"
                   />
                 </div>
 
@@ -292,20 +308,32 @@ export default function RegisterPage() {
                   Password
                 </label>
 
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="Create a password"
-                  className={`h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition ${
-                    errors.password
-                      ? "border-red-400 focus:ring-4 focus:ring-red-500/10 text-gray-900"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-900"
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    onChange={handleChange}
+                    placeholder="Create a password"
+                    className={`h-12 w-full rounded-xl border bg-white px-4 pr-12 text-sm outline-none transition ${
+                      errors.password
+                        ? "border-red-400 focus:ring-4 focus:ring-red-500/10 text-gray-900"
+                        : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-900"
+                    }`}
+                  />
 
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-700"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="mt-1.5 text-xs font-medium text-red-500">
                     {errors.password}
@@ -323,19 +351,38 @@ export default function RegisterPage() {
                   Confirm password
                 </label>
 
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  value={form.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm your password"
-                  className={`h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition ${
-                    errors.confirmPassword
-                      ? "border-red-400 focus:ring-4 focus:ring-red-500/10 text-gray-900"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-900"
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Confirm your password"
+                    className={`h-12 w-full rounded-xl border bg-white px-4 pr-12 text-sm outline-none transition ${
+                      errors.confirmPassword
+                        ? "border-red-400 focus:ring-4 focus:ring-red-500/10 text-gray-900"
+                        : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-900"
+                    }`}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-700"
+                    aria-label={
+                      showConfirmPassword
+                        ? "Hide confirm password"
+                        : "Show confirm password"
+                    }
+                  >
+                    {showConfirmPassword ? (
+                      <Eye size={18} />
+                    ) : (
+                      <EyeOff size={18} />
+                    )}
+                  </button>
+                </div>
 
                 {errors.confirmPassword && (
                   <p className="mt-1.5 text-xs font-medium text-red-500">
@@ -389,13 +436,11 @@ export default function RegisterPage() {
                 className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white transition hover:bg-indigo-700"
               >
                 Create account
-
                 <ArrowRight
                   size={17}
                   className="transition-transform group-hover:translate-x-1"
                 />
               </button>
-
             </form>
 
             <div className="mt-7 border-t border-gray-100 pt-6 text-center">
@@ -409,7 +454,6 @@ export default function RegisterPage() {
                 </Link>
               </p>
             </div>
-
           </div>
         </div>
       </div>

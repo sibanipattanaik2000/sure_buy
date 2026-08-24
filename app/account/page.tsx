@@ -12,10 +12,9 @@ import {
   ShieldCheck,
   Pencil,
   ShoppingBag,
-  Truck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-
+import { apiRequest } from "@/app/lib/api";
 type Profile = {
   fullName: string;
   phone: string;
@@ -41,116 +40,70 @@ type RecentOrder = {
   status: string;
   orderDate: string;
 };
-
-const PROFILE_KEY =
-  "phonebuy-profile";
-
-const ADDRESS_KEY =
-  "phonebuy-saved-address";
-
-const ORDERS_KEY =
-  "PhoneBhai-orders";
-
 export default function AccountPage() {
-  const [profile, setProfile] =
-    useState<Profile>({
-      fullName: "",
-      phone: "",
-      email: "",
-    });
+  const [profile, setProfile] = useState<Profile>({
+    fullName: "",
+    phone: "",
+    email: "",
+  });
 
-  const [address, setAddress] =
-    useState<SavedAddress | null>(
-      null,
-    );
+  const [address, setAddress] = useState<SavedAddress | null>(null);
 
-  const [orders, setOrders] =
-    useState<RecentOrder[]>([]);
+  const [orders, setOrders] = useState<RecentOrder[]>([]);
 
-  useEffect(() => {
+useEffect(() => {
+  const loadAccount = async () => {
     try {
-      const savedProfile =
-        localStorage.getItem(
-          PROFILE_KEY,
-        );
+      const response = await apiRequest<{
+        success: boolean;
+        message: string;
+        data: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+          phone?: string;
+        };
+      }>("/auth/me");
 
-      if (savedProfile) {
-        const parsed =
-          JSON.parse(savedProfile);
+      const user = response.data;
 
-        setProfile({
-          fullName:
-            parsed.fullName || "",
-          phone:
-            parsed.phone || "",
-          email:
-            parsed.email || "",
-        });
-      }
-
-      const savedAddress =
-        localStorage.getItem(
-          ADDRESS_KEY,
-        );
-
-      if (savedAddress) {
-        setAddress(
-          JSON.parse(savedAddress),
-        );
-      }
-
-      const savedOrders =
-        localStorage.getItem(
-          ORDERS_KEY,
-        );
-
-      if (savedOrders) {
-        const parsed =
-          JSON.parse(savedOrders);
-
-        if (Array.isArray(parsed)) {
-          setOrders(
-            parsed.slice(0, 3),
-          );
-        }
-      }
+      setProfile({
+        fullName: `${user.firstName} ${user.lastName}`.trim(),
+        phone: user.phone || "",
+        email: user.email || "",
+      });
     } catch (error) {
-      console.error(
-        "Failed to load account data:",
-        error,
-      );
+      console.error("Failed to load account:", error);
     }
-  }, []);
+  };
 
-  const displayName =
-    profile.fullName ||
-    "Your Name";
+  loadAccount();
+}, []);
 
-  const displayPhone =
-    profile.phone
-      ? `+91 ${profile.phone}`
-      : "Add your mobile number";
+  const displayName = profile.fullName || "Your Name";
+
+  const displayPhone = profile.phone
+    ? `+91 ${profile.phone}`
+    : "Add your mobile number";
 
   return (
     <main className="min-h-[calc(100vh-72px)] bg-gray-50 px-5 py-10">
       <div className="mx-auto max-w-6xl">
-
         {/* HEADER */}
 
         <div className="mb-8">
-          <p className="text-sm font-semibold text-indigo-600">
-            My Account
-          </p>
+          <p className="text-sm font-semibold text-indigo-600">My Account</p>
 
           <h1 className="mt-1 text-3xl font-black tracking-tight text-gray-950">
-            Welcome{profile.fullName
+            Welcome
+            {profile.fullName
               ? `, ${profile.fullName.split(" ")[0]}`
               : " to PhoneBhai"}
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Manage your profile, orders,
-            wishlist and delivery details.
+            Manage your profile, orders, wishlist and delivery details.
           </p>
         </div>
 
@@ -161,9 +114,7 @@ export default function AccountPage() {
           className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm"
         >
           <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between">
-
             <div className="flex items-center gap-4">
-
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
                 <UserRound size={28} />
               </div>
@@ -173,14 +124,10 @@ export default function AccountPage() {
                   {displayName}
                 </h2>
 
-                <p className="text-sm text-gray-500">
-                  {displayPhone}
-                </p>
+                <p className="text-sm text-gray-500">{displayPhone}</p>
 
                 {profile.email && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    {profile.email}
-                  </p>
+                  <p className="mt-1 text-xs text-gray-400">{profile.email}</p>
                 )}
 
                 <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-green-600">
@@ -188,7 +135,6 @@ export default function AccountPage() {
                   Account details saved
                 </div>
               </div>
-
             </div>
 
             <Link
@@ -198,14 +144,12 @@ export default function AccountPage() {
               <Pencil size={15} />
               Edit Profile
             </Link>
-
           </div>
         </section>
 
         {/* QUICK ACTIONS */}
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-
           <AccountCard
             href="/orders"
             icon={<Package size={21} />}
@@ -226,31 +170,25 @@ export default function AccountPage() {
             title="Sell a Phone"
             description="Get the best value"
           />
-
         </div>
 
         {/* SAVED ADDRESS */}
 
         <section className="mt-8">
-
           <div className="mb-4">
             <h2 className="text-xl font-black text-gray-950">
               Saved delivery address
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Your latest checkout address is
-              saved here for convenience.
+              Your latest checkout address is saved here for convenience.
             </p>
           </div>
 
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-
             {address ? (
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-
                 <div className="flex gap-4">
-
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                     <MapPin size={20} />
                   </div>
@@ -271,16 +209,13 @@ export default function AccountPage() {
                       <br />
                       {address.area}
                       <br />
-                      {address.city},{" "}
-                      {address.state} -{" "}
-                      {address.pincode}
+                      {address.city}, {address.state} - {address.pincode}
                     </p>
 
                     <p className="mt-2 text-xs font-semibold text-gray-500">
                       Phone: {address.phone}
                     </p>
                   </div>
-
                 </div>
 
                 <Link
@@ -290,16 +225,11 @@ export default function AccountPage() {
                   Use at checkout
                   <ChevronRight size={15} />
                 </Link>
-
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
-                  <MapPin
-                    size={24}
-                    className="text-gray-400"
-                  />
+                  <MapPin size={24} className="text-gray-400" />
                 </div>
 
                 <h3 className="mt-4 font-bold text-gray-900">
@@ -307,9 +237,8 @@ export default function AccountPage() {
                 </h3>
 
                 <p className="mt-2 max-w-md text-sm leading-6 text-gray-500">
-                  Your delivery address will
-                  automatically appear here after
-                  you complete a checkout.
+                  Your delivery address will automatically appear here after you
+                  complete a checkout.
                 </p>
 
                 <Link
@@ -318,20 +247,15 @@ export default function AccountPage() {
                 >
                   Explore Phones
                 </Link>
-
               </div>
             )}
-
           </div>
-
         </section>
 
         {/* RECENT ACTIVITY */}
 
         <section className="mt-8">
-
           <div className="mb-4 flex items-center justify-between">
-
             <div>
               <h2 className="text-xl font-black text-gray-950">
                 Recent Activity
@@ -348,19 +272,16 @@ export default function AccountPage() {
             >
               View all
             </Link>
-
           </div>
 
           {orders.length > 0 ? (
             <div className="space-y-3">
-
               {orders.map((order) => (
                 <Link
                   key={order.id}
                   href={`/orders/${order.id}`}
                   className="group flex items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
                 >
-
                   <div className="flex h-20 w-16 shrink-0 items-center justify-center rounded-xl bg-gray-50 p-2">
                     <img
                       src={order.image}
@@ -370,7 +291,6 @@ export default function AccountPage() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-
                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                       {order.brand}
                     </p>
@@ -381,38 +301,26 @@ export default function AccountPage() {
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="text-sm font-black">
-                        ₹
-                        {Number(
-                          order.price || 0,
-                        ).toLocaleString(
-                          "en-IN",
-                        )}
+                        ₹{Number(order.price || 0).toLocaleString("en-IN")}
                       </span>
 
                       <span className="rounded-full bg-green-50 px-2.5 py-1 text-[10px] font-bold text-green-700">
                         {order.status}
                       </span>
                     </div>
-
                   </div>
 
                   <ChevronRight
                     size={18}
                     className="shrink-0 text-gray-300 transition group-hover:translate-x-1 group-hover:text-indigo-600"
                   />
-
                 </Link>
               ))}
-
             </div>
           ) : (
             <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
-                <ShoppingBag
-                  size={24}
-                  className="text-gray-400"
-                />
+                <ShoppingBag size={24} className="text-gray-400" />
               </div>
 
               <h3 className="mt-4 font-bold text-gray-900">
@@ -420,9 +328,7 @@ export default function AccountPage() {
               </h3>
 
               <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">
-                Once you place an order,
-                your recent purchase will
-                appear here.
+                Once you place an order, your recent purchase will appear here.
               </p>
 
               <Link
@@ -431,30 +337,22 @@ export default function AccountPage() {
               >
                 Explore Phones
               </Link>
-
             </div>
           )}
-
         </section>
 
         {/* ACCOUNT SETTINGS */}
 
         <section className="mt-8 rounded-3xl border border-gray-200 bg-white shadow-sm">
-
           <div className="border-b border-gray-100 p-6">
-
-            <h2 className="font-black text-gray-950">
-              Account Settings
-            </h2>
+            <h2 className="font-black text-gray-950">Account Settings</h2>
 
             <p className="mt-1 text-sm text-gray-500">
               Manage your account preferences
             </p>
-
           </div>
 
           <div className="divide-y divide-gray-100">
-
             <a
               href="#personal-information"
               className="flex w-full items-center justify-between p-6 text-left transition hover:bg-gray-50"
@@ -469,10 +367,7 @@ export default function AccountPage() {
                 </p>
               </div>
 
-              <ChevronRight
-                size={18}
-                className="text-gray-400"
-              />
+              <ChevronRight size={18} className="text-gray-400" />
             </a>
 
             <Link
@@ -489,10 +384,7 @@ export default function AccountPage() {
                 </p>
               </div>
 
-              <ChevronRight
-                size={18}
-                className="text-gray-400"
-              />
+              <ChevronRight size={18} className="text-gray-400" />
             </Link>
 
             <div className="flex w-full items-center justify-between p-6">
@@ -506,20 +398,14 @@ export default function AccountPage() {
                 </p>
               </div>
 
-              <ShieldCheck
-                size={19}
-                className="text-green-600"
-              />
+              <ShieldCheck size={19} className="text-green-600" />
             </div>
-
           </div>
-
         </section>
 
         {/* LOGOUT */}
 
         <div className="mt-8 flex justify-center">
-
           <button
             type="button"
             onClick={() => {
@@ -529,25 +415,22 @@ export default function AccountPage() {
                * does not have a single account auth context
                * tied to this page.
                */
-              window.location.href =
-                "/";
+              window.location.href = "/";
             }}
             className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
           >
             <LogOut size={17} />
             Logout
           </button>
-
         </div>
-
       </div>
     </main>
   );
 }
 
 /* =========================================================
-   ACCOUNT CARD
-========================================================= */
+    ACCOUNT CARD
+  ========================================================= */
 
 function AccountCard({
   href,
@@ -566,7 +449,6 @@ function AccountCard({
       className="group rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-lg"
     >
       <div className="flex items-center justify-between">
-
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
           {icon}
         </div>
@@ -575,16 +457,11 @@ function AccountCard({
           size={18}
           className="text-gray-300 transition group-hover:translate-x-1 group-hover:text-indigo-600"
         />
-
       </div>
 
-      <h3 className="mt-5 text-sm font-bold text-gray-950">
-        {title}
-      </h3>
+      <h3 className="mt-5 text-sm font-bold text-gray-950">{title}</h3>
 
-      <p className="mt-1 text-xs text-gray-500">
-        {description}
-      </p>
+      <p className="mt-1 text-xs text-gray-500">{description}</p>
     </Link>
   );
 }
