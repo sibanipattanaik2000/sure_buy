@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
   ChevronDown,
   Filter,
   Heart,
-  PackageCheck,
   Search,
   ShieldCheck,
   Smartphone,
@@ -16,12 +16,49 @@ import {
   Truck,
   Watch,
   X,
-  Zap,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
-import Link from "next/link";
+
+type ProductImage = {
+  id: number | string;
+  url: string;
+  position?: number;
+  altText?: string | null;
+};
+
+type ProductVariant = {
+  id: number | string;
+  productId: number | string;
+  storage?: string | null;
+  color?: string | null;
+  price?: string | number | null;
+  originalPrice?: string | number | null;
+  stock?: number;
+};
+
+type ApiProduct = {
+  id: number | string;
+  slug?: string | null;
+  brand?: string | null;
+  name?: string | null;
+  category?: string | null;
+  condition?: string | null;
+  price?: string | number | null;
+  originalPrice?: string | number | null;
+  warranty?: string | null;
+  description?: string | null;
+  rating?: string | number | null;
+  reviewCount?: number | null;
+  reviewsCount?: number | null;
+  emiFrom?: string | number | null;
+  active?: boolean;
+  images?: ProductImage[];
+  variants?: ProductVariant[];
+};
+
 type Product = {
   id: number;
+  slug?: string;
   brand: string;
   name: string;
   category: string;
@@ -34,140 +71,211 @@ type Product = {
   warranty: string;
   color: string;
   image: string;
+  active: boolean;
 };
 
-const products: Product[] = [
-  {
-    id: 1,
-    brand: "Apple",
-    name: "iPhone 15",
-    category: "Smartphones",
-    storage: "128GB",
-    condition: "Excellent",
-    price: 42999,
-    originalPrice: 49999,
-    rating: 4.8,
-    reviews: 124,
-    warranty: "6 Months",
-    color: "Black",
-    image: "/images/iphone-15.png",
-  },
-  {
-    id: 2,
-    brand: "Samsung",
-    name: "Galaxy S24",
-    category: "Smartphones",
-    storage: "256GB",
-    condition: "Like New",
-    price: 48999,
-    originalPrice: 59999,
-    rating: 4.9,
-    reviews: 89,
-    warranty: "6 Months",
-    color: "Black",
-    image: "/images/iphone-15.png",
-  },
-  {
-    id: 3,
-    brand: "Apple",
-    name: "iPhone 14 Pro",
-    category: "Smartphones",
-    storage: "256GB",
-    condition: "Excellent",
-    price: 57999,
-    originalPrice: 69999,
-    rating: 4.8,
-    reviews: 176,
-    warranty: "6 Months",
-    color: "Purple",
-    image: "/images/iphone-15.png",
-  },
-  {
-    id: 4,
-    brand: "OnePlus",
-    name: "OnePlus 12",
-    category: "Smartphones",
-    storage: "256GB",
-    condition: "Good",
-    price: 39999,
-    originalPrice: 49999,
-    rating: 4.7,
-    reviews: 72,
-    warranty: "6 Months",
-    color: "Green",
-    image: "/images/iphone-15.png",
-  },
-  {
-    id: 5,
-    brand: "Apple",
-    name: "MacBook Air M2",
-    category: "Laptops",
-    storage: "256GB SSD",
-    condition: "Excellent",
-    price: 69999,
-    originalPrice: 84999,
-    rating: 4.9,
-    reviews: 93,
-    warranty: "12 Months",
-    color: "Silver",
-    image: "/images/iphone-15.png",
-  },
-  {
-    id: 6,
-    brand: "Dell",
-    name: "Inspiron 14",
-    category: "Laptops",
-    storage: "512GB SSD",
-    condition: "Good",
-    price: 42999,
-    originalPrice: 52999,
-    rating: 4.6,
-    reviews: 51,
-    warranty: "6 Months",
-    color: "Silver",
-    image: "/images/iphone-15.png",
-  },
-  {
-    id: 7,
-    brand: "Apple",
-    name: "iPad Air",
-    category: "Tablets",
-    storage: "64GB",
-    condition: "Excellent",
-    price: 35999,
-    originalPrice: 42999,
-    rating: 4.8,
-    reviews: 64,
-    warranty: "6 Months",
-    color: "Blue",
-    image: "/images/iphone-15.png",
-  },
-  {
-    id: 8,
-    brand: "Apple",
-    name: "Apple Watch Series 9",
-    category: "Smartwatches",
-    storage: "GPS",
-    condition: "Like New",
-    price: 29999,
-    originalPrice: 39999,
-    rating: 4.8,
-    reviews: 42,
-    warranty: "6 Months",
-    color: "Black",
-    image: "/images/iphone-15.png",
-  },
-];
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+  "http://localhost:5000/api/v1";
+
+const FALLBACK_IMAGE = "/images/iphone-15.png";
+
+const normalizeCondition = (condition?: string | null) => {
+  switch (condition) {
+    case "LIKE_NEW":
+      return "Like New";
+    case "EXCELLENT":
+      return "Excellent";
+    case "GOOD":
+      return "Good";
+    case "FAIR":
+      return "Fair";
+    default:
+      return condition || "Good";
+  }
+};
+
+const normalizeProduct = (product: ApiProduct): Product => {
+  const firstVariant = product.variants?.[0];
+
+  const image =
+    [...(product.images || [])]
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      .find((item) => Boolean(item.url))?.url || FALLBACK_IMAGE;
+
+  const price = Number(firstVariant?.price ?? product.price ?? 0);
+
+  const originalPrice = Number(
+    firstVariant?.originalPrice ?? product.originalPrice ?? price,
+  );
+
+  return {
+    id: Number(product.id),
+    slug: product.slug || undefined,
+    brand: product.brand || "",
+    name: product.name || "",
+    category: product.category || "",
+    storage: firstVariant?.storage || "",
+    condition: normalizeCondition(product.condition),
+    price,
+    originalPrice,
+    rating: Number(product.rating ?? 0),
+    reviews: Number(product.reviewCount ?? product.reviewsCount ?? 0),
+    warranty: product.warranty || "Warranty included",
+    color: firstVariant?.color || "",
+    image,
+    active: product.active !== false,
+  };
+};
 
 const categories = [
   { name: "All", icon: null },
   { name: "Smartphones", icon: Smartphone },
-  //   { name: "Laptops", icon: Laptop },
   { name: "Tablets", icon: Tablet },
   { name: "Smartwatches", icon: Watch },
 ];
 
 const brands = ["Apple", "Samsung", "OnePlus", "Google", "Xiaomi", "Dell"];
+
+function ProductCard({
+  product,
+  liked,
+  onWishlist,
+}: {
+  product: Product;
+  liked: boolean;
+  onWishlist: () => void;
+}) {
+  const discount =
+    product.originalPrice > product.price
+      ? Math.round(
+          ((product.originalPrice - product.price) / product.originalPrice) *
+            100,
+        )
+      : 0;
+
+  const saving = Math.max(0, product.originalPrice - product.price);
+
+  return (
+    <article className="group overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl">
+      <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#f4f5f7] sm:h-64">
+        {discount > 0 && (
+          <span className="absolute left-3 top-3 z-10 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
+            {discount}% OFF
+          </span>
+        )}
+
+        <button
+          type="button"
+          onClick={onWishlist}
+          aria-label={
+            liked
+              ? `Remove ${product.name} from wishlist`
+              : `Add ${product.name} to wishlist`
+          }
+          className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition ${
+            liked ? "text-red-500" : "text-gray-500 hover:text-red-500"
+          }`}
+        >
+          <Heart size={17} fill={liked ? "currentColor" : "none"} />
+        </button>
+
+        <div className="relative flex h-40 w-32 items-center justify-center transition duration-500 group-hover:scale-105">
+          <img
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            className="h-full w-full object-contain"
+            onError={(event) => {
+              event.currentTarget.src = FALLBACK_IMAGE;
+            }}
+          />
+        </div>
+
+        <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold shadow-sm backdrop-blur">
+          {product.condition}
+        </span>
+      </div>
+
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+            {product.brand}
+          </p>
+
+          <div className="flex items-center gap-1 text-[10px] font-bold">
+            <Star size={12} fill="currentColor" className="text-yellow-500" />
+            {product.rating > 0 ? product.rating.toFixed(1) : "New"}
+          </div>
+        </div>
+
+        <h2 className="mt-1 text-sm font-bold sm:text-base">{product.name}</h2>
+
+        <p className="mt-1 text-xs text-gray-500">
+          {[product.storage, product.color].filter(Boolean).join(" • ")}
+        </p>
+
+        <div className="mt-5">
+          <div className="flex items-end gap-2">
+            <span className="text-lg font-black sm:text-xl">
+              ₹{product.price.toLocaleString("en-IN")}
+            </span>
+
+            {product.originalPrice > product.price && (
+              <span className="text-xs text-gray-400 line-through">
+                ₹{product.originalPrice.toLocaleString("en-IN")}
+              </span>
+            )}
+          </div>
+
+          {saving > 0 && (
+            <p className="mt-1 text-[10px] text-green-600">
+              You save ₹{saving.toLocaleString("en-IN")}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
+          <BadgeCheck size={15} className="text-indigo-600" />
+
+          <span className="text-[10px] font-semibold text-gray-500">
+            {product.warranty}
+          </span>
+        </div>
+
+        <Link
+          href={`/buy/${product.id}`}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-bold text-white transition hover:bg-indigo-600"
+        >
+          View details
+          <ArrowRight size={14} />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function TrustCard({
+  icon,
+  title,
+  text,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-gray-200 bg-[#f8f9fb] p-6">
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+        {icon}
+      </div>
+
+      <h3 className="mt-5 font-bold">{title}</h3>
+
+      <p className="mt-2 text-sm leading-6 text-gray-500">{text}</p>
+    </div>
+  );
+}
 
 export default function BuyPage() {
   const [category, setCategory] = useState("All");
@@ -176,12 +284,140 @@ export default function BuyPage() {
   const [sort, setSort] = useState("featured");
   const [search, setSearch] = useState("");
   const [mobileFilters, setMobileFilters] = useState(false);
-  //const [wishlist, setWishlist] = useState<number[]>([]);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const { wishlist, toggleWishlist } = useWishlist();
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const params = new URLSearchParams({
+          page: "1",
+          limit: "100",
+        });
+
+        const trimmedSearch = search.trim();
+
+        if (trimmedSearch) {
+          params.set("search", trimmedSearch);
+        }
+
+        /*
+         * Backend currently stores category values such as:
+         * iPhone, Samsung, Google, OnePlus.
+         *
+         * Therefore category is intentionally filtered
+         * client-side instead of sending "Smartphones"
+         * to the backend as a category.
+         */
+
+        const response = await fetch(
+          `${API_BASE_URL}/products?${params.toString()}`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        let data: any = null;
+
+        try {
+          data = await response.json();
+        } catch {
+          throw new Error("Invalid response received from server.");
+        }
+
+        if (!response.ok || !data?.success) {
+          throw new Error(
+            data?.message || `Unable to load products (${response.status}).`,
+          );
+        }
+
+        const apiProducts: ApiProduct[] = Array.isArray(data.products)
+          ? data.products
+          : Array.isArray(data.data)
+            ? data.data
+            : [];
+
+        setProducts(
+          apiProducts
+            .filter((product) => product.active !== false)
+            .map(normalizeProduct),
+        );
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
+
+        console.error("BUY PRODUCTS FETCH ERROR:", err);
+
+        setProducts([]);
+
+        setError(
+          err instanceof Error ? err.message : "Unable to load products.",
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => controller.abort();
+  }, [search]);
+
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
     if (category !== "All") {
-      result = result.filter((product) => product.category === category);
+      result = result.filter((product) => {
+        const value =
+          `${product.category} ${product.name} ${product.brand}`.toLowerCase();
+
+        if (category === "Smartphones") {
+          return (
+            value.includes("iphone") ||
+            value.includes("samsung") ||
+            value.includes("oneplus") ||
+            value.includes("google") ||
+            value.includes("xiaomi") ||
+            value.includes("pixel") ||
+            product.category.toLowerCase() === "smartphones"
+          );
+        }
+
+        if (category === "Tablets") {
+          return (
+            value.includes("ipad") ||
+            value.includes("tablet") ||
+            product.category.toLowerCase() === "tablets"
+          );
+        }
+
+        if (category === "Smartwatches") {
+          return (
+            value.includes("watch") ||
+            value.includes("smartwatch") ||
+            product.category.toLowerCase() === "smartwatches"
+          );
+        }
+
+        return true;
+      });
     }
 
     if (selectedBrands.length > 0) {
@@ -191,17 +427,6 @@ export default function BuyPage() {
     }
 
     result = result.filter((product) => product.price <= maxPrice);
-
-    if (search.trim()) {
-      const query = search.toLowerCase();
-
-      result = result.filter(
-        (product) =>
-          product.name.toLowerCase().includes(query) ||
-          product.brand.toLowerCase().includes(query) ||
-          product.category.toLowerCase().includes(query),
-      );
-    }
 
     if (sort === "low") {
       result.sort((a, b) => a.price - b.price);
@@ -216,7 +441,7 @@ export default function BuyPage() {
     }
 
     return result;
-  }, [category, selectedBrands, maxPrice, sort, search]);
+  }, [products, category, selectedBrands, maxPrice, sort]);
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands((current) =>
@@ -226,68 +451,14 @@ export default function BuyPage() {
     );
   };
 
-  const { wishlist, toggleWishlist } = useWishlist();
+  const clearFilters = () => {
+    setSelectedBrands([]);
+    setMaxPrice(100000);
+    setCategory("All");
+  };
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-[#111827]">
-      {/* HEADER */}
-
-      {/* <header className="sticky top-0 z-50 border-b border-black/5 bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
-          <a href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black text-white">
-              <Zap size={17} />
-            </div>
-
-            <span className="text-xl font-black">
-              Sure<span className="text-indigo-600">Buy</span>
-            </span>
-          </a>
-
-          <nav className="hidden items-center gap-8 md:flex">
-            <a
-              href="/"
-              className="text-sm font-medium text-gray-500 hover:text-black"
-            >
-              Home
-            </a>
-
-            <a
-              href="/buy"
-              className="text-sm font-bold text-indigo-600"
-            >
-              Buy
-            </a>
-
-            <a
-              href="/sell"
-              className="text-sm font-medium text-gray-500 hover:text-black"
-            >
-              Sell
-            </a>
-
-            <a
-              href="/repair"
-              className="text-sm font-medium text-gray-500 hover:text-black"
-            >
-              Repair
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <button className="hidden h-10 w-10 items-center justify-center rounded-full border border-gray-200 sm:flex">
-              <Heart size={18} />
-            </button>
-
-            <button className="rounded-full bg-black px-5 py-2.5 text-sm font-semibold text-white">
-              Sign in
-            </button>
-          </div>
-        </div>
-      </header> */}
-
-      {/* HERO */}
-
       <section className="border-b border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
           <div className="max-w-3xl">
@@ -305,35 +476,39 @@ export default function BuyPage() {
             </p>
           </div>
 
-          {/* SEARCH */}
-
-          <div className="mt-8 flex max-w-3xl items-center rounded-2xl border border-gray-200 bg-white p-2 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
-            <Search className="ml-3 text-gray-400" size={20} />
+          <form
+            onSubmit={(event) => event.preventDefault()}
+            className="mt-8 flex max-w-3xl items-center rounded-2xl border border-gray-200 bg-white p-2 shadow-[0_10px_40px_rgba(0,0,0,0.06)]"
+          >
+            <Search className="ml-3 shrink-0 text-gray-400" size={20} />
 
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search iPhone, Samsung, MacBook..."
-              className="h-12 flex-1 bg-transparent px-4 text-sm outline-none"
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search iPhone, Samsung, Pixel..."
+              className="h-12 min-w-0 flex-1 bg-transparent px-4 text-sm outline-none"
             />
 
             {search && (
               <button
+                type="button"
                 onClick={() => setSearch("")}
+                aria-label="Clear search"
                 className="mr-2 text-gray-400 hover:text-black"
               >
                 <X size={17} />
               </button>
             )}
 
-            <button className="rounded-xl bg-black px-5 py-3 text-sm font-bold text-white">
+            <button
+              type="submit"
+              className="rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-600"
+            >
               Search
             </button>
-          </div>
+          </form>
         </div>
       </section>
-
-      {/* CATEGORY BAR */}
 
       <section className="border-b border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl overflow-x-auto px-5 lg:px-8">
@@ -344,6 +519,7 @@ export default function BuyPage() {
 
               return (
                 <button
+                  type="button"
                   key={item.name}
                   onClick={() => setCategory(item.name)}
                   className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition ${
@@ -361,13 +537,10 @@ export default function BuyPage() {
         </div>
       </section>
 
-      {/* MAIN */}
-
       <section className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
-        {/* MOBILE FILTER */}
-
         <button
-          onClick={() => setMobileFilters(!mobileFilters)}
+          type="button"
+          onClick={() => setMobileFilters((current) => !current)}
           className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold lg:hidden"
         >
           <Filter size={17} />
@@ -375,27 +548,23 @@ export default function BuyPage() {
         </button>
 
         <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-          {/* FILTER SIDEBAR */}
-
           <aside className={`${mobileFilters ? "block" : "hidden"} lg:block`}>
             <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-5">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold">Filters</h2>
 
-                {(selectedBrands.length > 0 || maxPrice < 100000) && (
+                {(selectedBrands.length > 0 ||
+                  maxPrice < 100000 ||
+                  category !== "All") && (
                   <button
-                    onClick={() => {
-                      setSelectedBrands([]);
-                      setMaxPrice(100000);
-                    }}
+                    type="button"
+                    onClick={clearFilters}
                     className="text-xs font-bold text-indigo-600"
                   >
                     Clear
                   </button>
                 )}
               </div>
-
-              {/* BRAND */}
 
               <div className="mt-7">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
@@ -423,8 +592,6 @@ export default function BuyPage() {
                 </div>
               </div>
 
-              {/* PRICE */}
-
               <div className="mt-8 border-t border-gray-100 pt-7">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
                   Maximum price
@@ -432,6 +599,7 @@ export default function BuyPage() {
 
                 <div className="mt-4 flex items-center justify-between text-sm font-bold">
                   <span>₹10K</span>
+
                   <span>₹{maxPrice.toLocaleString("en-IN")}</span>
                 </div>
 
@@ -441,12 +609,10 @@ export default function BuyPage() {
                   max="100000"
                   step="5000"
                   value={maxPrice}
-                  onChange={(e) => setMaxPrice(Number(e.target.value))}
+                  onChange={(event) => setMaxPrice(Number(event.target.value))}
                   className="mt-4 w-full accent-indigo-600"
                 />
               </div>
-
-              {/* TRUST */}
 
               <div className="mt-8 rounded-2xl bg-gray-50 p-4">
                 <div className="flex gap-3">
@@ -464,19 +630,21 @@ export default function BuyPage() {
             </div>
           </aside>
 
-          {/* PRODUCTS */}
-
           <div>
-            {/* TOOLBAR */}
-
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-bold">
-                  {filteredProducts.length} devices
+                  {loading
+                    ? "Loading devices..."
+                    : `${filteredProducts.length} ${
+                        filteredProducts.length === 1 ? "device" : "devices"
+                      }`}
                 </p>
 
                 <p className="mt-1 text-xs text-gray-500">
-                  Showing available products
+                  {search
+                    ? `Results for "${search}"`
+                    : "Showing available products"}
                 </p>
               </div>
 
@@ -488,7 +656,7 @@ export default function BuyPage() {
                 <div className="relative">
                   <select
                     value={sort}
-                    onChange={(e) => setSort(e.target.value)}
+                    onChange={(event) => setSort(event.target.value)}
                     className="h-10 appearance-none rounded-xl border border-gray-200 bg-white pl-4 pr-9 text-xs font-bold outline-none"
                   >
                     <option value="featured">Featured</option>
@@ -498,41 +666,86 @@ export default function BuyPage() {
                   </select>
 
                   <ChevronDown
-                    size={15}
-                    className="pointer-events-none absolute right-3 top-3 text-gray-400"
+                    size={14}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
                   />
                 </div>
               </div>
             </div>
 
-            {/* PRODUCT GRID */}
+            {loading && (
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="animate-pulse overflow-hidden rounded-3xl border border-gray-200 bg-white"
+                  >
+                    <div className="h-64 bg-gray-100" />
 
-            {filteredProducts.length === 0 ? (
-              <div className="rounded-3xl border border-gray-200 bg-white p-16 text-center">
-                <Search size={35} className="mx-auto text-gray-300" />
+                    <div className="space-y-3 p-5">
+                      <div className="h-3 w-20 rounded bg-gray-100" />
+                      <div className="h-5 w-32 rounded bg-gray-100" />
+                      <div className="h-3 w-24 rounded bg-gray-100" />
+                      <div className="h-6 w-28 rounded bg-gray-100" />
+                      <div className="h-10 w-full rounded-xl bg-gray-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-                <h3 className="mt-5 text-xl font-bold">No devices found</h3>
+            {!loading && error && (
+              <div className="rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
+                <h2 className="font-bold text-red-700">
+                  Unable to load products
+                </h2>
+
+                <p className="mt-2 text-sm text-red-600">{error}</p>
+
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="mt-5 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && filteredProducts.length === 0 && (
+              <div className="rounded-3xl border border-gray-200 bg-white px-6 py-16 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
+                  <Search size={24} className="text-gray-400" />
+                </div>
+
+                <h2 className="mt-5 text-lg font-bold">No devices found</h2>
 
                 <p className="mt-2 text-sm text-gray-500">
                   Try changing your search or filters.
                 </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    clearFilters();
+                  }}
+                  className="mt-5 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white"
+                >
+                  Clear filters
+                </button>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+            )}
+
+            {!loading && !error && filteredProducts.length > 0 && (
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
                     product={product}
                     liked={wishlist.some(
-                      (item) => item.id === String(product.id),
+                      (item) => Number(item.id) === product.id,
                     )}
-                    // onWishlist={() =>
-                    //   toggleWishlist({
-                    //     ...product,
-                    //     id: String(product.id),
-                    //   })
-                    // }
-
                     onWishlist={() =>
                       toggleWishlist({
                         id: String(product.id),
@@ -551,202 +764,27 @@ export default function BuyPage() {
         </div>
       </section>
 
-      {/* TRUST SECTION */}
+      <section className="mx-auto max-w-7xl px-5 pb-16 lg:px-8">
+        <div className="grid gap-5 md:grid-cols-3">
+          <TrustCard
+            icon={<ShieldCheck size={21} />}
+            title="Quality checked"
+            text="Every device goes through a multi-point inspection before it reaches the marketplace."
+          />
 
-      <section className="border-t border-gray-100 bg-white py-16">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <div className="grid gap-5 md:grid-cols-3">
-            <TrustCard
-              icon={<ShieldCheck size={21} />}
-              title="Quality checked"
-              text="Every device goes through a detailed inspection."
-            />
+          <TrustCard
+            icon={<Truck size={21} />}
+            title="Safe delivery"
+            text="Your device is securely packed and delivered with complete order tracking."
+          />
 
-            <TrustCard
-              icon={<PackageCheck size={21} />}
-              title="Warranty included"
-              text="Buy with confidence with warranty-backed devices."
-            />
-
-            <TrustCard
-              icon={<Truck size={21} />}
-              title="Fast delivery"
-              text="Get your device delivered safely to your doorstep."
-            />
-          </div>
+          <TrustCard
+            icon={<BadgeCheck size={21} />}
+            title="Warranty backed"
+            text="Eligible devices include warranty coverage for additional purchase confidence."
+          />
         </div>
       </section>
-
-      {/* FOOTER */}
-
-      {/* <footer className="bg-[#111827] py-12 text-white">
-        <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-            <div>
-              <div className="text-xl font-black">
-                Sure<span className="text-indigo-400">Buy</span>
-              </div>
-
-              <p className="mt-2 text-sm text-gray-400">
-                Smarter tech. Better value.
-              </p>
-            </div>
-
-            <div className="text-xs text-gray-500">
-              © {new Date().getFullYear()} PhoneBhai. All rights reserved.
-            </div>
-          </div>
-        </div>
-      </footer> */}
     </main>
-  );
-}
-
-/* PRODUCT CARD */
-
-function ProductCard({
-  product,
-  liked,
-  onWishlist,
-}: {
-  product: Product;
-  liked: boolean;
-  onWishlist: () => void;
-}) {
-  const discount = Math.round(
-    ((product.originalPrice - product.price) / product.originalPrice) * 100,
-  );
-
-  return (
-    <article className="group overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-      {/* IMAGE AREA */}
-
-      <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#f4f5f7] sm:h-64">
-        {/* Discount */}
-
-        <span className="absolute left-3 top-3 z-10 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
-          {discount}% OFF
-        </span>
-
-        {/* Wishlist */}
-
-        <button
-          onClick={onWishlist}
-          className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition ${
-            liked ? "text-red-500" : "text-gray-500"
-          }`}
-        >
-          <Heart size={17} fill={liked ? "currentColor" : "none"} />
-        </button>
-
-        {/* TEMPORARY PRODUCT VISUAL */}
-
-        {/* <div className="relative flex h-36 w-24 items-center justify-center rounded-[1.7rem] border-[5px] border-gray-700 bg-gradient-to-br from-gray-700 to-gray-950 shadow-xl transition duration-500 group-hover:scale-105 sm:h-40 sm:w-28">
-          <Smartphone
-            size={55}
-            strokeWidth={1}
-            className="text-white/70"
-          />
-
-          <div className="absolute right-[-3px] top-8 h-10 w-1 rounded-full bg-gray-600" />
-        </div> */}
-        <div className="relative flex h-36 w-28 items-center justify-center transition duration-500 group-hover:scale-105 sm:h-40 sm:w-32">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="h-full w-full object-contain"
-          />
-        </div>
-        {/* Condition */}
-
-        <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold shadow-sm backdrop-blur">
-          {product.condition}
-        </span>
-      </div>
-
-      {/* CONTENT */}
-
-      <div className="p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            {product.brand}
-          </p>
-
-          <div className="flex items-center gap-1 text-[10px] font-bold">
-            <Star size={12} fill="currentColor" className="text-yellow-500" />
-            {product.rating}
-          </div>
-        </div>
-
-        <h2 className="mt-1 text-sm font-bold sm:text-base">{product.name}</h2>
-
-        <p className="mt-1 text-xs text-gray-500">
-          {product.storage} • {product.color}
-        </p>
-
-        {/* PRICE */}
-
-        <div className="mt-5">
-          <div className="flex items-end gap-2">
-            <span className="text-lg font-black sm:text-xl">
-              ₹{product.price.toLocaleString("en-IN")}
-            </span>
-
-            <span className="text-xs text-gray-400 line-through">
-              ₹{product.originalPrice.toLocaleString("en-IN")}
-            </span>
-          </div>
-
-          <p className="mt-1 text-[10px] text-green-600">
-            You save ₹
-            {(product.originalPrice - product.price).toLocaleString("en-IN")}
-          </p>
-        </div>
-
-        {/* WARRANTY */}
-
-        <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
-          <BadgeCheck size={15} className="text-indigo-600" />
-
-          <span className="text-[10px] font-semibold text-gray-500">
-            {product.warranty} warranty
-          </span>
-        </div>
-
-        {/* BUTTON */}
-
-        <Link
-          href={`/buy/${product.id}`}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-bold text-white transition hover:bg-indigo-600"
-        >
-          View details
-          <ArrowRight size={14} />
-        </Link>
-      </div>
-    </article>
-  );
-}
-
-/* TRUST CARD */
-
-function TrustCard({
-  icon,
-  title,
-  text,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="rounded-3xl border border-gray-200 bg-[#f8f9fb] p-6">
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
-        {icon}
-      </div>
-
-      <h3 className="mt-5 font-bold">{title}</h3>
-
-      <p className="mt-2 text-sm leading-6 text-gray-500">{text}</p>
-    </div>
   );
 }

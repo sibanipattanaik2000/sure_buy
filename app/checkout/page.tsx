@@ -44,58 +44,61 @@ const { clearCart } = useCart();
     paymentMethod,
   } = checkout;
 
-  const [form, setForm] =
-  useState<DeliveryAddress>({
-    fullName: "",
-    phone: "",
-    pincode: "",
-    address: "",
-    area: "",
-    city: "",
-    state: "",
-  });
-useEffect(() => {
+const [form, setForm] = useState<DeliveryAddress>(() => {
+  if (typeof window === "undefined") {
+    return {
+      fullName: "",
+      phone: "",
+      pincode: "",
+      address: "",
+      area: "",
+      city: "",
+      state: "",
+    };
+  }
+
   try {
-    const savedAddress =
-      localStorage.getItem(
-        "phonebuy-saved-address",
-      );
+    const savedAddress = localStorage.getItem(
+      "phonebuy-saved-address",
+    );
 
     if (!savedAddress) {
-      return;
+      return {
+        fullName: "",
+        phone: "",
+        pincode: "",
+        address: "",
+        area: "",
+        city: "",
+        state: "",
+      };
     }
 
-    const parsed =
-      JSON.parse(savedAddress);
+    const parsed = JSON.parse(savedAddress);
 
-    if (
-      parsed &&
-      typeof parsed === "object"
-    ) {
-      setForm({
-        fullName:
-          parsed.fullName || "",
-        phone:
-          parsed.phone || "",
-        pincode:
-          parsed.pincode || "",
-        address:
-          parsed.address || "",
-        area:
-          parsed.area || "",
-        city:
-          parsed.city || "",
-        state:
-          parsed.state || "",
-      });
-    }
-  } catch (error) {
-    console.error(
-      "Failed to load saved address:",
-      error,
-    );
+    return {
+      fullName: parsed?.fullName || "",
+      phone: parsed?.phone || "",
+      pincode: parsed?.pincode || "",
+      address: parsed?.address || "",
+      area: parsed?.area || "",
+      city: parsed?.city || "",
+      state: parsed?.state || "",
+    };
+  } catch {
+    return {
+      fullName: "",
+      phone: "",
+      pincode: "",
+      address: "",
+      area: "",
+      city: "",
+      state: "",
+    };
   }
-}, []);
+});
+
+
   const [error, setError] =
     useState("");
 
