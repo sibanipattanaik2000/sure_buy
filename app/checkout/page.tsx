@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  FormEvent,
-  useEffect,
-  useState,
-} from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import Link from "next/link";
 import { useCart } from "../context/CartContext";
@@ -23,105 +19,69 @@ import {
 
 import { useRouter } from "next/navigation";
 
+import { DeliveryAddress, useCheckout } from "../context/CheckoutContext";
 import {
-  DeliveryAddress,
-  useCheckout,
-} from "../context/CheckoutContext";
-
+  createAddress,
+  createOrder,
+  getAddresses,
+} from "../lib/api";
 export default function CheckoutPage() {
   const router = useRouter();
 
-const {
-  checkout,
-  setAddress,
-  setPaymentMethod,
-  clearCheckout,
-} = useCheckout();
+  const { checkout, setAddress, setPaymentMethod, clearCheckout } =
+    useCheckout();
 
-const { clearCart } = useCart();
-  const {
-    products,
-    paymentMethod,
-  } = checkout;
+  const { clearCart } = useCart();
+  const { products, paymentMethod } = checkout;
 
-const [form, setForm] = useState<DeliveryAddress>(() => {
-  if (typeof window === "undefined") {
-    return {
-      fullName: "",
-      phone: "",
-      pincode: "",
-      address: "",
-      area: "",
-      city: "",
-      state: "",
-    };
-  }
+  const [form, setForm] = useState<DeliveryAddress>({
+    fullName: "",
+    phone: "",
+    pincode: "",
+    address: "",
+    area: "",
+    city: "",
+    state: "",
+  });
+  useEffect(() => {
+    try {
+      const savedAddress = localStorage.getItem("phonebuy-saved-address");
 
-  try {
-    const savedAddress = localStorage.getItem(
-      "phonebuy-saved-address",
-    );
+      if (!savedAddress) {
+        return;
+      }
 
-    if (!savedAddress) {
-      return {
-        fullName: "",
-        phone: "",
-        pincode: "",
-        address: "",
-        area: "",
-        city: "",
-        state: "",
-      };
+      const parsed = JSON.parse(savedAddress);
+
+      if (parsed && typeof parsed === "object") {
+        setForm({
+          fullName: parsed.fullName || "",
+          phone: parsed.phone || "",
+          pincode: parsed.pincode || "",
+          address: parsed.address || "",
+          area: parsed.area || "",
+          city: parsed.city || "",
+          state: parsed.state || "",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load saved address:", error);
     }
+  }, []);
+  const [error, setError] = useState("");
 
-    const parsed = JSON.parse(savedAddress);
-
-    return {
-      fullName: parsed?.fullName || "",
-      phone: parsed?.phone || "",
-      pincode: parsed?.pincode || "",
-      address: parsed?.address || "",
-      area: parsed?.area || "",
-      city: parsed?.city || "",
-      state: parsed?.state || "",
-    };
-  } catch {
-    return {
-      fullName: "",
-      phone: "",
-      pincode: "",
-      address: "",
-      area: "",
-      city: "",
-      state: "",
-    };
-  }
-});
-
-
-  const [error, setError] =
-    useState("");
-
-  const [placingOrder, setPlacingOrder] =
-    useState(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
 
   /*
    * EMPTY CHECKOUT
    */
 
-  if (
-    !products ||
-    products.length === 0
-  ) {
+  if (!products || products.length === 0) {
     return (
       <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
         <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-            <ShieldCheck
-              size={25}
-              className="text-indigo-600"
-            />
+            <ShieldCheck size={25} className="text-indigo-600" />
           </div>
 
           <h1 className="mt-5 text-2xl font-black text-gray-900">
@@ -129,8 +89,7 @@ const [form, setForm] = useState<DeliveryAddress>(() => {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-gray-500">
-            Choose a product before
-            proceeding to checkout.
+            Choose a product before proceeding to checkout.
           </p>
 
           <Link
@@ -140,7 +99,6 @@ const [form, setForm] = useState<DeliveryAddress>(() => {
             Browse products
             <ArrowRight size={16} />
           </Link>
-
         </div>
       </main>
     );
@@ -154,61 +112,37 @@ const [form, setForm] = useState<DeliveryAddress>(() => {
    * Every calculation includes quantity.
    */
 
-  const subtotal =
-    products.reduce(
-      (sum, product) =>
-        sum +
-        product.price *
-          Math.max(
-            1,
-            product.quantity || 1,
-          ),
-      0,
-    );
+  const subtotal = products.reduce(
+    (sum, product) => sum + product.price * Math.max(1, product.quantity || 1),
+    0,
+  );
 
-  const originalTotal =
-    products.reduce(
-      (sum, product) =>
-        sum +
-        product.originalPrice *
-          Math.max(
-            1,
-            product.quantity || 1,
-          ),
-      0,
-    );
+  const originalTotal = products.reduce(
+    (sum, product) =>
+      sum + product.originalPrice * Math.max(1, product.quantity || 1),
+    0,
+  );
 
-  const savings =
-    originalTotal - subtotal;
+  const savings = originalTotal - subtotal;
 
   const deliveryCharge = 0;
 
-  const total =
-    subtotal + deliveryCharge;
+  const total = subtotal + deliveryCharge;
 
   /*
    * TOTAL NUMBER OF PHYSICAL ITEMS
    */
 
-  const totalQuantity =
-    products.reduce(
-      (sum, product) =>
-        sum +
-        Math.max(
-          1,
-          product.quantity || 1,
-        ),
-      0,
-    );
+  const totalQuantity = products.reduce(
+    (sum, product) => sum + Math.max(1, product.quantity || 1),
+    0,
+  );
 
   /*
    * HANDLE INPUT
    */
 
-  const handleChange = (
-    field: keyof DeliveryAddress,
-    value: string,
-  ) => {
+  const handleChange = (field: keyof DeliveryAddress, value: string) => {
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -219,7 +153,7 @@ const [form, setForm] = useState<DeliveryAddress>(() => {
    * SUBMIT
    */
 
-const handleSubmit = (
+const handleSubmit = async (
   event: FormEvent<HTMLFormElement>,
 ) => {
   event.preventDefault();
@@ -230,7 +164,9 @@ const handleSubmit = (
     return;
   }
 
-  /* ADDRESS VALIDATION */
+  /* ================================
+     ADDRESS VALIDATION
+  ================================= */
 
   if (
     !form.fullName.trim() ||
@@ -253,9 +189,7 @@ const handleSubmit = (
     return;
   }
 
-  /* PHONE */
-
-  if (form.phone.length !== 10) {
+  if (!/^[6-9]\d{9}$/.test(form.phone)) {
     setError(
       "Please enter a valid 10-digit mobile number.",
     );
@@ -263,9 +197,7 @@ const handleSubmit = (
     return;
   }
 
-  /* PIN */
-
-  if (form.pincode.length !== 6) {
+  if (!/^\d{6}$/.test(form.pincode)) {
     setError(
       "Please enter a valid 6-digit PIN code.",
     );
@@ -273,7 +205,9 @@ const handleSubmit = (
     return;
   }
 
-  /* PAYMENT */
+  /* ================================
+     PAYMENT VALIDATION
+  ================================= */
 
   if (!paymentMethod) {
     setError(
@@ -283,241 +217,239 @@ const handleSubmit = (
     return;
   }
 
+  /*
+   * Backend currently accepts only:
+   *
+   * COD
+   * UPI
+   * CARD
+   *
+   * EMI is not yet implemented by the backend.
+   */
+  if (paymentMethod === "emi") {
+    setError(
+      "EMI payment is currently unavailable. Please select UPI, Card, or Cash on Delivery.",
+    );
+
+    return;
+  }
+
+  setPlacingOrder(true);
+
   try {
-    /*
-     * Save address independently so it remains
-     * available inside My Account after checkout
-     * has been cleared.
-     */
+    /* ================================
+       FIND OR CREATE ADDRESS
+    ================================= */
+
+    const addressesResponse =
+      await getAddresses();
+
+    if (
+      !addressesResponse.success
+    ) {
+      throw new Error(
+        addressesResponse.message ||
+          "Unable to load saved addresses.",
+      );
+    }
+
+    const savedAddresses =
+      addressesResponse.data ?? [];
+
+    const addressLine1 =
+      `${form.address.trim()}, ${form.area.trim()}`;
+
+    const existingAddress =
+      savedAddresses.find(
+        (address) =>
+          address.fullName.trim() ===
+            form.fullName.trim() &&
+          address.phone ===
+            form.phone &&
+          address.addressLine1.trim() ===
+            addressLine1 &&
+          address.city.trim().toLowerCase() ===
+            form.city.trim().toLowerCase() &&
+          address.state.trim().toLowerCase() ===
+            form.state.trim().toLowerCase() &&
+          address.pincode ===
+            form.pincode,
+      );
+
+    let addressId: string;
+
+    if (existingAddress) {
+      addressId =
+        existingAddress.id;
+    } else {
+      const addressResponse =
+        await createAddress({
+          fullName:
+            form.fullName.trim(),
+
+          phone:
+            form.phone.trim(),
+
+          addressLine1,
+
+          addressLine2:
+            undefined,
+
+          city:
+            form.city.trim(),
+
+          state:
+            form.state.trim(),
+
+          pincode:
+            form.pincode.trim(),
+
+          landmark:
+            undefined,
+
+          isDefault:
+            savedAddresses.length === 0,
+        });
+
+      if (
+        !addressResponse.success ||
+        !addressResponse.data
+      ) {
+        throw new Error(
+          addressResponse.message ||
+            "Unable to save delivery address.",
+        );
+      }
+
+      addressId =
+        addressResponse.data.id;
+    }
+
+    /* ================================
+       KEEP EXISTING CHECKOUT STATE
+    ================================= */
+
     setAddress(form);
 
-    /*
-     * Generate one order ID for this purchase.
-     */
-    const orderId =
-      `SB-${Math.floor(
-        10000000 +
-          Math.random() *
-            90000000,
-      )}`;
+    /* ================================
+       NORMALIZE PAYMENT METHOD
+    ================================= */
 
-    /*
-     * Create the order object expected by
-     * the existing order pages.
-     */
-    const order = {
-      id: orderId,
-      orderId,
+    const backendPaymentMethod =
+      paymentMethod === "cod"
+        ? "COD"
+        : paymentMethod === "upi"
+          ? "UPI"
+          : "CARD";
 
-      createdAt:
-        new Date().toISOString(),
+    /* ================================
+       CREATE REAL BACKEND ORDER
+    ================================= */
 
-      productId:
-        products[0]?.id || "",
+    const orderResponse =
+      await createOrder({
+        addressId,
+        paymentMethod:
+          backendPaymentMethod,
+      });
 
-      productName:
-        products[0]?.name || "",
-
-      brand:
-        products[0]?.brand || "",
-
-      image:
-        products[0]?.image || "",
-
-      storage:
-        products[0]?.storage || "",
-
-      color:
-        products[0]?.color || "",
-
-      condition:
-        products[0]?.condition || "",
-
-      price:
-        products[0]?.price || 0,
-
-      quantity:
-        totalQuantity,
-
-      subtotal,
-
-      deliveryFee:
-        deliveryCharge,
-
-      total,
-
-      paymentMethod,
-
-      paymentStatus:
-        paymentMethod === "cod"
-          ? "Pending"
-          : "Confirmed",
-
-      status:
-        "Confirmed",
-
-      orderDate:
-        new Date().toLocaleDateString(
-          "en-IN",
-          {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          },
-        ),
-
-      deliveryDate:
-        "3–5 business days",
-
-      expectedDelivery:
-        "3–5 business days",
-
-      address: {
-        name:
-          form.fullName,
-
-        phone:
-          form.phone,
-
-        address:
-          `${form.address}, ${form.area}`,
-
-        city:
-          form.city,
-
-        state:
-          form.state,
-
-        pincode:
-          form.pincode,
-      },
-
-      /*
-       * Keep all products for future
-       * multi-item order support.
-       */
-      products:
-        products.map((product) => ({
-          ...product,
-
-          quantity:
-            Math.max(
-              1,
-              product.quantity || 1,
-            ),
-        })),
-    };
-
-    /*
-     * Save the order list.
-     */
-    const existingOrders =
-      localStorage.getItem(
-        "PhoneBhai-orders",
+    if (
+      !orderResponse.success ||
+      !orderResponse.data
+    ) {
+      throw new Error(
+        orderResponse.message ||
+          "Unable to place your order.",
       );
+    }
 
-    const orders =
-      existingOrders
-        ? JSON.parse(existingOrders)
-        : [];
+    const order =
+      orderResponse.data;
 
-    const updatedOrders =
-      Array.isArray(orders)
-        ? [order, ...orders]
-        : [order];
-
-    localStorage.setItem(
-      "PhoneBhai-orders",
-      JSON.stringify(
-        updatedOrders,
-      ),
-    );
+    /* ================================
+       TEMPORARY SUCCESS-PAGE ADAPTER
+    ================================= */
 
     /*
-     * Save the latest order for
-     * order-success and order-detail pages.
-     */
-    localStorage.setItem(
-      "phonebuy-order",
-      JSON.stringify(order),
-    );
-
-    /*
-     * Keep sessionStorage compatibility
-     * with the existing order-success page.
-     */
-    sessionStorage.setItem(
-      "PhoneBhai-order",
-      JSON.stringify({
-        orderId,
-
-        productName:
-          products[0]?.name || "",
-
-        productImage:
-          products[0]?.image || "",
-
-        brand:
-          products[0]?.brand || "",
-
-        storage:
-          products[0]?.storage || "",
-
-        color:
-          products[0]?.color || "",
-
-        price:
-          total,
-
-        paymentMethod,
-
-        deliveryDate:
-          "3–5 business days",
-      }),
-    );
-
-    setPlacingOrder(true);
-
-    /*
-     * Clear only the purchased cart.
-     */
-    clearCart();
-
-    /*
-     * Clear the temporary checkout state.
+     * We are NOT changing order-success
+     * yet.
      *
-     * The saved address remains available
-     * through SAVED_ADDRESS_KEY.
+     * This simply adapts the real backend
+     * response to the data shape that the
+     * existing success page currently expects.
      */
+
+   const firstItem =
+  order.items?.[0];
+
+sessionStorage.setItem(
+  "PhoneBhai-order",
+  JSON.stringify({
+    orderId:
+      order.orderNumber ||
+      order.id,
+
+    productName:
+      firstItem?.productName ||
+      "",
+
+    productImage:
+      firstItem?.image ||
+      "",
+
+    brand: "",
+
+    storage: "",
+
+    color: "",
+
+    price:
+      order.totalAmount || 0,
+
+    paymentMethod:
+      backendPaymentMethod,
+
+    deliveryDate:
+      "3–5 business days",
+  }),
+);
+
+    /* ================================
+       CLEAR CLIENT STATE
+    ================================= */
+
+    clearCart();
     clearCheckout();
 
-    setTimeout(() => {
-      router.push(
-        "/order-success",
-      );
-    }, 900);
-  } catch (error) {
+    /* ================================
+       GO TO EXISTING SUCCESS PAGE
+    ================================= */
+
+    router.push(
+      "/order-success",
+    );
+  } catch (requestError) {
     console.error(
       "Failed to place order:",
-      error,
+      requestError,
     );
 
     setError(
-      "Something went wrong while placing your order. Please try again.",
+      requestError instanceof Error
+        ? requestError.message
+        : "Something went wrong while placing your order. Please try again.",
     );
-
+  } finally {
     setPlacingOrder(false);
   }
 };
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
-
       <form
         onSubmit={handleSubmit}
         className="mx-auto max-w-7xl px-5 py-8 lg:px-8"
       >
-
         {/* TITLE */}
 
         <div className="mb-8">
@@ -526,13 +458,8 @@ const handleSubmit = (
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            {totalQuantity}{" "}
-            {totalQuantity === 1
-              ? "item"
-              : "items"}{" "}
-            • Enter your delivery
-            details and choose your
-            preferred payment method.
+            {totalQuantity} {totalQuantity === 1 ? "item" : "items"} • Enter
+            your delivery details and choose your preferred payment method.
           </p>
         </div>
 
@@ -545,45 +472,32 @@ const handleSubmit = (
         )}
 
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-
           {/* LEFT */}
 
           <div className="space-y-7">
-
             {/* ADDRESS */}
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
-
               <div className="flex items-center gap-3">
-
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <MapPin size={20} />
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-black">
-                    Delivery address
-                  </h2>
+                  <h2 className="text-lg font-black">Delivery address</h2>
 
                   <p className="mt-1 text-xs text-gray-500">
                     Where should we deliver your device?
                   </p>
                 </div>
-
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-
                 <Input
                   label="Full name"
                   placeholder="Enter full name"
                   value={form.fullName}
-                  onChange={(value) =>
-                    handleChange(
-                      "fullName",
-                      value,
-                    )
-                  }
+                  onChange={(value) => handleChange("fullName", value)}
                 />
 
                 <Input
@@ -593,13 +507,7 @@ const handleSubmit = (
                   maxLength={10}
                   type="tel"
                   onChange={(value) =>
-                    handleChange(
-                      "phone",
-                      value.replace(
-                        /\D/g,
-                        "",
-                      ),
-                    )
+                    handleChange("phone", value.replace(/\D/g, ""))
                   }
                 />
 
@@ -610,13 +518,7 @@ const handleSubmit = (
                   maxLength={6}
                   type="tel"
                   onChange={(value) =>
-                    handleChange(
-                      "pincode",
-                      value.replace(
-                        /\D/g,
-                        "",
-                      ),
-                    )
+                    handleChange("pincode", value.replace(/\D/g, ""))
                   }
                 />
 
@@ -624,40 +526,24 @@ const handleSubmit = (
                   label="City"
                   placeholder="Enter city"
                   value={form.city}
-                  onChange={(value) =>
-                    handleChange(
-                      "city",
-                      value,
-                    )
-                  }
+                  onChange={(value) => handleChange("city", value)}
                 />
 
                 <Input
                   label="State"
                   placeholder="Enter state"
                   value={form.state}
-                  onChange={(value) =>
-                    handleChange(
-                      "state",
-                      value,
-                    )
-                  }
+                  onChange={(value) => handleChange("state", value)}
                 />
 
                 <Input
                   label="Area / Locality"
                   placeholder="Enter area"
                   value={form.area}
-                  onChange={(value) =>
-                    handleChange(
-                      "area",
-                      value,
-                    )
-                  }
+                  onChange={(value) => handleChange("area", value)}
                 />
 
                 <div className="sm:col-span-2">
-
                   <label className="text-xs font-bold text-gray-700">
                     House / Flat / Street address
                   </label>
@@ -665,39 +551,27 @@ const handleSubmit = (
                   <textarea
                     value={form.address}
                     onChange={(event) =>
-                      handleChange(
-                        "address",
-                        event.target.value,
-                      )
+                      handleChange("address", event.target.value)
                     }
                     placeholder="House number, building, street..."
                     rows={3}
                     className="mt-2 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white"
                   />
-
                 </div>
-
               </div>
             </section>
 
             {/* PRODUCTS */}
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
-
               <div className="flex items-center justify-between">
-
                 <div>
-                  <h2 className="text-lg font-black">
-                    Products
-                  </h2>
+                  <h2 className="text-lg font-black">Products</h2>
 
                   <p className="mt-1 text-xs text-gray-500">
                     {products.length}{" "}
-                    {products.length === 1
-                      ? "product"
-                      : "products"}{" "}
-                    • {totalQuantity}{" "}
-                    total items
+                    {products.length === 1 ? "product" : "products"} •{" "}
+                    {totalQuantity} total items
                   </p>
                 </div>
 
@@ -707,337 +581,194 @@ const handleSubmit = (
                 >
                   Change
                 </Link>
-
               </div>
 
               <div className="mt-5 space-y-5">
+                {products.map((product) => {
+                  const quantity = Math.max(1, product.quantity || 1);
 
-                {products.map(
-                  (product) => {
+                  const itemTotal = product.price * quantity;
 
-                    const quantity =
-                      Math.max(
-                        1,
-                        product.quantity ||
-                          1,
-                      );
+                  return (
+                    <div
+                      key={
+                        product.cartId ||
+                        `${product.id}-${product.storage}-${product.color}-${product.name}`
+                      }
+                      className="flex gap-4 border-b border-gray-100 pb-5 last:border-0 last:pb-0"
+                    >
+                      {/* IMAGE */}
 
-                    const itemTotal =
-                      product.price *
-                      quantity;
+                      <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
 
-                    return (
-                      <div
-                       key={
-  product.cartId ||
-  `${product.id}-${product.storage}-${product.color}-${product.name}`
-}
-                        className="flex gap-4 border-b border-gray-100 pb-5 last:border-0 last:pb-0"
-                      >
+                      {/* DETAILS */}
 
-                        {/* IMAGE */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                          {product.brand}
+                        </p>
 
-                        <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
+                        <h3 className="mt-1 text-base font-black">
+                          {product.name}
+                        </h3>
 
-                          <img
-                            src={
-                              product.image
-                            }
-                            alt={
-                              product.name
-                            }
-                            className="h-full w-full object-contain"
-                          />
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold">
+                            {product.storage}
+                          </span>
 
+                          <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold">
+                            {product.color}
+                          </span>
+
+                          <span className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700">
+                            {product.condition}
+                          </span>
                         </div>
 
-                        {/* DETAILS */}
-
-                        <div className="min-w-0 flex-1">
-
-                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                            {
-                              product.brand
-                            }
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <p className="text-lg font-black">
+                            ₹{product.price.toLocaleString("en-IN")}
                           </p>
 
-                          <h3 className="mt-1 text-base font-black">
-                            {
-                              product.name
-                            }
-                          </h3>
+                          <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                            Qty: {quantity}
+                          </span>
 
-                          <div className="mt-2 flex flex-wrap gap-2">
-
-                            <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold">
-                              {
-                                product.storage
-                              }
-                            </span>
-
-                            <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold">
-                              {
-                                product.color
-                              }
-                            </span>
-
-                            <span className="rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700">
-                              {
-                                product.condition
-                              }
-                            </span>
-
-                          </div>
-
-                          <div className="mt-3 flex flex-wrap items-center gap-3">
-
-                            <p className="text-lg font-black">
-                              ₹
-                              {product.price.toLocaleString(
-                                "en-IN",
-                              )}
-                            </p>
-
-                            <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
-                              Qty:{" "}
-                              {quantity}
-                            </span>
-
-                            <span className="text-xs font-semibold text-gray-400">
-                              Total: ₹
-                              {itemTotal.toLocaleString(
-                                "en-IN",
-                              )}
-                            </span>
-
-                          </div>
-
+                          <span className="text-xs font-semibold text-gray-400">
+                            Total: ₹{itemTotal.toLocaleString("en-IN")}
+                          </span>
                         </div>
-
                       </div>
-                    );
-                  },
-                )}
-
+                    </div>
+                  );
+                })}
               </div>
-
             </section>
 
             {/* PAYMENT */}
 
             <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
-
               <div className="flex items-center gap-3">
-
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <CreditCard size={20} />
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-black">
-                    Payment method
-                  </h2>
+                  <h2 className="text-lg font-black">Payment method</h2>
 
                   <p className="mt-1 text-xs text-gray-500">
                     Choose how you want to pay.
                   </p>
                 </div>
-
               </div>
 
               <div className="mt-6 grid gap-3">
-
                 <PaymentOption
-                  active={
-                    paymentMethod ===
-                    "upi"
-                  }
-                  onClick={() =>
-                    setPaymentMethod(
-                      "upi",
-                    )
-                  }
-                  icon={
-                    <Wallet size={19} />
-                  }
+                  active={paymentMethod === "upi"}
+                  onClick={() => setPaymentMethod("upi")}
+                  icon={<Wallet size={19} />}
                   title="UPI"
                   description="Google Pay, PhonePe, Paytm and other UPI apps"
                 />
 
                 <PaymentOption
-                  active={
-                    paymentMethod ===
-                    "card"
-                  }
-                  onClick={() =>
-                    setPaymentMethod(
-                      "card",
-                    )
-                  }
-                  icon={
-                    <CreditCard
-                      size={19}
-                    />
-                  }
+                  active={paymentMethod === "card"}
+                  onClick={() => setPaymentMethod("card")}
+                  icon={<CreditCard size={19} />}
                   title="Credit / Debit Card"
                   description="Secure card payment"
                 />
 
                 <PaymentOption
-                  active={
-                    paymentMethod ===
-                    "emi"
-                  }
-                  onClick={() =>
-                    setPaymentMethod(
-                      "emi",
-                    )
-                  }
-                  icon={
-                    <CreditCard
-                      size={19}
-                    />
-                  }
+                  active={paymentMethod === "emi"}
+                  onClick={() => setPaymentMethod("emi")}
+                  icon={<CreditCard size={19} />}
                   title="EMI"
                   description="Pay monthly with eligible cards"
                 />
 
                 <PaymentOption
-                  active={
-                    paymentMethod ===
-                    "cod"
-                  }
-                  onClick={() =>
-                    setPaymentMethod(
-                      "cod",
-                    )
-                  }
-                  icon={
-                    <Truck size={19} />
-                  }
+                  active={paymentMethod === "cod"}
+                  onClick={() => setPaymentMethod("cod")}
+                  icon={<Truck size={19} />}
                   title="Cash on Delivery"
                   description="Pay when your device arrives"
                 />
-
               </div>
-
             </section>
-
           </div>
 
           {/* RIGHT */}
 
           <aside>
-
             <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-
-              <h2 className="text-lg font-black">
-                Price details
-              </h2>
+              <h2 className="text-lg font-black">Price details</h2>
 
               <div className="mt-6 space-y-4 text-sm">
-
                 <div className="flex justify-between">
-                  <span className="text-gray-500">
-                    MRP
-                  </span>
+                  <span className="text-gray-500">MRP</span>
 
                   <span className="font-semibold">
-                    ₹
-                    {originalTotal.toLocaleString(
-                      "en-IN",
-                    )}
+                    ₹{originalTotal.toLocaleString("en-IN")}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-gray-500">
-                    Discount
-                  </span>
+                  <span className="text-gray-500">Discount</span>
 
                   <span className="font-semibold text-green-600">
-                    - ₹
-                    {savings.toLocaleString(
-                      "en-IN",
-                    )}
+                    - ₹{savings.toLocaleString("en-IN")}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-gray-500">
-                    Delivery
-                  </span>
+                  <span className="text-gray-500">Delivery</span>
 
-                  <span className="font-bold text-green-600">
-                    FREE
-                  </span>
+                  <span className="font-bold text-green-600">FREE</span>
                 </div>
-
               </div>
 
               <div className="my-5 border-t border-gray-100" />
 
               <div className="flex items-center justify-between">
-
-                <span className="font-black">
-                  Total amount
-                </span>
+                <span className="font-black">Total amount</span>
 
                 <span className="text-2xl font-black">
-                  ₹
-                  {total.toLocaleString(
-                    "en-IN",
-                  )}
+                  ₹{total.toLocaleString("en-IN")}
                 </span>
-
               </div>
 
               <div className="mt-5 rounded-2xl bg-green-50 p-4">
-
                 <div className="flex gap-3">
-
-                  <Check
-                    size={18}
-                    className="mt-0.5 shrink-0 text-green-600"
-                  />
+                  <Check size={18} className="mt-0.5 shrink-0 text-green-600" />
 
                   <div>
-
                     <p className="text-xs font-bold text-green-700">
-                      You save ₹
-                      {savings.toLocaleString(
-                        "en-IN",
-                      )}
+                      You save ₹{savings.toLocaleString("en-IN")}
                     </p>
 
                     <p className="mt-1 text-[11px] leading-5 text-green-600">
                       Free delivery included.
                     </p>
-
                   </div>
-
                 </div>
-
               </div>
 
               <button
                 type="submit"
-                disabled={
-                  placingOrder
-                }
+                disabled={placingOrder}
                 className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
+                {placingOrder ? "Processing..." : "Place order"}
 
-                {placingOrder
-                  ? "Processing..."
-                  : "Place order"}
-
-                {!placingOrder && (
-                  <ArrowRight
-                    size={18}
-                  />
-                )}
-
+                {!placingOrder && <ArrowRight size={18} />}
               </button>
 
               <div className="mt-5 flex items-center justify-center gap-2 text-[11px] font-semibold text-gray-500">
@@ -1046,40 +777,20 @@ const handleSubmit = (
               </div>
 
               <div className="mt-5 grid grid-cols-3 gap-2 border-t border-gray-100 pt-5">
-
                 <MiniTrust
-                  icon={
-                    <ShieldCheck
-                      size={16}
-                    />
-                  }
+                  icon={<ShieldCheck size={16} />}
                   text="Quality checked"
                 />
 
-                <MiniTrust
-                  icon={
-                    <Truck size={16} />
-                  }
-                  text="Fast delivery"
-                />
+                <MiniTrust icon={<Truck size={16} />} text="Fast delivery" />
 
                 <MiniTrust
-                  icon={
-                    <Check size={16} />
-                  }
-                  text={
-                    products[0]
-                      ?.warranty ||
-                    "Warranty"
-                  }
+                  icon={<Check size={16} />}
+                  text={products[0]?.warranty || "Warranty"}
                 />
-
               </div>
-
             </div>
-
           </aside>
-
         </div>
       </form>
     </main>
@@ -1099,27 +810,19 @@ function Input({
   label: string;
   placeholder: string;
   value: string;
-  onChange: (
-    value: string,
-  ) => void;
+  onChange: (value: string) => void;
   maxLength?: number;
   type?: string;
 }) {
   return (
     <div>
-      <label className="text-xs font-bold text-gray-700">
-        {label}
-      </label>
+      <label className="text-xs font-bold text-gray-700">{label}</label>
 
       <input
         type={type}
         value={value}
         maxLength={maxLength}
-        onChange={(event) =>
-          onChange(
-            event.target.value,
-          )
-        }
+        onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white"
       />
@@ -1152,68 +855,39 @@ function PaymentOption({
           : "border-gray-200 bg-white hover:border-gray-300"
       }`}
     >
-
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-          active
-            ? "bg-indigo-600 text-white"
-            : "bg-gray-100 text-gray-500"
+          active ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"
         }`}
       >
         {icon}
       </div>
 
       <div className="flex-1">
+        <p className="text-sm font-bold">{title}</p>
 
-        <p className="text-sm font-bold">
-          {title}
-        </p>
-
-        <p className="mt-1 text-xs text-gray-500">
-          {description}
-        </p>
-
+        <p className="mt-1 text-xs text-gray-500">{description}</p>
       </div>
 
       <div
         className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-          active
-            ? "border-indigo-600 bg-indigo-600"
-            : "border-gray-300"
+          active ? "border-indigo-600 bg-indigo-600" : "border-gray-300"
         }`}
       >
-        {active && (
-          <Check
-            size={12}
-            className="text-white"
-          />
-        )}
+        {active && <Check size={12} className="text-white" />}
       </div>
-
     </button>
   );
 }
 
 /* TRUST */
 
-function MiniTrust({
-  icon,
-  text,
-}: {
-  icon: React.ReactNode;
-  text: string;
-}) {
+function MiniTrust({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <div className="text-center">
+      <div className="flex justify-center text-indigo-600">{icon}</div>
 
-      <div className="flex justify-center text-indigo-600">
-        {icon}
-      </div>
-
-      <p className="mt-2 text-[9px] font-bold text-gray-500">
-        {text}
-      </p>
-
+      <p className="mt-2 text-[9px] font-bold text-gray-500">{text}</p>
     </div>
   );
 }

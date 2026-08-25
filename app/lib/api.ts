@@ -173,28 +173,71 @@ export interface Address {
 }
 
 export async function getAddresses() {
-  return request<Address[]>("/addresses", {
-    method: "GET",
-  });
+  const response = await request<Address[]>(
+    "/addresses",
+    {
+      method: "GET",
+    }
+  );
+
+  if (!response.data) {
+    return response;
+  }
+
+  return {
+    ...response,
+    data: response.data.map((address) => ({
+      ...address,
+      pincode:
+        (address as Address & {
+          postalCode?: string;
+        }).postalCode ??
+        address.pincode,
+    })),
+  };
 }
 
 export async function createAddress(
   payload: Omit<Address, "id">
 ) {
-  return request<Address>("/addresses", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  const {
+    pincode,
+    ...rest
+  } = payload;
+
+  return request<Address>(
+    "/addresses",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...rest,
+        postalCode: pincode,
+      }),
+    }
+  );
 }
 
 export async function updateAddress(
   id: string,
   payload: Partial<Address>
 ) {
-  return request<Address>(`/addresses/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+  const {
+    pincode,
+    ...rest
+  } = payload;
+
+  return request<Address>(
+    `/addresses/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        ...rest,
+        ...(pincode !== undefined
+          ? { postalCode: pincode }
+          : {}),
+      }),
+    }
+  );
 }
 
 export async function deleteAddress(id: string) {
@@ -310,12 +353,8 @@ export async function getOrder(id: string) {
 }
 
 export async function createOrder(payload: {
-  items: {
-    productId: string;
-    quantity: number;
-  }[];
   addressId: string;
-  paymentMethod: string;
+  paymentMethod: "COD" | "UPI" | "CARD";
 }) {
   return request<Order>("/orders", {
     method: "POST",
