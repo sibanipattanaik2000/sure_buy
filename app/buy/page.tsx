@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
-
+import { getProducts } from "@/app/lib/api";
 type ProductImage = {
   id: number | string;
   url: string;
@@ -75,7 +75,7 @@ type Product = {
 };
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
   "http://localhost:5000/api/v1";
 
 const FALLBACK_IMAGE = "/images/iphone-15.png";
@@ -291,94 +291,106 @@ export default function BuyPage() {
 
   const { wishlist, toggleWishlist } = useWishlist();
 
-  useEffect(() => {
-    const controller = new AbortController();
+useEffect(() => {
+  const controller = new AbortController();
 
-    const loadProducts = async () => {
-      try {
-        setLoading(true);
-        setError("");
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-        const params = new URLSearchParams({
-          page: "1",
-          limit: "100",
-        });
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "100",
+      });
 
-        const trimmedSearch = search.trim();
+      const trimmedSearch = search.trim();
 
-        if (trimmedSearch) {
-          params.set("search", trimmedSearch);
-        }
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
 
-        /*
-         * Backend currently stores category values such as:
-         * iPhone, Samsung, Google, OnePlus.
-         *
-         * Therefore category is intentionally filtered
-         * client-side instead of sending "Smartphones"
-         * to the backend as a category.
-         */
+      const url = `${API_BASE_URL}/products?${params.toString()}`;
 
-        const response = await fetch(
-          `${API_BASE_URL}/products?${params.toString()}`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+      console.log("Fetching products from:", url);
 
-        let data: any = null;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        let message = `Unable to load products (${response.status})`;
 
         try {
-          data = await response.json();
+          const errorData = await response.json();
+
+          if (errorData?.message) {
+            message = errorData.message;
+          }
         } catch {
-          throw new Error("Invalid response received from server.");
+          // Ignore invalid error JSON
         }
 
-        if (!response.ok || !data?.success) {
-          throw new Error(
-            data?.message || `Unable to load products (${response.status}).`,
-          );
-        }
-
-        const apiProducts: ApiProduct[] = Array.isArray(data.products)
-          ? data.products
-          : Array.isArray(data.data)
-            ? data.data
-            : [];
-
-        setProducts(
-          apiProducts
-            .filter((product) => product.active !== false)
-            .map(normalizeProduct),
-        );
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") {
-          return;
-        }
-
-        console.error("BUY PRODUCTS FETCH ERROR:", err);
-
-        setProducts([]);
-
-        setError(
-          err instanceof Error ? err.message : "Unable to load products.",
-        );
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        throw new Error(message);
       }
-    };
 
-    loadProducts();
+      const data = await response.json();
 
-    return () => controller.abort();
-  }, [search]);
+      if (!data?.success) {
+        throw new Error(
+          data?.message || "Backend returned an unsuccessful response.",
+        );
+      }
+
+      const apiProducts: ApiProduct[] = Array.isArray(data.data)
+        ? data.data
+        : Array.isArray(data.products)
+          ? data.products
+          : [];
+
+      const normalizedProducts = apiProducts
+        .filter((product) => product.active !== false)
+        .map(normalizeProduct);
+
+      setProducts(normalizedProducts);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+
+      console.error("BUY PRODUCTS FETCH ERROR:", err);
+
+      setProducts([]);
+
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setError(
+          `Cannot connect to the backend API. Please make sure the backend is running and CORS/API URL are configured correctly.`,
+        );
+      } else {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load products.",
+        );
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
+    }
+  };
+
+  loadProducts();
+
+  return () => {
+    controller.abort();
+  };
+}, [search]);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];

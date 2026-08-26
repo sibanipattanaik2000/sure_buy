@@ -14,7 +14,9 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { apiRequest } from "@/app/lib/api";
+import { useAuth } from "@/app/context/AuthContext";
+import { useRouter } from "next/navigation";
+
 type Profile = {
   fullName: string;
   phone: string;
@@ -48,38 +50,26 @@ export default function AccountPage() {
   });
 
   const [address, setAddress] = useState<SavedAddress | null>(null);
-
+  const [loggingOut, setLoggingOut] = useState(false);
   const [orders, setOrders] = useState<RecentOrder[]>([]);
-
-useEffect(() => {
-  const loadAccount = async () => {
-    try {
-      const response = await apiRequest<{
-        success: boolean;
-        message: string;
-        data: {
-          id: string;
-          firstName: string;
-          lastName: string;
-          email: string;
-          phone?: string;
-        };
-      }>("/auth/me");
-
-      const user = response.data;
-
-      setProfile({
-        fullName: `${user.firstName} ${user.lastName}`.trim(),
-        phone: user.phone || "",
-        email: user.email || "",
-      });
-    } catch (error) {
-      console.error("Failed to load account:", error);
+  const router = useRouter();
+  const { user, loading, logout } = useAuth();
+  useEffect(() => {
+    if (loading) {
+      return;
     }
-  };
 
-  loadAccount();
-}, []);
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    setProfile({
+      fullName: `${user.firstName} ${user.lastName}`.trim(),
+      phone: user.phone || "",
+      email: user.email || "",
+    });
+  }, [user, loading, router]);
 
   const displayName = profile.fullName || "Your Name";
 
@@ -408,19 +398,28 @@ useEffect(() => {
         <div className="mt-8 flex justify-center">
           <button
             type="button"
-            onClick={() => {
-              /*
-               * No authentication system is currently
-               * being removed here because the repository
-               * does not have a single account auth context
-               * tied to this page.
-               */
-              window.location.href = "/";
+            disabled={loggingOut}
+            onClick={async () => {
+              if (loggingOut) {
+                return;
+              }
+
+              try {
+                setLoggingOut(true);
+
+                await logout();
+
+                router.replace("/");
+              } catch (error) {
+                console.error("Logout error:", error);
+              } finally {
+                setLoggingOut(false);
+              }
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LogOut size={17} />
-            Logout
+            {loggingOut ? "Logging out..." : "Logout"}
           </button>
         </div>
       </div>

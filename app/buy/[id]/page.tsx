@@ -22,7 +22,7 @@ import {
 import { useWishlist } from "../../context/WishlistContext";
 import { useCheckout } from "@/app/context/CheckoutContext";
 import { useCart } from "../../context/CartContext";
-
+import { getProduct } from "@/app/lib/api";
 /* =========================================================
    API CONFIG
 ========================================================= */
@@ -261,93 +261,30 @@ export default function ProductDetailsPage() {
 
     const controller = new AbortController();
 
-    async function fetchProduct() {
+    const fetchProduct = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
-          `${API_BASE_URL}/api/v1/products/${encodeURIComponent(
-            productIdentifier,
-          )}`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-            signal: controller.signal,
-            cache: "no-store",
-          },
+        const response = await getProduct<ApiProduct>(
+          decodeURIComponent(productIdentifier),
         );
 
-        let payload: ProductApiResponse;
-
-        try {
-          payload = await response.json();
-        } catch {
-          throw new Error("The server returned an invalid response.");
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Unable to load product");
         }
 
-        if (!response.ok || !payload.success || !payload.data) {
-          throw new Error(payload.message || "Unable to load this product.");
-        }
-
-        const fetchedProduct = payload.data;
-
-        /*
-         * Normalize backend arrays so the UI never crashes
-         * if an optional relation is missing.
-         */
-        const normalizedProduct: ApiProduct = {
-          ...fetchedProduct,
-          variants: Array.isArray(fetchedProduct.variants)
-            ? fetchedProduct.variants
-            : [],
-          images: Array.isArray(fetchedProduct.images)
-            ? fetchedProduct.images
-            : [],
-          highlights: Array.isArray(fetchedProduct.highlights)
-            ? fetchedProduct.highlights
-            : [],
-          reviews: safeReviews(fetchedProduct.reviews),
-        };
-
-        setProductData(normalizedProduct);
-
-        setSelectedImage(0);
-        setQuantity(1);
-
-        const firstVariant = normalizedProduct.variants[0];
-
-        if (firstVariant) {
-          setSelectedStorage(firstVariant.storage || "");
-
-          setSelectedColor(firstVariant.color || "");
-        } else {
-          setSelectedStorage("");
-          setSelectedColor("");
-        }
-      } catch (requestError) {
-        if (
-          requestError instanceof DOMException &&
-          requestError.name === "AbortError"
-        ) {
-          return;
-        }
-
-        console.error("Failed to fetch product:", requestError);
+        setProductData(response.data);
+      } catch (error) {
+        console.error("Failed to fetch product:", error);
 
         setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Unable to load this product.",
+          error instanceof Error ? error.message : "Failed to load product",
         );
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
-    }
+    };
 
     fetchProduct();
 
@@ -577,26 +514,26 @@ export default function ProductDetailsPage() {
     (activeVariant?.stock || 0) - existingCartQuantity,
   );
 
-const cartProduct = {
-  id: String(product.id),
+  const cartProduct = {
+    id: String(product.id),
 
-  // IMPORTANT: send the selected variant to backend
-  variantId: activeVariant?.id ?? null,
+    // IMPORTANT: send the selected variant to backend
+    variantId: activeVariant?.id ?? null,
 
-  name: product.name,
-  brand: product.brand,
-  category: product.category,
-  storage: currentStorage,
-  color: currentColor,
-  condition: formatCondition(product.condition),
-  price: activePrice,
-  originalPrice: activeOriginalPrice,
-  warranty: product.warranty,
-  image:
-    gallery.find((media) => media.type === "IMAGE")?.url ||
-    activeMedia?.url ||
-    "",
-};
+    name: product.name,
+    brand: product.brand,
+    category: product.category,
+    storage: currentStorage,
+    color: currentColor,
+    condition: formatCondition(product.condition),
+    price: activePrice,
+    originalPrice: activeOriginalPrice,
+    warranty: product.warranty,
+    image:
+      gallery.find((media) => media.type === "IMAGE")?.url ||
+      activeMedia?.url ||
+      "",
+  };
 
   /* =======================================================
      STORAGE CHANGE

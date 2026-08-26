@@ -1,20 +1,23 @@
-// app/lib/api.ts
-
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:5000/api/v1";
 
-type ApiResponse<T> = {
+export type ApiResponse<T> = {
   success: boolean;
   message?: string;
   data?: T;
-  token?: string;
+  errors?: Record<string, string[]>;
 };
 
-class ApiError extends Error {
+export class ApiError extends Error {
   status: number;
   data?: unknown;
 
-  constructor(message: string, status: number, data?: unknown) {
+  constructor(
+    message: string,
+    status: number,
+    data?: unknown,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
@@ -22,57 +25,60 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(
+export async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<ApiResponse<T>> {
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("surebuy_token")
-      : null;
-
   const headers = new Headers(options.headers);
 
-  headers.set("Content-Type", "application/json");
-
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+  if (
+    options.body &&
+    !headers.has("Content-Type")
+  ) {
+    headers.set(
+      "Content-Type",
+      "application/json",
+    );
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: "include",
-    cache: "no-store",
-  });
+  const response = await fetch(
+    `${API_BASE_URL}${endpoint}`,
+    {
+      ...options,
+      headers,
+      credentials: "include",
+      cache: "no-store",
+    },
+  );
 
   let result: ApiResponse<T> | null = null;
 
   try {
-    result = await response.json();
+    result =
+      (await response.json()) as ApiResponse<T>;
   } catch {
     result = null;
   }
 
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("surebuy_token");
-      localStorage.removeItem("surebuy_user");
-    }
-
     throw new ApiError(
-      result?.message || "Something went wrong",
+      result?.message ||
+        "Something went wrong",
       response.status,
-      result
+      result,
     );
   }
 
-  return result || { success: true };
+  return (
+    result || {
+      success: true,
+    }
+  );
 }
 
-/* =========================
-   AUTH TYPES
-========================= */
+/* =========================================================
+   AUTH
+========================================================= */
 
 export interface User {
   id: string;
@@ -99,46 +105,55 @@ export interface RegisterPayload {
   phone?: string;
 }
 
-/* =========================
-   AUTH API
-========================= */
-
-export async function registerUser(payload: RegisterPayload) {
-  return request<User>("/auth/register", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export interface LoginResponse {
+  user: User;
 }
 
-export async function loginUser(payload: LoginPayload) {
-  return request<User>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+export async function registerUser(
+  payload: RegisterPayload,
+) {
+  return apiRequest<User>(
+    "/auth/register",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function loginUser(
+  payload: LoginPayload,
+) {
+  return apiRequest<LoginResponse>(
+    "/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function getCurrentUser() {
-  return request<User>("/auth/me", {
-    method: "GET",
-  });
+  return apiRequest<User>(
+    "/auth/me",
+    {
+      method: "GET",
+    },
+  );
 }
 
 export async function logoutUser() {
-  try {
-    return await request("/auth/logout", {
+  return apiRequest(
+    "/auth/logout",
+    {
       method: "POST",
-    });
-  } finally {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("surebuy_token");
-      localStorage.removeItem("surebuy_user");
-    }
-  }
+    },
+  );
 }
 
-/* =========================
-   USER / PROFILE
-========================= */
+/* =========================================================
+   PROFILE
+========================================================= */
 
 export interface UpdateProfilePayload {
   firstName?: string;
@@ -148,16 +163,21 @@ export interface UpdateProfilePayload {
   avatar?: string;
 }
 
-export async function updateProfile(payload: UpdateProfilePayload) {
-  return request<User>("/users/profile", {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
+export async function updateProfile(
+  payload: UpdateProfilePayload,
+) {
+  return apiRequest<User>(
+    "/auth/me",
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
-/* =========================
+/* =========================================================
    ADDRESS
-========================= */
+========================================================= */
 
 export interface Address {
   id: string;
@@ -173,82 +193,63 @@ export interface Address {
 }
 
 export async function getAddresses() {
-  const response = await request<Address[]>(
+  return apiRequest<Address[]>(
     "/addresses",
     {
       method: "GET",
-    }
+    },
   );
-
-  if (!response.data) {
-    return response;
-  }
-
-  return {
-    ...response,
-    data: response.data.map((address) => ({
-      ...address,
-      pincode:
-        (address as Address & {
-          postalCode?: string;
-        }).postalCode ??
-        address.pincode,
-    })),
-  };
 }
 
 export async function createAddress(
-  payload: Omit<Address, "id">
+  payload: Omit<Address, "id">,
 ) {
-  const {
-    pincode,
-    ...rest
-  } = payload;
-
-  return request<Address>(
+  return apiRequest<Address>(
     "/addresses",
     {
       method: "POST",
       body: JSON.stringify({
-        ...rest,
-        postalCode: pincode,
+        ...payload,
+        postalCode: payload.pincode,
       }),
-    }
+    },
   );
 }
 
 export async function updateAddress(
   id: string,
-  payload: Partial<Address>
+  payload: Partial<Address>,
 ) {
-  const {
-    pincode,
-    ...rest
-  } = payload;
-
-  return request<Address>(
+  return apiRequest<Address>(
     `/addresses/${id}`,
     {
       method: "PATCH",
       body: JSON.stringify({
-        ...rest,
-        ...(pincode !== undefined
-          ? { postalCode: pincode }
+        ...payload,
+        ...(payload.pincode !== undefined
+          ? {
+              postalCode: payload.pincode,
+            }
           : {}),
       }),
-    }
+    },
   );
 }
 
-export async function deleteAddress(id: string) {
-  return request(`/addresses/${id}`, {
-    method: "DELETE",
-  });
+export async function deleteAddress(
+  id: string,
+) {
+  return apiRequest(
+    `/addresses/${id}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
-/* =========================
+/* =========================================================
    PRODUCTS
-========================= */
+========================================================= */
 
 export interface Product {
   id: string;
@@ -267,59 +268,88 @@ export interface Product {
   stock?: number;
 }
 
-export async function getProducts(params?: {
-  page?: number;
-  limit?: number;
-  search?: string;
-  brand?: string;
-  minPrice?: number;
-  maxPrice?: number;
-}) {
-  const searchParams = new URLSearchParams();
+export async function getProducts(
+  params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    brand?: string;
+    minPrice?: number;
+    maxPrice?: number;
+  },
+) {
+  const searchParams =
+    new URLSearchParams();
 
   if (params?.page) {
-    searchParams.set("page", String(params.page));
+    searchParams.set(
+      "page",
+      String(params.page),
+    );
   }
 
   if (params?.limit) {
-    searchParams.set("limit", String(params.limit));
+    searchParams.set(
+      "limit",
+      String(params.limit),
+    );
   }
 
   if (params?.search) {
-    searchParams.set("search", params.search);
+    searchParams.set(
+      "search",
+      params.search,
+    );
   }
 
   if (params?.brand) {
-    searchParams.set("brand", params.brand);
+    searchParams.set(
+      "brand",
+      params.brand,
+    );
   }
 
   if (params?.minPrice !== undefined) {
-    searchParams.set("minPrice", String(params.minPrice));
+    searchParams.set(
+      "minPrice",
+      String(params.minPrice),
+    );
   }
 
   if (params?.maxPrice !== undefined) {
-    searchParams.set("maxPrice", String(params.maxPrice));
+    searchParams.set(
+      "maxPrice",
+      String(params.maxPrice),
+    );
   }
 
-  const query = searchParams.toString();
+  const query =
+    searchParams.toString();
 
-  return request<Product[]>(
-    `/products${query ? `?${query}` : ""}`,
+  return apiRequest<Product[]>(
+    `/products${
+      query ? `?${query}` : ""
+    }`,
     {
       method: "GET",
-    }
+    },
   );
 }
 
-export async function getProduct(id: string) {
-  return request<Product>(`/products/${id}`, {
-    method: "GET",
-  });
+export async function getProduct<T = Product>(
+  id: string,
+) {
+  return apiRequest<T>(
+    `/products/${id}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
-/* =========================
+/* =========================================================
    ORDERS
-========================= */
+========================================================= */
 
 export interface OrderItem {
   id: string;
@@ -341,136 +371,50 @@ export interface Order {
 }
 
 export async function getOrders() {
-  return request<Order[]>("/orders", {
-    method: "GET",
-  });
+  return apiRequest<Order[]>(
+    "/orders",
+    {
+      method: "GET",
+    },
+  );
 }
 
-export async function getOrder(id: string) {
-  return request<Order>(`/orders/${id}`, {
-    method: "GET",
-  });
-}
-
-export async function createOrder(payload: {
-  addressId: string;
-  paymentMethod: "COD" | "UPI" | "CARD";
-}) {
-  return request<Order>("/orders", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function cancelOrder(id: string) {
-  return request<Order>(`/orders/${id}/cancel`, {
-    method: "PATCH",
-  });
-}
-
-/* =========================
-   WISHLIST
-========================= */
-
-export async function getWishlist() {
-  return request<Product[]>("/wishlist", {
-    method: "GET",
-  });
-}
-
-export async function addToWishlist(productId: string) {
-  return request(`/wishlist`, {
-    method: "POST",
-    body: JSON.stringify({ productId }),
-  });
-}
-
-export async function removeFromWishlist(productId: string) {
-  return request(`/wishlist/${productId}`, {
-    method: "DELETE",
-  });
-}
-
-/* =========================
-   SELL
-========================= */
-
-export interface SellRequest {
-  productId?: string;
-  brand: string;
-  model: string;
-  storage?: string;
-  condition?: string;
-  imei?: string;
-  expectedPrice?: number;
-  images?: string[];
-}
-
-export async function createSellRequest(payload: SellRequest) {
-  return request("/sell", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function getSellRequests() {
-  return request("/sell", {
-    method: "GET",
-  });
-}
-
-/* =========================
-   TOKEN HELPERS
-========================= */
-
-export function saveAuthData(
-  token: string,
-  user?: User
+export async function getOrder(
+  id: string,
 ) {
-  if (typeof window === "undefined") return;
-
-  localStorage.setItem("surebuy_token", token);
-
-  if (user) {
-    localStorage.setItem(
-      "surebuy_user",
-      JSON.stringify(user)
-    );
-  }
+  return apiRequest<Order>(
+    `/orders/${id}`,
+    {
+      method: "GET",
+    },
+  );
 }
 
-export function getStoredUser(): User | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const stored = localStorage.getItem("surebuy_user");
-
-  if (!stored) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(stored) as User;
-  } catch {
-    localStorage.removeItem("surebuy_user");
-    return null;
-  }
+export async function createOrder(
+  payload: {
+    addressId: string;
+    paymentMethod:
+      | "COD"
+      | "UPI"
+      | "CARD";
+  },
+) {
+  return apiRequest<Order>(
+    "/orders",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
-export function getAuthToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return localStorage.getItem("surebuy_token");
+export async function cancelOrder(
+  id: string,
+) {
+  return apiRequest<Order>(
+    `/orders/${id}/cancel`,
+    {
+      method: "PATCH",
+    },
+  );
 }
-
-export function clearAuthData() {
-  if (typeof window === "undefined") return;
-
-  localStorage.removeItem("surebuy_token");
-  localStorage.removeItem("surebuy_user");
-}
-
-export { ApiError };

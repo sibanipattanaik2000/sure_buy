@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { registerUser } from "../lib/api";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -98,38 +99,27 @@ export default function RegisterPage() {
       const nameParts = form.name.trim().split(/\s+/);
 
       const firstName = nameParts[0];
+
       const lastName = nameParts.slice(1).join(" ") || "User";
 
-      const response = await fetch(
-        "http://localhost:5000/api/v1/auth/register",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            firstName,
-            lastName,
-            email: form.email,
-            password: form.password,
-            phone: form.phone,
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Registration failed");
-      }
-
-      alert("Account created successfully");
+      await registerUser({
+        firstName,
+        lastName,
+        email: form.email.trim(),
+        password: form.password,
+        phone: form.phone.trim(),
+      });
 
       router.push("/login");
     } catch (error) {
       console.error("REGISTER ERROR:", error);
 
-      alert(error instanceof Error ? error.message : "Registration failed");
+      const message =
+        error instanceof Error ? error.message : "Registration failed";
+
+      setErrors({
+        submit: message,
+      });
     }
   };
 
@@ -428,7 +418,11 @@ export default function RegisterPage() {
                   </p>
                 )}
               </div>
-
+              {errors.submit && (
+                <p className="text-sm font-medium text-red-500">
+                  {errors.submit}
+                </p>
+              )}
               {/* SUBMIT */}
 
               <button
