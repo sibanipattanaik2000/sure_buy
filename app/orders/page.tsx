@@ -15,6 +15,38 @@ import {
   X,
 } from "lucide-react";
 
+import { ApiError, getOrders } from "@/app/lib/api";
+
+type BackendOrder = {
+  id: string;
+  status?: string | null;
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  totalAmount?: string | number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  items?: BackendOrderItem[];
+};
+
+type BackendOrderItem = {
+  id?: string;
+  quantity?: number;
+  price?: string | number | null;
+  product?: {
+    id?: string | number;
+    name?: string | null;
+    brand?: string | null;
+    images?: Array<{
+      url?: string | null;
+      position?: number | null;
+    }>;
+    variants?: Array<{
+      storage?: string | null;
+      color?: string | null;
+    }>;
+  } | null;
+};
+
 type OrderStatus =
   | "Processing"
   | "Confirmed"
@@ -38,22 +70,95 @@ type Order = {
   status: OrderStatus;
 };
 
-const demoOrders: Order[] = [
-  {
-    id: "SB-58951374",
-    productId: "1",
-    productName: "iPhone 15",
-    brand: "Apple",
-    image: "/images/iphone-15.png",
-    storage: "128GB",
-    color: "Black",
-    price: 42999,
-    paymentMethod: "UPI",
-    orderDate: "18 Aug 2026",
-    deliveryDate: "21–23 Aug 2026",
-    status: "Confirmed",
-  },
-];
+const FALLBACK_IMAGE = "/images/iphone-15.png";
+
+const normalizeStatus = (status?: string | null): OrderStatus => {
+  switch (status?.toUpperCase()) {
+    case "PROCESSING":
+    case "PENDING":
+      return "Processing";
+
+    case "CONFIRMED":
+    case "PAID":
+      return "Confirmed";
+
+    case "SHIPPED":
+      return "Shipped";
+
+    case "OUT_FOR_DELIVERY":
+    case "OUT FOR DELIVERY":
+      return "Out for Delivery";
+
+    case "DELIVERED":
+      return "Delivered";
+
+    case "CANCELLED":
+    case "CANCELED":
+      return "Cancelled";
+
+    default:
+      return "Processing";
+  }
+};
+
+const formatDate = (value?: string | null) => {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const getImage = (item?: BackendOrderItem) => {
+  const images = [...(item?.product?.images ?? [])].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0),
+  );
+
+  return images.find((image) => image.url)?.url || FALLBACK_IMAGE;
+};
+
+const getFirstItem = (order: BackendOrder) => {
+  return order.items?.[0];
+};
+
+const normalizeOrder = (order: BackendOrder): Order => {
+  const item = getFirstItem(order);
+  const product = item?.product;
+
+  const variant = product?.variants?.[0];
+
+  const quantity = Number(item?.quantity ?? 1);
+
+  const itemPrice = Number(item?.price ?? 0);
+
+  const totalAmount = Number(order.totalAmount ?? 0);
+
+  return {
+    id: order.id,
+    productId: String(product?.id ?? ""),
+    productName: product?.name || "Product",
+    brand: product?.brand || "",
+    image: getImage(item),
+    storage: variant?.storage || "",
+    color: variant?.color || "",
+    price: totalAmount || itemPrice * quantity,
+    paymentMethod: order.paymentMethod || "Pending",
+    orderDate: formatDate(order.createdAt),
+    deliveryDate:
+      normalizeStatus(order.status) === "Delivered"
+        ? formatDate(order.updatedAt)
+        : "Delivery date will be updated",
+    status: normalizeStatus(order.status),
+  };
+};
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -61,44 +166,93 @@ export default function OrdersPage() {
   const [activeFilter, setActiveFilter] = useState<
     "All" | OrderStatus
   >("All");
+
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
+  const loadOrders = async () => {
     try {
-      const savedOrders = localStorage.getItem("PhoneBhai-orders");
+      setLoading(true);
+      setError("");
 
-      if (savedOrders) {
-        const parsedOrders: Order[] = JSON.parse(savedOrders);
-        setOrders(parsedOrders);
+      const response = await getOrders();
+
+      /*
+       * api.ts may return:
+       *
+       * {
+       *   success: true,
+       *   data: [...]
+       * }
+       *
+       * or directly:
+       *
+       * [...]
+       *
+       * Keep this defensive because the backend response
+       * shape may evolve without breaking this page.
+       */
+
+      const payload = response as any;
+
+      const rawOrders: BackendOrder[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.orders)
+            ? payload.orders
+            : [];
+
+      setOrders(rawOrders.map(normalizeOrder));
+    } catch (err) {
+      console.error("ORDERS LOAD ERROR:", err);
+
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setError("Please sign in to view your orders.");
+        } else {
+          setError(err.message || "Unable to load your orders.");
+        }
+      } else if (err instanceof Error) {
+        setError(err.message || "Unable to load your orders.");
       } else {
-        /*
-         * Demo data for now.
-         *
-         * Once your checkout starts saving orders,
-         * this fallback can be removed.
-         */
-        setOrders(demoOrders);
+        setError("Unable to load your orders.");
       }
-    } catch (error) {
-      console.error("Failed to load orders:", error);
-      setOrders(demoOrders);
+
+      setOrders([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    loadOrders();
   }, []);
 
   const filteredOrders = useMemo(() => {
     let result = [...orders];
 
-    if (activeFilter !== "All") {
+    if (activeFilter === "Confirmed") {
+      result = result.filter(
+        (order) =>
+          order.status === "Processing" ||
+          order.status === "Confirmed",
+      );
+    } else if (activeFilter === "Shipped") {
+      result = result.filter(
+        (order) =>
+          order.status === "Shipped" ||
+          order.status === "Out for Delivery",
+      );
+    } else if (activeFilter !== "All") {
       result = result.filter(
         (order) => order.status === activeFilter,
       );
     }
 
-    if (search.trim()) {
-      const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
 
+    if (query) {
       result = result.filter(
         (order) =>
           order.id.toLowerCase().includes(query) ||
@@ -112,16 +266,19 @@ export default function OrdersPage() {
 
   const orderCounts = {
     all: orders.length,
+
     processing: orders.filter(
       (order) =>
         order.status === "Processing" ||
         order.status === "Confirmed",
     ).length,
+
     shipped: orders.filter(
       (order) =>
         order.status === "Shipped" ||
         order.status === "Out for Delivery",
     ).length,
+
     delivered: orders.filter(
       (order) => order.status === "Delivered",
     ).length,
@@ -129,8 +286,7 @@ export default function OrdersPage() {
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
-     {/* HERO */}
-
+      {/* HERO */}
       <section className="border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
@@ -161,7 +317,6 @@ export default function OrdersPage() {
       </section>
 
       {/* SUMMARY */}
-
       <section className="mx-auto max-w-7xl px-5 pt-7 lg:px-8">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
@@ -191,10 +346,8 @@ export default function OrdersPage() {
       </section>
 
       {/* MAIN */}
-
       <section className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
         {/* SEARCH */}
-
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full max-w-md">
             <Search
@@ -204,9 +357,7 @@ export default function OrdersPage() {
 
             <input
               value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
+              onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by order ID or product..."
               className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-11 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             />
@@ -215,6 +366,7 @@ export default function OrdersPage() {
               <button
                 type="button"
                 onClick={() => setSearch("")}
+                aria-label="Clear search"
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
               >
                 <X size={16} />
@@ -223,7 +375,6 @@ export default function OrdersPage() {
           </div>
 
           {/* FILTERS */}
-
           <div className="flex gap-2 overflow-x-auto pb-1">
             <FilterButton
               active={activeFilter === "All"}
@@ -240,10 +391,7 @@ export default function OrdersPage() {
             </FilterButton>
 
             <FilterButton
-              active={
-                activeFilter === "Shipped" ||
-                activeFilter === "Out for Delivery"
-              }
+              active={activeFilter === "Shipped"}
               onClick={() => setActiveFilter("Shipped")}
             >
               Shipped
@@ -265,30 +413,44 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* ORDERS */}
-
-        <div className="mt-7">
-          {loading ? (
-            <OrdersSkeleton />
-          ) : filteredOrders.length === 0 ? (
-            <EmptyOrders
-              search={search}
-              onClear={() => {
-                setSearch("");
-                setActiveFilter("All");
-              }}
-            />
-          ) : (
-            <div className="space-y-5">
-              {filteredOrders.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+{/* ORDERS */}
+<div className="mt-7">
+  {loading ? (
+    <OrdersSkeleton />
+  ) : error ? (
+    <OrdersError
+      message={error}
+      onRetry={loadOrders}
+    />
+  ) : orders.length === 0 ? (
+    /* No orders exist at all */
+    <EmptyOrders
+      search=""
+      onClear={() => {
+        setSearch("");
+        setActiveFilter("All");
+      }}
+    />
+  ) : filteredOrders.length === 0 ? (
+    /* Orders exist, but current search/filter has no match */
+    <EmptyOrders
+      search={search}
+      onClear={() => {
+        setSearch("");
+        setActiveFilter("All");
+      }}
+    />
+  ) : (
+    <div className="space-y-5">
+      {filteredOrders.map((order) => (
+        <OrderCard
+          key={order.id}
+          order={order}
+        />
+      ))}
+    </div>
+  )}
+</div>
       </section>
     </main>
   );
@@ -300,7 +462,6 @@ function OrderCard({ order }: { order: Order }) {
   return (
     <article className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
       {/* TOP */}
-
       <div className="flex flex-col gap-4 border-b border-gray-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div>
@@ -338,7 +499,6 @@ function OrderCard({ order }: { order: Order }) {
       </div>
 
       {/* PRODUCT */}
-
       <div className="p-5 sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row">
           <div className="flex h-32 w-28 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-4 sm:h-36 sm:w-32">
@@ -346,6 +506,9 @@ function OrderCard({ order }: { order: Order }) {
               src={order.image}
               alt={order.productName}
               className="h-full w-full object-contain"
+              onError={(event) => {
+                event.currentTarget.src = FALLBACK_IMAGE;
+              }}
             />
           </div>
 
@@ -358,15 +521,21 @@ function OrderCard({ order }: { order: Order }) {
               {order.productName}
             </h2>
 
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-lg bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600">
-                {order.storage}
-              </span>
+            {(order.storage || order.color) && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {order.storage && (
+                  <span className="rounded-lg bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600">
+                    {order.storage}
+                  </span>
+                )}
 
-              <span className="rounded-lg bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600">
-                {order.color}
-              </span>
-            </div>
+                {order.color && (
+                  <span className="rounded-lg bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600">
+                    {order.color}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="mt-auto pt-4">
               <p className="text-xs text-gray-400">
@@ -380,7 +549,6 @@ function OrderCard({ order }: { order: Order }) {
           </div>
 
           {/* DELIVERY */}
-
           <div className="sm:w-52">
             <div className="rounded-2xl bg-gray-50 p-4">
               <div className="flex items-center gap-2">
@@ -412,7 +580,6 @@ function OrderCard({ order }: { order: Order }) {
         </div>
 
         {/* ACTIONS */}
-
         <div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs font-semibold text-green-600">
             <ShieldCheck size={15} />
@@ -441,15 +608,16 @@ function OrderCard({ order }: { order: Order }) {
                 </Link>
               )}
 
-            {order.status === "Delivered" && (
-              <Link
-                href={`/buy/${order.productId}`}
-                className="flex items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-600"
-              >
-                Buy again
-                <ShoppingBag size={15} />
-              </Link>
-            )}
+            {order.status === "Delivered" &&
+              order.productId && (
+                <Link
+                  href={`/buy/${order.productId}`}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-600"
+                >
+                  Buy again
+                  <ShoppingBag size={15} />
+                </Link>
+              )}
           </div>
         </div>
       </div>
@@ -530,7 +698,7 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 
     Confirmed: {
       icon: <CheckCircle2 size={13} />,
-      className: "bg-green-50 text-green-700",
+      className: "bg-blue-50 text-blue-700",
     },
 
     Shipped: {
@@ -566,6 +734,70 @@ function StatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
+/* SKELETON */
+
+function OrdersSkeleton() {
+  return (
+    <div className="space-y-5">
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div
+          key={index}
+          className="animate-pulse overflow-hidden rounded-3xl border border-gray-200 bg-white"
+        >
+          <div className="h-20 border-b border-gray-100 bg-gray-50" />
+
+          <div className="p-6">
+            <div className="flex gap-5">
+              <div className="h-36 w-32 rounded-2xl bg-gray-100" />
+
+              <div className="flex-1 space-y-4">
+                <div className="h-3 w-20 rounded bg-gray-100" />
+                <div className="h-6 w-40 rounded bg-gray-100" />
+                <div className="h-4 w-28 rounded bg-gray-100" />
+                <div className="h-7 w-32 rounded bg-gray-100" />
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ERROR */
+
+function OrdersError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-12 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-red-500">
+        <Package size={22} />
+      </div>
+
+      <h2 className="mt-5 font-bold text-red-700">
+        Unable to load orders
+      </h2>
+
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-red-600">
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
 /* EMPTY */
 
 function EmptyOrders({
@@ -576,73 +808,38 @@ function EmptyOrders({
   onClear: () => void;
 }) {
   return (
-    <div className="rounded-3xl border border-gray-200 bg-white px-6 py-20 text-center">
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-        {search ? (
-          <Search size={27} />
-        ) : (
-          <ShoppingBag size={27} />
-        )}
+    <div className="rounded-3xl border border-gray-200 bg-white px-6 py-16 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-50">
+        <ShoppingBag size={24} className="text-gray-400" />
       </div>
 
-      <h2 className="mt-6 text-xl font-black text-gray-950">
-        {search
-          ? "No matching orders"
-          : "You haven't placed any orders yet"}
+      <h2 className="mt-5 text-lg font-bold">
+        {search ? "No matching orders" : "No orders yet"}
       </h2>
 
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
+      <p className="mt-2 text-sm text-gray-500">
         {search
-          ? "Try searching with another order ID, product name or brand."
-          : "Explore our quality-checked devices and find your next phone."}
+          ? "Try another order ID or product name."
+          : "Your completed purchases will appear here."}
       </p>
 
-      <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-        {search && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-700"
-          >
-            Clear search
-          </button>
-        )}
-
+      {search ? (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-5 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-600"
+        >
+          Clear search
+        </button>
+      ) : (
         <Link
           href="/buy"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-indigo-700"
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-600"
         >
-          Explore phones
-          <ArrowRight size={16} />
+          Start shopping
+          <ArrowRight size={15} />
         </Link>
-      </div>
-    </div>
-  );
-}
-
-/* SKELETON */
-
-function OrdersSkeleton() {
-  return (
-    <div className="space-y-5">
-      {[1, 2].map((item) => (
-        <div
-          key={item}
-          className="animate-pulse overflow-hidden rounded-3xl border border-gray-200 bg-white"
-        >
-          <div className="h-20 border-b border-gray-100 bg-gray-50" />
-
-          <div className="flex gap-5 p-6">
-            <div className="h-32 w-28 rounded-2xl bg-gray-200" />
-
-            <div className="flex-1">
-              <div className="h-3 w-20 rounded bg-gray-200" />
-              <div className="mt-3 h-5 w-48 rounded bg-gray-200" />
-              <div className="mt-4 h-7 w-28 rounded bg-gray-200" />
-            </div>
-          </div>
-        </div>
-      ))}
+      )}
     </div>
   );
 }

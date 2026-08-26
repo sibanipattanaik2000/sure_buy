@@ -9,13 +9,15 @@ import {
   useState,
 } from "react";
 
-/* =========================================================
-   API CONFIG
-========================================================= */
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000/api/v1";
+import {
+  addCartItem,
+  clearCartApi,
+  deleteCartItem,
+  getCart,
+  updateCartItem,
+  validateCart as validateCartApi,
+  type CartResponse,
+} from "@/app/lib/api";
 
 /* =========================================================
    TYPES
@@ -45,11 +47,23 @@ export type CartItem = {
   stock: number;
 };
 
-type AddToCartProduct = Omit<
-  CartItem,
-  "cartId" | "quantity" | "variantId" | "stock"
-> & {
+type AddToCartProduct = {
+  id: string | number;
   variantId?: number | null;
+
+  name: string;
+  brand?: string;
+  category?: string;
+
+  storage?: string;
+  color?: string;
+  condition?: string;
+
+  price?: number;
+  originalPrice?: number;
+
+  warranty?: string;
+  image?: string;
 };
 
 type CartContextType = {
@@ -101,105 +115,6 @@ type CartContextType = {
 };
 
 /* =========================================================
-   API RESPONSE TYPES
-========================================================= */
-
-type ApiCartItem = {
-  id: string;
-
-  productId: number;
-  variantId: number | null;
-
-  quantity: number;
-
-  unitPrice: number | string;
-  subtotal: number | string;
-
-  product: {
-    id: number;
-    slug: string;
-    brand: string;
-    name: string;
-    category: string;
-    condition: string;
-
-    price: number | string;
-    originalPrice: number | string;
-
-    warranty: string;
-
-    rating: number | string;
-    reviewCount: number;
-
-    image:
-      | {
-          id: number;
-          url: string;
-          altText?: string | null;
-        }
-      | null;
-  };
-
-  variant: {
-    id: number;
-
-    storage: string;
-    color: string;
-
-    price: number | string;
-    originalPrice: number | string;
-
-    stock: number;
-
-    image:
-      | {
-          id: number;
-          url: string;
-          altText?: string | null;
-        }
-      | null;
-  } | null;
-};
-
-type ApiCart = {
-  id: string;
-  userId: string;
-
-  items: ApiCartItem[];
-
-  summary: {
-    itemCount: number;
-    totalQuantity: number;
-    subtotal: number | string;
-  };
-
-  createdAt: string;
-  updatedAt: string;
-};
-
-type CartApiResponse = {
-  success: boolean;
-  message?: string;
-  data?: ApiCart;
-};
-
-type CartValidationResponse = {
-  success: boolean;
-  message?: string;
-  data?: {
-    valid: boolean;
-
-    issues: Array<{
-      itemId: string;
-      code: string;
-      message: string;
-    }>;
-
-    cart: ApiCart;
-  };
-};
-
-/* =========================================================
    HELPERS
 ========================================================= */
 
@@ -213,44 +128,23 @@ function toNumber(
   if (typeof value === "string") {
     const parsed = Number(value);
 
-    return Number.isFinite(parsed) ? parsed : 0;
+    return Number.isFinite(parsed)
+      ? parsed
+      : 0;
   }
 
   return 0;
 }
 
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
+function getErrorMessage(
+  error: unknown,
+  fallback: string,
+): string {
+  if (error instanceof Error) {
+    return error.message;
   }
 
-  /*
-   * Your backend expects:
-   *
-   * Authorization: Bearer <token>
-   *
-   * Keep this lookup compatible with the token
-   * storage used by the existing frontend.
-   */
-const possibleKeys = [
-  "phonebhai-access-token",
-  "accessToken",
-  "access_token",
-  "token",
-  "userToken",
-  "authToken",
-  "PhoneBhai_token",
-];
-
-  for (const key of possibleKeys) {
-    const token = localStorage.getItem(key);
-
-    if (token) {
-      return token;
-    }
-  }
-
-  return null;
+  return fallback;
 }
 
 /* =========================================================
@@ -284,33 +178,62 @@ export function CartProvider({
     useState<string | null>(null);
 
   /* =======================================================
-     NORMALIZE BACKEND CART
+     NORMALIZE API CART
   ======================================================= */
 
   const normalizeCart = useCallback(
-    (cart: ApiCart): CartItem[] => {
+    (cart: CartResponse): CartItem[] => {
+      if (!cart?.items) {
+        return [];
+      }
+
       return cart.items.map((item) => {
+        const product = item.product;
         const variant = item.variant;
 
-        const productImage =
-          item.product.image?.url || "";
-
+        /*
+         * api.ts currently types variant.image as unknown.
+         *
+         * The backend may return:
+         * { id, url, altText }
+         */
         const variantImage =
-          variant?.image?.url || "";
+          variant?.image &&
+          typeof variant.image === "object" &&
+          "url" in variant.image &&
+          typeof (
+            variant.image as {
+              url?: unknown;
+            }
+          ).url === "string"
+            ? (
+                variant.image as {
+                  url: string;
+                }
+              ).url
+            : "";
+
+        const productImage =
+          typeof product.image === "string"
+            ? product.image
+            : "";
 
         return {
           cartId: item.id,
 
-          id: String(item.product.id),
+          id: String(item.productId),
 
           variantId:
             item.variantId ?? null,
 
-          name: item.product.name,
+          name:
+            product.name || "Unknown product",
 
-          brand: item.product.brand,
+          brand:
+            product.brand || "",
 
-          category: item.product.category,
+          category:
+            product.category || "",
 
           storage:
             variant?.storage || "",
@@ -319,19 +242,19 @@ export function CartProvider({
             variant?.color || "",
 
           condition:
-            item.product.condition,
+            product.condition || "",
 
-          price: toNumber(
-            item.unitPrice,
-          ),
+          price:
+            toNumber(item.unitPrice),
 
-          originalPrice: toNumber(
-            variant?.originalPrice ??
-              item.product.originalPrice,
-          ),
+          originalPrice:
+            toNumber(
+              variant?.originalPrice ??
+                product.originalPrice,
+            ),
 
           warranty:
-            item.product.warranty,
+            product.warranty || "",
 
           image:
             variantImage ||
@@ -340,95 +263,15 @@ export function CartProvider({
           quantity:
             Math.max(
               1,
-              item.quantity,
+              Number(item.quantity) || 1,
             ),
 
           stock:
-            variant?.stock ?? 0,
+            typeof variant?.stock === "number"
+              ? variant.stock
+              : 0,
         };
       });
-    },
-    [],
-  );
-
-  /* =======================================================
-     AUTHENTICATED API REQUEST
-  ======================================================= */
-
-  const apiRequest = useCallback(
-    async <T,>(
-      endpoint: string,
-      options?: RequestInit,
-    ): Promise<T> => {
-      const token =
-        getAuthToken();
-
-      if (!token) {
-        throw new Error(
-          "Please sign in to use your cart.",
-        );
-      }
-
-      const response =
-        await fetch(
-          `${API_BASE_URL}${endpoint}`,
-          {
-            ...options,
-
-            headers: {
-              Accept:
-                "application/json",
-
-              "Content-Type":
-                "application/json",
-
-              Authorization:
-                `Bearer ${token}`,
-
-              ...(options?.headers || {}),
-            },
-
-            cache: "no-store",
-          },
-        );
-
-      let payload:
-        | T
-        | {
-            success?: boolean;
-            message?: string;
-          };
-
-      try {
-        payload =
-          await response.json();
-      } catch {
-        throw new Error(
-          "The server returned an invalid response.",
-        );
-      }
-
-      if (!response.ok) {
-        const message =
-          typeof payload === "object" &&
-          payload !== null &&
-          "message" in payload
-            ? String(
-                (
-                  payload as {
-                    message?: string;
-                  }
-                ).message ||
-                  "Cart request failed.",
-              )
-            : "Cart request failed.";
-
-        throw new Error(
-          message,
-        );
-      }
-
-      return payload as T;
     },
     [],
   );
@@ -439,43 +282,46 @@ export function CartProvider({
 
   const refreshCart =
     useCallback(async () => {
-      const token =
-        getAuthToken();
-
-      /*
-       * Guest users don't have a backend cart.
-       *
-       * We intentionally don't create fake backend
-       * cart records without authentication.
-       */
-      if (!token) {
-        setCartItems([]);
-        setLoading(false);
-        return;
-      }
-
       try {
         setError(null);
 
         const response =
-          await apiRequest<CartApiResponse>(
-            "/cart",
-          );
+          await getCart();
 
+        /*
+         * A logged-out user may receive 401.
+         *
+         * The cart should simply appear empty.
+         * We do NOT throw another error here.
+         */
         if (
           !response.success ||
           !response.data
         ) {
-          throw new Error(
-            response.message ||
-              "Unable to load your cart.",
-          );
+          setCartItems([]);
+
+          if (response.message) {
+            /*
+             * Don't display authentication errors
+             * during initial guest browsing.
+             */
+            if (
+              !response.message
+                .toLowerCase()
+                .includes("sign in") &&
+              !response.message
+                .toLowerCase()
+                .includes("unauthorized")
+            ) {
+              setError(response.message);
+            }
+          }
+
+          return;
         }
 
         setCartItems(
-          normalizeCart(
-            response.data,
-          ),
+          normalizeCart(response.data),
         );
       } catch (requestError) {
         console.error(
@@ -483,21 +329,36 @@ export function CartProvider({
           requestError,
         );
 
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Unable to load your cart.",
-        );
+        /*
+         * A logged-out user should still be able
+         * to browse the website.
+         */
+        setCartItems([]);
+
+        const message =
+          getErrorMessage(
+            requestError,
+            "",
+          );
+
+        if (
+          message &&
+          !message
+            .toLowerCase()
+            .includes("sign in") &&
+          !message
+            .toLowerCase()
+            .includes("unauthorized")
+        ) {
+          setError(message);
+        }
       } finally {
         setLoading(false);
       }
-    }, [
-      apiRequest,
-      normalizeCart,
-    ]);
+    }, [normalizeCart]);
 
   /* =======================================================
-     INITIAL LOAD
+     INITIAL CART LOAD
   ======================================================= */
 
   useEffect(() => {
@@ -519,9 +380,7 @@ export function CartProvider({
             99,
             Math.max(
               1,
-              Math.floor(
-                quantity,
-              ),
+              Math.floor(quantity),
             ),
           );
 
@@ -530,26 +389,17 @@ export function CartProvider({
           setError(null);
 
           const response =
-            await apiRequest<CartApiResponse>(
-              "/cart/items",
-              {
-                method: "POST",
+            await addCartItem({
+              productId:
+                String(product.id),
 
-                body: JSON.stringify({
-                  productId:
-                    Number(
-                      product.id,
-                    ),
+              variantId:
+                product.variantId ??
+                undefined,
 
-                  variantId:
-                    product.variantId ??
-                    null,
-
-                  quantity:
-                    safeQuantity,
-                }),
-              },
-            );
+              quantity:
+                safeQuantity,
+            });
 
           if (
             !response.success ||
@@ -573,23 +423,34 @@ export function CartProvider({
           );
 
           const message =
-            requestError instanceof Error
-              ? requestError.message
-              : "Unable to add item to cart.";
+            getErrorMessage(
+              requestError,
+              "Unable to add item to cart.",
+            );
 
           setError(message);
 
-          throw new Error(
-            message,
-          );
+          /*
+           * IMPORTANT:
+           *
+           * Do NOT throw the error again.
+           *
+           * The old implementation did:
+           *
+           * setError(message);
+           * throw new Error(message);
+           *
+           * That caused:
+           * "unhandledRejection"
+           *
+           * The UI already receives the error through
+           * the context's `error` state.
+           */
         } finally {
           setSyncing(false);
         }
       },
-      [
-        apiRequest,
-        normalizeCart,
-      ],
+      [normalizeCart],
     );
 
   /* =======================================================
@@ -607,9 +468,7 @@ export function CartProvider({
             99,
             Math.max(
               1,
-              Math.floor(
-                quantity,
-              ),
+              Math.floor(quantity),
             ),
           );
 
@@ -618,18 +477,9 @@ export function CartProvider({
           setError(null);
 
           const response =
-            await apiRequest<CartApiResponse>(
-              `/cart/items/${encodeURIComponent(
-                cartId,
-              )}`,
-              {
-                method: "PATCH",
-
-                body: JSON.stringify({
-                  quantity:
-                    safeQuantity,
-                }),
-              },
+            await updateCartItem(
+              cartId,
+              safeQuantity,
             );
 
           if (
@@ -654,27 +504,22 @@ export function CartProvider({
           );
 
           const message =
-            requestError instanceof Error
-              ? requestError.message
-              : "Unable to update quantity.";
+            getErrorMessage(
+              requestError,
+              "Unable to update quantity.",
+            );
 
           setError(message);
 
           /*
-           * Refresh from backend so the UI reflects
-           * the authoritative stock/quantity.
+           * Re-sync with backend.
            */
           await refreshCart();
-
-          throw new Error(
-            message,
-          );
         } finally {
           setSyncing(false);
         }
       },
       [
-        apiRequest,
         normalizeCart,
         refreshCart,
       ],
@@ -686,9 +531,7 @@ export function CartProvider({
 
   const increaseQuantity =
     useCallback(
-      async (
-        cartId: string,
-      ) => {
+      async (cartId: string) => {
         const item =
           cartItems.find(
             (cartItem) =>
@@ -728,9 +571,7 @@ export function CartProvider({
 
   const decreaseQuantity =
     useCallback(
-      async (
-        cartId: string,
-      ) => {
+      async (cartId: string) => {
         const item =
           cartItems.find(
             (cartItem) =>
@@ -742,9 +583,7 @@ export function CartProvider({
           return;
         }
 
-        if (
-          item.quantity <= 1
-        ) {
+        if (item.quantity <= 1) {
           await removeFromCart(
             cartId,
           );
@@ -764,26 +603,19 @@ export function CartProvider({
     );
 
   /* =======================================================
-     REMOVE ITEM
+     REMOVE FROM CART
   ======================================================= */
 
   const removeFromCart =
     useCallback(
-      async (
-        cartId: string,
-      ) => {
+      async (cartId: string) => {
         try {
           setSyncing(true);
           setError(null);
 
           const response =
-            await apiRequest<CartApiResponse>(
-              `/cart/items/${encodeURIComponent(
-                cartId,
-              )}`,
-              {
-                method: "DELETE",
-              },
+            await deleteCartItem(
+              cartId,
             );
 
           if (
@@ -807,23 +639,21 @@ export function CartProvider({
             requestError,
           );
 
-          const message =
-            requestError instanceof Error
-              ? requestError.message
-              : "Unable to remove item.";
-
-          setError(message);
-
-          throw new Error(
-            message,
+          setError(
+            getErrorMessage(
+              requestError,
+              "Unable to remove item.",
+            ),
           );
+
+          await refreshCart();
         } finally {
           setSyncing(false);
         }
       },
       [
-        apiRequest,
         normalizeCart,
+        refreshCart,
       ],
     );
 
@@ -838,12 +668,7 @@ export function CartProvider({
         setError(null);
 
         const response =
-          await apiRequest<CartApiResponse>(
-            "/cart",
-            {
-              method: "DELETE",
-            },
-          );
+          await clearCartApi();
 
         if (
           !response.success ||
@@ -866,22 +691,20 @@ export function CartProvider({
           requestError,
         );
 
-        const message =
-          requestError instanceof Error
-            ? requestError.message
-            : "Unable to clear cart.";
-
-        setError(message);
-
-        throw new Error(
-          message,
+        setError(
+          getErrorMessage(
+            requestError,
+            "Unable to clear cart.",
+          ),
         );
+
+        await refreshCart();
       } finally {
         setSyncing(false);
       }
     }, [
-      apiRequest,
       normalizeCart,
+      refreshCart,
     ]);
 
   /* =======================================================
@@ -895,12 +718,7 @@ export function CartProvider({
         setError(null);
 
         const response =
-          await apiRequest<CartValidationResponse>(
-            "/cart/validate",
-            {
-              method: "POST",
-            },
-          );
+          await validateCartApi();
 
         if (
           !response.success ||
@@ -923,7 +741,7 @@ export function CartProvider({
         ) {
           const firstIssue =
             response.data
-              .issues[0];
+              .issues?.[0];
 
           setError(
             firstIssue?.message ||
@@ -940,24 +758,21 @@ export function CartProvider({
           requestError,
         );
 
-        const message =
-          requestError instanceof Error
-            ? requestError.message
-            : "Unable to validate cart.";
-
-        setError(message);
+        setError(
+          getErrorMessage(
+            requestError,
+            "Unable to validate cart.",
+          ),
+        );
 
         return false;
       } finally {
         setSyncing(false);
       }
-    }, [
-      apiRequest,
-      normalizeCart,
-    ]);
+    }, [normalizeCart]);
 
   /* =======================================================
-     CHECK IF VARIANT IS IN CART
+     CHECK IF PRODUCT / VARIANT IS IN CART
   ======================================================= */
 
   const isInCart =
@@ -970,7 +785,7 @@ export function CartProvider({
         return cartItems.some(
           (item) =>
             item.id ===
-              productId &&
+              String(productId) &&
             item.storage ===
               storage &&
             item.color ===
@@ -989,8 +804,7 @@ export function CartProvider({
       () =>
         cartItems.reduce(
           (total, item) =>
-            total +
-            item.quantity,
+            total + item.quantity,
           0,
         ),
       [cartItems],
@@ -1059,7 +873,7 @@ export function CartProvider({
   ======================================================= */
 
   const value =
-    useMemo(
+    useMemo<CartContextType>(
       () => ({
         cartItems,
 
@@ -1137,11 +951,9 @@ export function CartProvider({
    HOOK
 ========================================================= */
 
-export function useCart() {
+export function useCart(): CartContextType {
   const context =
-    useContext(
-      CartContext,
-    );
+    useContext(CartContext);
 
   if (!context) {
     throw new Error(

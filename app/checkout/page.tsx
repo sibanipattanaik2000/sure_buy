@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 
 import { DeliveryAddress, useCheckout } from "../context/CheckoutContext";
 import {
+  addCartItem,
   createAddress,
   createOrder,
   getAddresses,
@@ -153,296 +154,340 @@ export default function CheckoutPage() {
    * SUBMIT
    */
 
-const handleSubmit = async (
-  event: FormEvent<HTMLFormElement>,
-) => {
-  event.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  setError("");
+    setError("");
 
-  if (placingOrder) {
-    return;
-  }
-
-  /* ================================
-     ADDRESS VALIDATION
-  ================================= */
-
-  if (
-    !form.fullName.trim() ||
-    !form.phone.trim() ||
-    !form.pincode.trim() ||
-    !form.address.trim() ||
-    !form.area.trim() ||
-    !form.city.trim() ||
-    !form.state.trim()
-  ) {
-    setError(
-      "Please fill in all delivery address details.",
-    );
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-
-    return;
-  }
-
-  if (!/^[6-9]\d{9}$/.test(form.phone)) {
-    setError(
-      "Please enter a valid 10-digit mobile number.",
-    );
-
-    return;
-  }
-
-  if (!/^\d{6}$/.test(form.pincode)) {
-    setError(
-      "Please enter a valid 6-digit PIN code.",
-    );
-
-    return;
-  }
-
-  /* ================================
-     PAYMENT VALIDATION
-  ================================= */
-
-  if (!paymentMethod) {
-    setError(
-      "Please select a payment method.",
-    );
-
-    return;
-  }
-
-  /*
-   * Backend currently accepts only:
-   *
-   * COD
-   * UPI
-   * CARD
-   *
-   * EMI is not yet implemented by the backend.
-   */
-  if (paymentMethod === "emi") {
-    setError(
-      "EMI payment is currently unavailable. Please select UPI, Card, or Cash on Delivery.",
-    );
-
-    return;
-  }
-
-  setPlacingOrder(true);
-
-  try {
-    /* ================================
-       FIND OR CREATE ADDRESS
-    ================================= */
-
-    const addressesResponse =
-      await getAddresses();
-
-    if (
-      !addressesResponse.success
-    ) {
-      throw new Error(
-        addressesResponse.message ||
-          "Unable to load saved addresses.",
-      );
+    if (placingOrder) {
+      return;
     }
 
-    const savedAddresses =
-      addressesResponse.data ?? [];
+    /* =====================================================
+     ADDRESS VALIDATION
+  ===================================================== */
 
-    const addressLine1 =
-      `${form.address.trim()}, ${form.area.trim()}`;
+    const fullName = form.fullName.trim();
+    const phone = form.phone.trim();
+    const pincode = form.pincode.trim();
+    const address = form.address.trim();
+    const area = form.area.trim();
+    const city = form.city.trim();
+    const state = form.state.trim();
 
-    const existingAddress =
-      savedAddresses.find(
-        (address) =>
-          address.fullName.trim() ===
-            form.fullName.trim() &&
-          address.phone ===
-            form.phone &&
-          address.addressLine1.trim() ===
-            addressLine1 &&
-          address.city.trim().toLowerCase() ===
-            form.city.trim().toLowerCase() &&
-          address.state.trim().toLowerCase() ===
-            form.state.trim().toLowerCase() &&
-          address.pincode ===
-            form.pincode,
-      );
+    if (
+      !fullName ||
+      !phone ||
+      !pincode ||
+      !address ||
+      !area ||
+      !city ||
+      !state
+    ) {
+      setError("Please fill in all delivery address details.");
 
-    let addressId: string;
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
 
-    if (existingAddress) {
-      addressId =
-        existingAddress.id;
-    } else {
-      const addressResponse =
-        await createAddress({
-          fullName:
-            form.fullName.trim(),
+      return;
+    }
 
-          phone:
-            form.phone.trim(),
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
 
-          addressLine1,
+    if (!/^\d{6}$/.test(pincode)) {
+      setError("Please enter a valid 6-digit PIN code.");
+      return;
+    }
 
-          addressLine2:
-            undefined,
+    if (fullName.length < 2) {
+      setError("Full name must be at least 2 characters.");
+      return;
+    }
 
-          city:
-            form.city.trim(),
+    if (city.length < 2) {
+      setError("Please enter a valid city.");
+      return;
+    }
 
-          state:
-            form.state.trim(),
+    if (state.length < 2) {
+      setError("Please enter a valid state.");
+      return;
+    }
 
-          pincode:
-            form.pincode.trim(),
+    /* =====================================================
+     BUILD ADDRESS
+  ===================================================== */
 
-          landmark:
-            undefined,
+    const addressLine1 = `${address}, ${area}`.trim();
 
-          isDefault:
-            savedAddresses.length === 0,
-        });
+    if (addressLine1.length < 5) {
+      setError("Please enter a complete delivery address.");
+      return;
+    }
 
-      if (
-        !addressResponse.success ||
-        !addressResponse.data
-      ) {
+    if (addressLine1.length > 200) {
+      setError("Delivery address is too long. Please shorten it.");
+      return;
+    }
+
+    /* =====================================================
+     PAYMENT VALIDATION
+  ===================================================== */
+
+    if (!paymentMethod) {
+      setError("Please select a payment method.");
+      return;
+    }
+
+    setPlacingOrder(true);
+
+    try {
+      /* =====================================================
+       GET EXISTING ADDRESSES
+    ===================================================== */
+
+      const addressesResponse = await getAddresses();
+
+      if (!addressesResponse.success) {
         throw new Error(
-          addressResponse.message ||
-            "Unable to save delivery address.",
+          addressesResponse.message || "Unable to load saved addresses.",
         );
       }
 
-      addressId =
-        addressResponse.data.id;
-    }
+      const savedAddresses = addressesResponse.data ?? [];
 
-    /* ================================
-       KEEP EXISTING CHECKOUT STATE
-    ================================= */
+      /* =====================================================
+       FIND EXISTING ADDRESS
+    ===================================================== */
 
-    setAddress(form);
-
-    /* ================================
-       NORMALIZE PAYMENT METHOD
-    ================================= */
-
-    const backendPaymentMethod =
-      paymentMethod === "cod"
-        ? "COD"
-        : paymentMethod === "upi"
-          ? "UPI"
-          : "CARD";
-
-    /* ================================
-       CREATE REAL BACKEND ORDER
-    ================================= */
-
-    const orderResponse =
-      await createOrder({
-        addressId,
-        paymentMethod:
-          backendPaymentMethod,
+      const existingAddress = savedAddresses.find((savedAddress) => {
+        const savedPostalCode = savedAddress.postalCode?.trim();
+        return (
+          savedAddress.fullName.trim().toLowerCase() ===
+            fullName.toLowerCase() &&
+          savedAddress.phone.trim() === phone &&
+          savedAddress.addressLine1.trim().toLowerCase() ===
+            addressLine1.toLowerCase() &&
+          savedAddress.city.trim().toLowerCase() === city.toLowerCase() &&
+          savedAddress.state.trim().toLowerCase() === state.toLowerCase() &&
+          savedPostalCode === pincode
+        );
       });
 
-    if (
-      !orderResponse.success ||
-      !orderResponse.data
-    ) {
-      throw new Error(
-        orderResponse.message ||
-          "Unable to place your order.",
+      let addressId: string;
+
+      /* =====================================================
+       USE EXISTING ADDRESS
+    ===================================================== */
+
+      if (existingAddress) {
+        addressId = existingAddress.id;
+      } else {
+        /* ===================================================
+         CREATE ADDRESS
+
+         IMPORTANT:
+         createAddress() in api.ts expects `pincode`.
+
+         api.ts converts:
+         pincode -> postalCode
+
+         Backend expects:
+         postalCode
+         =================================================== */
+
+        const addressPayload = {
+          fullName,
+          phone,
+          addressLine1,
+          city,
+          state,
+          postalCode: pincode,
+          isDefault: savedAddresses.length === 0,
+        };
+
+        console.log("Creating checkout address:", addressPayload);
+
+        const addressResponse = await createAddress(addressPayload);
+
+        if (!addressResponse.success || !addressResponse.data) {
+          throw new Error(
+            addressResponse.message || "Unable to save delivery address.",
+          );
+        }
+
+        addressId = addressResponse.data.id;
+      }
+
+      /* =====================================================
+       KEEP CHECKOUT CONTEXT IN SYNC
+    ===================================================== */
+
+      setAddress({
+        fullName,
+        phone,
+        pincode,
+        address,
+        area,
+        city,
+        state,
+      });
+
+      /* =====================================================
+       NORMALIZE PAYMENT METHOD
+    ===================================================== */
+
+      const backendPaymentMethod =
+        paymentMethod === "cod"
+          ? "COD"
+          : paymentMethod === "upi"
+            ? "UPI"
+            : paymentMethod === "emi"
+              ? "EMI"
+              : "CARD";
+
+      /* =====================================================
+   ENSURE PRODUCTS EXIST IN BACKEND CART
+===================================================== */
+
+      if (checkout.source === "buy-now") {
+        const buyNowProduct = products[0];
+
+        if (!buyNowProduct) {
+          throw new Error("No product selected for checkout.");
+        }
+
+        console.log("Adding Buy Now product to backend cart:", {
+          productId: buyNowProduct.id,
+          variantId: buyNowProduct.variantId,
+          quantity: buyNowProduct.quantity ?? 1,
+        });
+
+        const cartResponse = await addCartItem({
+          productId: buyNowProduct.id,
+          ...(buyNowProduct.variantId !== null &&
+          buyNowProduct.variantId !== undefined
+            ? {
+                variantId: buyNowProduct.variantId,
+              }
+            : {}),
+          quantity: Math.max(1, buyNowProduct.quantity || 1),
+        });
+
+        if (!cartResponse.success) {
+          throw new Error(
+            cartResponse.message || "Unable to add the product to your cart.",
+          );
+        }
+      }
+
+      /* =====================================================
+   CREATE BACKEND ORDER
+===================================================== */
+
+      const orderResponse = await createOrder({
+        addressId,
+        paymentMethod: backendPaymentMethod,
+      });
+
+      if (!orderResponse.success || !orderResponse.data) {
+        throw new Error(orderResponse.message || "Unable to place your order.");
+      }
+
+      const order = orderResponse.data;
+
+      /* =====================================================
+       SUCCESS PAGE ADAPTER
+    ===================================================== */
+
+      const firstItem = order.items?.[0];
+
+      sessionStorage.setItem(
+        "PhoneBhai-order",
+        JSON.stringify({
+          orderId: order.orderNumber || order.id,
+
+          productName: firstItem?.productName || "",
+
+          productImage: firstItem?.imageUrl || "",
+          brand: "",
+
+          storage: "",
+
+          color: "",
+
+          price: firstItem?.unitPrice || 0,
+          paymentMethod: backendPaymentMethod,
+
+          deliveryDate: "3–5 business days",
+        }),
       );
-    }
 
-    const order =
-      orderResponse.data;
+      /* =====================================================
+                  CLEAR CLIENT STATE
+        ===================================================== */
 
-    /* ================================
-       TEMPORARY SUCCESS-PAGE ADAPTER
-    ================================= */
+      try {
+        await clearCart();
+      } catch (cartError) {
+        /*
+         * The order has already been successfully created.
+         * Cart cleanup must never prevent the user
+         * from reaching the order-success page.
+         */
+        console.warn("Cart cleanup skipped after successful order:", cartError);
+      }
 
-    /*
-     * We are NOT changing order-success
-     * yet.
-     *
-     * This simply adapts the real backend
-     * response to the data shape that the
-     * existing success page currently expects.
-     */
+      clearCheckout();
 
-   const firstItem =
-  order.items?.[0];
+      /* =====================================================
+                           REDIRECT
+===================================================== */
 
-sessionStorage.setItem(
-  "PhoneBhai-order",
-  JSON.stringify({
-    orderId:
-      order.orderNumber ||
-      order.id,
 
-    productName:
-      firstItem?.productName ||
-      "",
+/* =====================================================
+   CLEAR CLIENT STATE
+===================================================== */
 
-    productImage:
-      firstItem?.image ||
-      "",
+try {
+  await clearCart();
+} catch (cartError) {
+  /*
+   * Order has already been created successfully.
+   * Cart cleanup failure must not block success page.
+   */
+  console.warn(
+    "Cart cleanup skipped after successful order:",
+    cartError,
+  );
+}
 
-    brand: "",
+clearCheckout();
 
-    storage: "",
+/* =====================================================
+   REDIRECT TO ORDER SUCCESS
+===================================================== */
 
-    color: "",
-
-    price:
-      order.totalAmount || 0,
-
-    paymentMethod:
-      backendPaymentMethod,
-
-    deliveryDate:
-      "3–5 business days",
-  }),
+router.replace(
+  `/order-success?orderId=${encodeURIComponent(order.id)}`,
 );
+    } catch (requestError) {
+      console.error("Failed to place order:", requestError);
 
-    /* ================================
-       CLEAR CLIENT STATE
-    ================================= */
-
-    clearCart();
-    clearCheckout();
-
-    /* ================================
-       GO TO EXISTING SUCCESS PAGE
-    ================================= */
-
-    router.push(
-      "/order-success",
-    );
-  } catch (requestError) {
-    console.error(
-      "Failed to place order:",
-      requestError,
-    );
-
-    setError(
-      requestError instanceof Error
-        ? requestError.message
-        : "Something went wrong while placing your order. Please try again.",
-    );
-  } finally {
-    setPlacingOrder(false);
-  }
-};
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Something went wrong while placing your order. Please try again.",
+      );
+    } finally {
+      setPlacingOrder(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
@@ -675,7 +720,7 @@ sessionStorage.setItem(
                   onClick={() => setPaymentMethod("upi")}
                   icon={<Wallet size={19} />}
                   title="UPI"
-                  description="Google Pay, PhonePe, Paytm and other UPI apps"
+                  description="Pay using your UPI app"
                 />
 
                 <PaymentOption

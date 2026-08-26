@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Check,
@@ -12,38 +13,60 @@ import {
   ShieldCheck,
   Truck,
 } from "lucide-react";
+import { getOrder } from "@/app/lib/api";
 
-type OrderProduct = {
+type TrackOrderItem = {
   id: string;
-  name: string;
-  brand: string;
-  image: string;
-  storage?: string;
-  color?: string;
-  price: number;
+  productId: number;
+  variantId?: number | null;
+
+  productName?: string | null;
+  brand?: string | null;
+  category?: string | null;
+  condition?: string | null;
+
+  storage?: string | null;
+  color?: string | null;
+  imageUrl?: string | null;
+
+  unitPrice?: number | string | null;
+  quantity?: number | null;
+  subtotal?: number | string | null;
 };
 
-type Order = {
-  orderId: string;
-  createdAt: string;
+type TrackOrder = {
+  id: string;
+  orderNumber?: string | null;
+
   status: string;
-  paymentMethod: string;
   paymentStatus: string;
-  product: OrderProduct;
-  quantity: number;
-  total: number;
-  address: {
-    name: string;
-    phone: string;
-    address: string;
-    city: string;
-    state: string;
-    pincode: string;
-  };
-  expectedDelivery?: string;
+  paymentMethod: string;
+
+  totalAmount: number | string;
+
+  createdAt: string;
+  updatedAt: string;
+
+  shippingAddress?: {
+    fullName?: string | null;
+    phone?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+    area?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+    landmark?: string | null;
+  } | null;
+
+  items: TrackOrderItem[];
 };
 
-const STORAGE_KEY = "PhoneBhai-order";
+type ApiErrorLike = {
+  status?: number;
+  message?: string;
+};
 
 const trackingSteps = [
   {
@@ -84,38 +107,155 @@ const trackingSteps = [
   },
 ];
 
+function isApiError(error: unknown): error is ApiErrorLike {
+  return typeof error === "object" && error !== null;
+}
+
+function formatCurrency(value: number | string | null | undefined) {
+  const amount = Number(value ?? 0);
+
+  return `₹${amount.toLocaleString("en-IN")}`;
+}
+
+function formatStatus(status: string) {
+  return status
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatDate(date: string) {
+  if (!date) {
+    return "";
+  }
+
+  const parsed = new Date(date);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return parsed.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function TrackOrderPage() {
-  const [order, setOrder] = useState<Order | null>(null);
+  const params = useParams<{ id: string }>();
+
+  const orderId = params?.id;
+
+  const [order, setOrder] = useState<TrackOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const savedOrder = localStorage.getItem(STORAGE_KEY);
-
-      if (savedOrder) {
-        const parsedOrder = JSON.parse(savedOrder) as Order;
-        setOrder(parsedOrder);
-      }
-    } catch (error) {
-      console.error("Failed to load order:", error);
-    } finally {
+    if (!orderId) {
       setLoading(false);
+      setError("Invalid order ID.");
+      return;
     }
-  }, []);
+
+    let cancelled = false;
+
+    const loadOrder = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await getOrder(String(orderId));
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Unable to load order details.");
+        }
+
+        setOrder(response.data as TrackOrder);
+      } catch (error: unknown) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("TRACK ORDER LOAD ERROR:", error);
+
+        if (isApiError(error)) {
+          if (error.status === 401) {
+            setError("Please sign in to view this order.");
+          } else if (error.status === 404) {
+            setError("This order could not be found.");
+          } else {
+            setError(error.message || "Unable to load tracking details.");
+          }
+        } else if (error instanceof Error) {
+          setError(error.message || "Unable to load tracking details.");
+        } else {
+          setError("Unable to load tracking details.");
+        }
+
+        setOrder(null);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadOrder();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId]);
 
   const currentStep = useMemo(() => {
-    if (!order) return 0;
+    if (!order) {
+      return 0;
+    }
 
-    const status = order.status.toLowerCase();
+    const status = order.status.toUpperCase();
+    const paymentStatus = order.paymentStatus.toUpperCase();
 
-    if (status.includes("deliver")) return 5;
-    if (status.includes("out")) return 4;
-    if (status.includes("ship")) return 3;
-    if (status.includes("pack")) return 2;
-    if (status.includes("payment")) return 1;
+    if (status === "CANCELLED" || status === "REFUNDED") {
+      return -1;
+    }
+
+    if (status === "DELIVERED") {
+      return 5;
+    }
+
+    if (status === "OUT_FOR_DELIVERY" || status === "OUT FOR DELIVERY") {
+      return 4;
+    }
+
+    if (status === "SHIPPED") {
+      return 3;
+    }
+
+    if (status === "PROCESSING" || status === "PACKED") {
+      return 2;
+    }
+
+    if (status === "CONFIRMED" && paymentStatus === "PAID") {
+      return 1;
+    }
+
+    if (status === "CONFIRMED") {
+      return 0;
+    }
 
     return 0;
   }, [order]);
+
+  const primaryItem = order?.items?.[0] ?? null;
+
+  const displayOrderId = order?.orderNumber || order?.id || String(orderId);
+
+  const expectedDelivery = undefined;
 
   if (loading) {
     return (
@@ -139,12 +279,10 @@ export default function TrackOrderPage() {
             <Package size={28} className="text-red-500" />
           </div>
 
-          <h1 className="mt-6 text-2xl font-black">
-            Order not found
-          </h1>
+          <h1 className="mt-6 text-2xl font-black">Order not found</h1>
 
           <p className="mt-2 text-sm leading-6 text-gray-500">
-            We couldn't find tracking information for this order.
+            {error || "We couldn't find tracking information for this order."}
           </p>
 
           <Link
@@ -158,6 +296,8 @@ export default function TrackOrderPage() {
       </main>
     );
   }
+
+  const address = order.shippingAddress;
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
@@ -175,9 +315,7 @@ export default function TrackOrderPage() {
 
           <p className="mt-3 text-sm text-gray-500">
             Order ID:{" "}
-            <span className="font-bold text-gray-900">
-              {order.orderId}
-            </span>
+            <span className="font-bold text-gray-900">{displayOrderId}</span>
           </p>
         </div>
 
@@ -196,105 +334,138 @@ export default function TrackOrderPage() {
                 </p>
 
                 <h2 className="mt-1 text-xl font-black">
-                  {order.status || "Order confirmed"}
+                  {formatStatus(order.status)}
                 </h2>
               </div>
             </div>
 
-            {order.expectedDelivery && (
+            {expectedDelivery && (
               <div className="rounded-2xl bg-green-50 px-5 py-4">
                 <p className="text-xs font-bold text-green-700">
                   Expected delivery
                 </p>
 
                 <p className="mt-1 text-sm font-black text-green-800">
-                  {order.expectedDelivery}
+                  {expectedDelivery}
                 </p>
               </div>
             )}
+          </div>
+
+          <div className="mt-5 border-t border-gray-100 pt-5">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
+              <span>
+                Payment:{" "}
+                <strong className="text-gray-800">
+                  {formatStatus(order.paymentStatus)}
+                </strong>
+              </span>
+
+              <span>
+                Method:{" "}
+                <strong className="text-gray-800">
+                  {formatStatus(order.paymentMethod)}
+                </strong>
+              </span>
+
+              <span>
+                Placed:{" "}
+                <strong className="text-gray-800">
+                  {formatDate(order.createdAt)}
+                </strong>
+              </span>
+            </div>
           </div>
         </div>
 
         {/* TIMELINE */}
 
         <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-          <h2 className="text-xl font-black">
-            Delivery progress
-          </h2>
+          <h2 className="text-xl font-black">Delivery progress</h2>
 
           <p className="mt-2 text-sm text-gray-500">
             Follow your order from confirmation to delivery.
           </p>
 
-          <div className="mt-8">
-            {trackingSteps.map((step, index) => {
-              const Icon = step.icon;
-              const completed = index <= currentStep;
-              const active = index === currentStep;
+          {currentStep === -1 ? (
+            <div className="mt-6 rounded-2xl bg-red-50 p-5">
+              <p className="text-sm font-black text-red-700">
+                {formatStatus(order.status)}
+              </p>
 
-              return (
-                <div
-                  key={step.key}
-                  className="relative flex gap-4 pb-8 last:pb-0"
-                >
-                  {/* LINE */}
+              <p className="mt-1 text-xs leading-5 text-red-600">
+                This order is no longer progressing through the normal delivery
+                timeline.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-8">
+              {trackingSteps.map((step, index) => {
+                const Icon = step.icon;
 
-                  {index < trackingSteps.length - 1 && (
-                    <div
-                      className={`absolute left-5 top-11 h-[calc(100%-20px)] w-px ${
-                        index < currentStep
-                          ? "bg-indigo-600"
-                          : "bg-gray-200"
-                      }`}
-                    />
-                  )}
+                const completed = index <= currentStep;
+                const active = index === currentStep;
 
-                  {/* ICON */}
-
+                return (
                   <div
-                    className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                      completed
-                        ? "bg-indigo-600 text-white"
-                        : "border border-gray-200 bg-white text-gray-400"
-                    }`}
+                    key={step.key}
+                    className="relative flex gap-4 pb-8 last:pb-0"
                   >
-                    {completed && !active ? (
-                      <Check size={17} />
-                    ) : (
-                      <Icon size={18} />
-                    )}
-                  </div>
+                    {/* LINE */}
 
-                  {/* CONTENT */}
-
-                  <div className="flex-1 pt-0.5">
-                    <div className="flex flex-col justify-between gap-1 sm:flex-row">
-                      <h3
-                        className={`text-sm font-black ${
-                          completed
-                            ? "text-gray-950"
-                            : "text-gray-400"
+                    {index < trackingSteps.length - 1 && (
+                      <div
+                        className={`absolute left-5 top-11 h-[calc(100%-20px)] w-px ${
+                          index < currentStep ? "bg-indigo-600" : "bg-gray-200"
                         }`}
-                      >
-                        {step.title}
-                      </h3>
+                      />
+                    )}
 
-                      {active && (
-                        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-600">
-                          <Clock3 size={11} />
-                          Current
-                        </span>
+                    {/* ICON */}
+
+                    <div
+                      className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                        completed
+                          ? "bg-indigo-600 text-white"
+                          : "border border-gray-200 bg-white text-gray-400"
+                      }`}
+                    >
+                      {completed && !active ? (
+                        <Check size={17} />
+                      ) : (
+                        <Icon size={18} />
                       )}
                     </div>
 
-                    <p className="mt-1 text-xs leading-5 text-gray-500">
-                      {step.description}
-                    </p>
+                    {/* CONTENT */}
+
+                    <div className="flex-1 pt-0.5">
+                      <div className="flex flex-col justify-between gap-1 sm:flex-row">
+                        <h3
+                          className={`text-sm font-black ${
+                            completed ? "text-gray-950" : "text-gray-400"
+                          }`}
+                        >
+                          {step.title}
+                        </h3>
+
+                        {active && (
+                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-600">
+                            <Clock3 size={11} />
+                            Current
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* PRODUCT + ADDRESS */}
@@ -303,43 +474,81 @@ export default function TrackOrderPage() {
           {/* PRODUCT */}
 
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-black">
-              Your item
-            </h2>
+            <h2 className="text-lg font-black">Your item</h2>
 
-            <div className="mt-5 flex gap-4">
-              <div className="flex h-24 w-20 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
-                <img
-                  src={order.product.image}
-                  alt={order.product.name}
-                  className="h-full w-full object-contain"
-                />
+            {!primaryItem ? (
+              <p className="mt-5 text-sm text-gray-500">
+                No product information is available.
+              </p>
+            ) : (
+              <div className="mt-5 flex gap-4">
+                <div className="flex h-24 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gray-50 p-3">
+                  {primaryItem.imageUrl ? (
+                    <img
+                      src={primaryItem.imageUrl}
+                      alt={primaryItem.productName || "Ordered product"}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <Package size={28} className="text-gray-300" />
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  {primaryItem.brand && (
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      {primaryItem.brand}
+                    </p>
+                  )}
+
+                  <h3 className="mt-1 font-black">
+                    {primaryItem.productName || "Product"}
+                  </h3>
+
+                  {primaryItem.storage && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Storage: {primaryItem.storage}
+                    </p>
+                  )}
+
+                  {primaryItem.color && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Color: {primaryItem.color}
+                    </p>
+                  )}
+
+                  {primaryItem.condition && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Condition: {formatStatus(primaryItem.condition)}
+                    </p>
+                  )}
+
+                  <p className="mt-3 text-sm font-black">
+                    {formatCurrency(
+                      primaryItem.subtotal ?? primaryItem.unitPrice,
+                    )}
+                  </p>
+
+                  {(primaryItem.quantity ?? 1) > 1 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Quantity: {primaryItem.quantity}
+                    </p>
+                  )}
+                </div>
               </div>
+            )}
 
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                  {order.product.brand}
-                </p>
+            {/* ORDER TOTAL */}
 
-                <h3 className="mt-1 font-black">
-                  {order.product.name}
-                </h3>
+            <div className="mt-6 border-t border-gray-100 pt-5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-500">
+                  Order total
+                </span>
 
-                {order.product.storage && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    {order.product.storage}
-                  </p>
-                )}
-
-                {order.product.color && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    {order.product.color}
-                  </p>
-                )}
-
-                <p className="mt-3 text-sm font-black">
-                  ₹{order.total.toLocaleString("en-IN")}
-                </p>
+                <span className="text-lg font-black">
+                  {formatCurrency(order.totalAmount)}
+                </span>
               </div>
             </div>
           </div>
@@ -347,33 +556,72 @@ export default function TrackOrderPage() {
           {/* ADDRESS */}
 
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-black">
-              Delivery address
-            </h2>
+            <h2 className="text-lg font-black">Delivery address</h2>
 
-            <div className="mt-5 flex gap-3">
-              <MapPin
-                size={19}
-                className="mt-0.5 shrink-0 text-indigo-600"
-              />
+            {!address ? (
+              <p className="mt-5 text-sm text-gray-500">
+                Delivery address is unavailable.
+              </p>
+            ) : (
+              <div className="mt-5 flex gap-3">
+                <MapPin size={19} className="mt-0.5 shrink-0 text-indigo-600" />
 
-              <div>
-                <p className="text-sm font-black">
-                  {order.address.name}
-                </p>
+                <div>
+                  {address.fullName && (
+                    <p className="text-sm font-black">{address.fullName}</p>
+                  )}
 
-                <p className="mt-2 text-sm leading-6 text-gray-500">
-                  {order.address.address}
-                  <br />
-                  {order.address.city}, {order.address.state} -{" "}
-                  {order.address.pincode}
-                </p>
+                  <p className="mt-2 text-sm leading-6 text-gray-500">
+                    {address.addressLine1}
 
-                <p className="mt-2 text-xs font-semibold text-gray-500">
-                  {order.address.phone}
-                </p>
+                    {address.addressLine2 && (
+                      <>
+                        <br />
+                        {address.addressLine2}
+                      </>
+                    )}
+
+                    {address.area && (
+                      <>
+                        <br />
+                        {address.area}
+                      </>
+                    )}
+
+                    {(address.city || address.state || address.postalCode) && (
+                      <>
+                        <br />
+                        {address.city}
+                        {address.city && address.state ? ", " : ""}
+                        {address.state}
+
+                        {address.postalCode ? ` - ${address.postalCode}` : ""}
+                      </>
+                    )}
+
+                    {address.country && (
+                      <>
+                        <br />
+                        {address.country}
+                      </>
+                    )}
+
+                    {address.landmark && (
+                      <>
+                        <br />
+                        Landmark: {address.landmark}
+                      </>
+                    )}
+                  </p>
+
+                  {address.phone && (
+                    <p className="mt-2 text-xs font-semibold text-gray-500">
+                      {address.phone}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -381,7 +629,7 @@ export default function TrackOrderPage() {
 
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
-            href={`/orders/${order.orderId}`}
+            href={`/orders/${encodeURIComponent(order.id)}`}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
           >
             <Package size={17} />
