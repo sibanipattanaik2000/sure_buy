@@ -25,8 +25,10 @@ import {
   createSellRequest,
   getAddresses,
   getProducts,
+  getSellCatalog,
   type Address,
   type Product,
+  type SellCatalog,
 } from "@/app/lib/api";
 
 import { useAuth } from "@/app/context/AuthContext";
@@ -57,6 +59,10 @@ export default function SellPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [productsError, setProductsError] = useState("");
+
+  const [catalog, setCatalog] = useState<SellCatalog | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState("");
 
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
@@ -90,42 +96,57 @@ export default function SellPage() {
   useEffect(() => {
     let mounted = true;
 
-    async function loadPhones() {
+    async function loadSellData() {
       setProductsLoading(true);
+      setCatalogLoading(true);
       setProductsError("");
+      setCatalogError("");
 
       try {
-        const response = await getProducts({
-          page: 1,
-          limit: 100,
-          category: "Smartphones",
-        });
+        const [catalogResponse, productsResponse] = await Promise.all([
+          getSellCatalog(),
+          getProducts({
+            page: 1,
+            limit: 100,
+            category: "Smartphones",
+          }),
+        ]);
 
-        if (!response.success) {
+        if (!mounted) return;
+
+        if (!catalogResponse.success || !catalogResponse.data) {
           throw new Error(
-            response.message || "Unable to load phones",
+            catalogResponse.message || "Unable to load sell catalogue.",
           );
         }
 
-        if (mounted) {
-          setProducts(response.data ?? []);
+        if (!productsResponse.success) {
+          throw new Error(
+            productsResponse.message || "Unable to load phone products.",
+          );
         }
+
+        setCatalog(catalogResponse.data);
+        setProducts(productsResponse.data ?? []);
       } catch (error) {
         if (!mounted) return;
 
-        setProductsError(
+        const message =
           error instanceof Error
             ? error.message
-            : "Unable to load phones. Please try again.",
-        );
+            : "Unable to load phone catalogue.";
+
+        setCatalogError(message);
+        setProductsError(message);
       } finally {
-        if (mounted) {
-          setProductsLoading(false);
-        }
+        if (!mounted) return;
+
+        setCatalogLoading(false);
+        setProductsLoading(false);
       }
     }
 
-    loadPhones();
+    loadSellData();
 
     return () => {
       mounted = false;
@@ -186,43 +207,29 @@ export default function SellPage() {
 
   const phoneProducts = useMemo(() => {
     return products.filter(
-      (product) =>
-        product.category?.trim().toLowerCase() ===
-        "smartphones",
+      (product) => product.category?.trim().toLowerCase() === "smartphones",
     );
   }, [products]);
 
   const brands = useMemo(() => {
-    return Array.from(
-      new Set(
-        phoneProducts
-          .map((product) => product.brand?.trim())
-          .filter(Boolean),
-      ),
-    ).sort();
-  }, [phoneProducts]);
+    return catalog?.brands.map((item) => item.name) ?? [];
+  }, [catalog]);
 
   const models = useMemo(() => {
-    return Array.from(
-      new Set(
-        phoneProducts
-          .filter(
-            (product) =>
-              !brand ||
-              product.brand?.toLowerCase() ===
-                brand.toLowerCase(),
-          )
-          .map((product) => product.name?.trim())
-          .filter(Boolean),
-      ),
-    ).sort();
-  }, [phoneProducts, brand]);
+    if (!catalog || !brand) {
+      return [];
+    }
+
+    const selectedBrand = catalog.brands.find(
+      (item) => item.name.toLowerCase() === brand.toLowerCase(),
+    );
+
+    return selectedBrand?.models.map((item) => item.name) ?? [];
+  }, [catalog, brand]);
 
   const selectedProduct = useMemo(() => {
     return phoneProducts.find(
-      (product) =>
-        product.name === model &&
-        product.brand === brand,
+      (product) => product.name === model && product.brand === brand,
     );
   }, [phoneProducts, brand, model]);
 
@@ -258,11 +265,7 @@ export default function SellPage() {
         nextErrors.model = "Please select your phone model.";
       }
 
-      if (
-        model &&
-        brand &&
-        !selectedProduct
-      ) {
+      if (model && brand && !selectedProduct) {
         nextErrors.model =
           "This phone is no longer available. Please select another model.";
       }
@@ -275,18 +278,15 @@ export default function SellPage() {
       }
 
       if (!screen) {
-        nextErrors.screen =
-          "Please select the screen condition.";
+        nextErrors.screen = "Please select the screen condition.";
       }
 
       if (!condition) {
-        nextErrors.condition =
-          "Please select the overall condition.";
+        nextErrors.condition = "Please select the overall condition.";
       }
 
       if (!battery) {
-        nextErrors.battery =
-          "Please select the battery condition.";
+        nextErrors.battery = "Please select the battery condition.";
       }
     }
 
@@ -299,24 +299,20 @@ export default function SellPage() {
 
     if (currentStep === 4) {
       if (!pickupAddress.trim()) {
-        nextErrors.pickupAddress =
-          "Please enter your complete pickup address.";
+        nextErrors.pickupAddress = "Please enter your complete pickup address.";
       } else if (pickupAddress.trim().length < 10) {
         nextErrors.pickupAddress =
           "Please enter a more complete pickup address.";
       }
 
       if (!pickupDate) {
-        nextErrors.pickupDate =
-          "Please select a pickup date.";
+        nextErrors.pickupDate = "Please select a pickup date.";
       } else if (isDateInPast(pickupDate)) {
-        nextErrors.pickupDate =
-          "Pickup date cannot be in the past.";
+        nextErrors.pickupDate = "Pickup date cannot be in the past.";
       }
 
       if (!pickupSlot) {
-        nextErrors.pickupSlot =
-          "Please select a pickup time slot.";
+        nextErrors.pickupSlot = "Please select a pickup time slot.";
       }
     }
 
@@ -372,8 +368,7 @@ export default function SellPage() {
 
     const incoming = Array.from(files);
 
-    const availableSlots =
-      MAX_PHOTOS - photos.length;
+    const availableSlots = MAX_PHOTOS - photos.length;
 
     if (availableSlots <= 0) {
       setErrors((current) => ({
@@ -386,23 +381,18 @@ export default function SellPage() {
     const accepted: SellPhoto[] = [];
     let photoError = "";
 
-    for (
-      const file of incoming.slice(0, availableSlots)
-    ) {
+    for (const file of incoming.slice(0, availableSlots)) {
       if (!file.type.startsWith("image/")) {
-        photoError =
-          "Only image files can be uploaded.";
+        photoError = "Only image files can be uploaded.";
         continue;
       }
 
       if (file.size > MAX_FILE_SIZE) {
-        photoError =
-          "Each image must be smaller than 5 MB.";
+        photoError = "Each image must be smaller than 5 MB.";
         continue;
       }
 
-      const id =
-        `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`;
+      const id = `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`;
 
       accepted.push({
         id,
@@ -412,17 +402,11 @@ export default function SellPage() {
     }
 
     if (accepted.length > 0) {
-      setPhotos((current) => [
-        ...current,
-        ...accepted,
-      ]);
+      setPhotos((current) => [...current, ...accepted]);
     }
 
-    if (
-      incoming.length > availableSlots
-    ) {
-      photoError =
-        `You can upload a maximum of ${MAX_PHOTOS} photos.`;
+    if (incoming.length > availableSlots) {
+      photoError = `You can upload a maximum of ${MAX_PHOTOS} photos.`;
     }
 
     if (photoError) {
@@ -435,17 +419,13 @@ export default function SellPage() {
 
   function removePhoto(id: string) {
     setPhotos((current) => {
-      const photo = current.find(
-        (item) => item.id === id,
-      );
+      const photo = current.find((item) => item.id === id);
 
       if (photo) {
         URL.revokeObjectURL(photo.previewUrl);
       }
 
-      return current.filter(
-        (item) => item.id !== id,
-      );
+      return current.filter((item) => item.id !== id);
     });
   }
 
@@ -470,9 +450,7 @@ export default function SellPage() {
     }
 
     if (!isAuthenticated) {
-      setSubmitError(
-        "Please sign in before scheduling a pickup.",
-      );
+      setSubmitError("Please sign in before scheduling a pickup.");
       return;
     }
 
@@ -503,34 +481,27 @@ export default function SellPage() {
 
         pickupAddress: pickupAddress.trim(),
 
-        pickupDate: new Date(
-          `${pickupDate}T09:00:00`,
-        ).toISOString(),
+        pickupDate: new Date(`${pickupDate}T09:00:00`).toISOString(),
 
         pickupSlot,
       });
 
       if (!response.success || !response.data) {
         throw new Error(
-          response.message ||
-            "Unable to create your sell request.",
+          response.message || "Unable to create your sell request.",
         );
       }
 
-      window.location.href =
-        `/sell/payment?requestId=${encodeURIComponent(
-          response.data.id,
-        )}`;
+      window.location.href = `/sell/payment?requestId=${encodeURIComponent(
+        response.data.id,
+      )}`;
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401) {
-          setSubmitError(
-            "Your session has expired. Please sign in again.",
-          );
+          setSubmitError("Your session has expired. Please sign in again.");
         } else {
           setSubmitError(
-            error.message ||
-              "Unable to submit your sell request.",
+            error.message || "Unable to submit your sell request.",
           );
         }
       } else {
@@ -554,10 +525,7 @@ export default function SellPage() {
   if (authLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa]">
-        <Loader2
-          className="animate-spin text-indigo-600"
-          size={28}
-        />
+        <Loader2 className="animate-spin text-indigo-600" size={28} />
       </main>
     );
   }
@@ -577,14 +545,10 @@ export default function SellPage() {
             ].map(([number, label], index) => {
               const current = index + 1;
               const active = current === step;
-              const completed =
-                current < step;
+              const completed = current < step;
 
               return (
-                <div
-                  key={number}
-                  className="flex flex-1 items-center"
-                >
+                <div key={number} className="flex flex-1 items-center">
                   <div className="flex items-center gap-2">
                     <div
                       className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${
@@ -595,18 +559,12 @@ export default function SellPage() {
                             : "bg-gray-100 text-gray-400"
                       }`}
                     >
-                      {completed ? (
-                        <Check size={15} />
-                      ) : (
-                        number
-                      )}
+                      {completed ? <Check size={15} /> : number}
                     </div>
 
                     <span
                       className={`hidden text-xs font-bold sm:block ${
-                        active
-                          ? "text-gray-900"
-                          : "text-gray-400"
+                        active ? "text-gray-900" : "text-gray-400"
                       }`}
                     >
                       {label}
@@ -616,9 +574,7 @@ export default function SellPage() {
                   {index < 3 && (
                     <div
                       className={`mx-3 h-px flex-1 ${
-                        current < step
-                          ? "bg-green-400"
-                          : "bg-gray-200"
+                        current < step ? "bg-green-400" : "bg-gray-200"
                       }`}
                     />
                   )}
@@ -650,10 +606,7 @@ export default function SellPage() {
               <div className="mt-8 rounded-2xl border border-indigo-100 bg-indigo-50 p-5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white">
-                    <Smartphone
-                      size={21}
-                      className="text-indigo-600"
-                    />
+                    <Smartphone size={21} className="text-indigo-600" />
                   </div>
 
                   <div>
@@ -662,24 +615,17 @@ export default function SellPage() {
                     </p>
 
                     <p className="mt-1 text-xs text-indigo-700">
-                      PhoneBhai currently accepts smartphones
-                      through this selling flow.
+                      PhoneBhai currently accepts smartphones through this
+                      selling flow.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {productsError && (
-                <ErrorMessage>
-                  {productsError}
-                </ErrorMessage>
-              )}
+              {catalogError && <ErrorMessage>{catalogError}</ErrorMessage>}
 
               <div className="mt-8 grid gap-5 sm:grid-cols-2">
-                <Field
-                  label="Brand"
-                  error={errors.brand}
-                >
+                <Field label="Brand" error={errors.brand}>
                   <select
                     value={brand}
                     onChange={(event) => {
@@ -692,32 +638,22 @@ export default function SellPage() {
                         model: "",
                       }));
                     }}
-                    disabled={productsLoading}
-                    className={selectClass(
-                      errors.brand,
-                    )}
+                    disabled={catalogLoading}
+                    className={selectClass(errors.brand)}
                   >
                     <option value="">
-                      {productsLoading
-                        ? "Loading brands..."
-                        : "Select brand"}
+                      {catalogLoading ? "Loading brands..." : "Select brand"}
                     </option>
 
                     {brands.map((item) => (
-                      <option
-                        key={item}
-                        value={item}
-                      >
+                      <option key={item} value={item}>
                         {item}
                       </option>
                     ))}
                   </select>
                 </Field>
 
-                <Field
-                  label="Model"
-                  error={errors.model}
-                >
+                <Field label="Model" error={errors.model}>
                   <select
                     value={model}
                     onChange={(event) => {
@@ -728,26 +664,18 @@ export default function SellPage() {
                         model: "",
                       }));
                     }}
-                    disabled={
-                      productsLoading || !brand
-                    }
-                    className={selectClass(
-                      errors.model,
-                    )}
+disabled={catalogLoading || !brand}                    className={selectClass(errors.model)}
                   >
                     <option value="">
                       {!brand
                         ? "Select brand first"
-                        : productsLoading
+                        : catalogLoading
                           ? "Loading models..."
                           : "Select model"}
                     </option>
 
                     {models.map((item) => (
-                      <option
-                        key={item}
-                        value={item}
-                      >
+                      <option key={item} value={item}>
                         {item}
                       </option>
                     ))}
@@ -764,27 +692,18 @@ export default function SellPage() {
                       </p>
 
                       <p className="mt-1 font-bold">
-                        {selectedProduct.brand}{" "}
-                        {selectedProduct.name}
+                        {selectedProduct.brand} {selectedProduct.name}
                       </p>
                     </div>
 
                     <p className="text-lg font-black">
-                      ₹
-                      {Number(
-                        selectedProduct.price,
-                      ).toLocaleString("en-IN")}
+                      ₹{Number(selectedProduct.price).toLocaleString("en-IN")}
                     </p>
                   </div>
                 </div>
               )}
 
-              <ValidationSummary
-                errors={[
-                  errors.brand,
-                  errors.model,
-                ]}
-              />
+              <ValidationSummary errors={[errors.brand, errors.model]} />
 
               <button
                 type="button"
@@ -814,8 +733,7 @@ export default function SellPage() {
               </h2>
 
               <p className="mt-2 text-sm text-gray-500">
-                Accurate answers help us provide a better
-                estimate.
+                Accurate answers help us provide a better estimate.
               </p>
 
               <div className="mt-8 space-y-8">
@@ -867,12 +785,7 @@ export default function SellPage() {
                       condition: "",
                     }));
                   }}
-                  options={[
-                    "Like New",
-                    "Good",
-                    "Fair",
-                    "Poor",
-                  ]}
+                  options={["Like New", "Good", "Fair", "Poor"]}
                   error={errors.condition}
                 />
 
@@ -887,11 +800,7 @@ export default function SellPage() {
                       battery: "",
                     }));
                   }}
-                  options={[
-                    "Excellent",
-                    "Good",
-                    "Needs replacement",
-                  ]}
+                  options={["Excellent", "Good", "Needs replacement"]}
                   error={errors.battery}
                 />
               </div>
@@ -935,26 +844,19 @@ export default function SellPage() {
               </h2>
 
               <p className="mt-2 text-sm text-gray-500">
-                Clear photos help our team evaluate your
-                device accurately.
+                Clear photos help our team evaluate your device accurately.
               </p>
 
               <label className="mt-8 flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center transition hover:border-indigo-400 hover:bg-indigo-50/40">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-sm">
-                  <Upload
-                    className="text-indigo-600"
-                    size={22}
-                  />
+                  <Upload className="text-indigo-600" size={22} />
                 </div>
 
-                <h3 className="mt-5 font-bold">
-                  Upload phone photos
-                </h3>
+                <h3 className="mt-5 font-bold">Upload phone photos</h3>
 
                 <p className="mt-2 max-w-sm text-sm text-gray-500">
-                  Upload up to 5 clear photos showing the
-                  front, back, sides and condition of your
-                  phone.
+                  Upload up to 5 clear photos showing the front, back, sides and
+                  condition of your phone.
                 </p>
 
                 <span className="mt-5 rounded-full bg-black px-5 py-2.5 text-xs font-bold text-white">
@@ -966,9 +868,7 @@ export default function SellPage() {
                   accept="image/jpeg,image/png,image/webp"
                   multiple
                   className="hidden"
-                  onChange={(event) =>
-                    handlePhotos(event.target.files)
-                  }
+                  onChange={(event) => handlePhotos(event.target.files)}
                 />
               </label>
 
@@ -981,9 +881,7 @@ export default function SellPage() {
               {photos.length > 0 && (
                 <div className="mt-6">
                   <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-bold">
-                      Selected photos
-                    </p>
+                    <p className="text-sm font-bold">Selected photos</p>
 
                     <span className="text-xs font-semibold text-gray-400">
                       {photos.length}/{MAX_PHOTOS}
@@ -1009,9 +907,7 @@ export default function SellPage() {
                         <button
                           type="button"
                           aria-label={`Remove photo ${index + 1}`}
-                          onClick={() =>
-                            removePhoto(photo.id)
-                          }
+                          onClick={() => removePhoto(photo.id)}
                           className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black text-white transition hover:bg-red-600"
                         >
                           <X size={13} />
@@ -1035,10 +931,9 @@ export default function SellPage() {
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-indigo-700">
-                      Use good lighting, clean your camera
-                      lens and make sure the phone is clearly
-                      visible. Avoid blurry or heavily filtered
-                      photos.
+                      Use good lighting, clean your camera lens and make sure
+                      the phone is clearly visible. Avoid blurry or heavily
+                      filtered photos.
                     </p>
                   </div>
                 </div>
@@ -1083,8 +978,8 @@ export default function SellPage() {
               </h2>
 
               <p className="mt-2 text-sm text-gray-500">
-                Choose where and when our pickup executive
-                should collect your phone.
+                Choose where and when our pickup executive should collect your
+                phone.
               </p>
 
               {selectedProduct && (
@@ -1096,8 +991,7 @@ export default function SellPage() {
                   <div className="mt-2 flex items-end justify-between gap-4">
                     <div>
                       <p className="text-2xl font-black">
-                        {selectedProduct.brand}{" "}
-                        {selectedProduct.name}
+                        {selectedProduct.brand} {selectedProduct.name}
                       </p>
 
                       <p className="mt-1 text-xs text-gray-400">
@@ -1106,17 +1000,13 @@ export default function SellPage() {
                     </div>
 
                     <p className="text-2xl font-black">
-                      ₹
-                      {Number(
-                        selectedProduct.price,
-                      ).toLocaleString("en-IN")}
+                      ₹{Number(selectedProduct.price).toLocaleString("en-IN")}
                     </p>
                   </div>
 
                   <p className="mt-4 text-xs text-gray-400">
-                    Your final selling value will be calculated
-                    by the backend using the phone and condition
-                    information you provided.
+                    Your final selling value will be calculated by the backend
+                    using the phone and condition information you provided.
                   </p>
                 </div>
               )}
@@ -1130,33 +1020,22 @@ export default function SellPage() {
                   <select
                     disabled={addressesLoading}
                     onChange={(event) => {
-                      const address =
-                        addresses.find(
-                          (item) =>
-                            item.id ===
-                            event.target.value,
-                        );
+                      const address = addresses.find(
+                        (item) => item.id === event.target.value,
+                      );
 
                       if (address) {
-                        setPickupAddress(
-                          formatAddress(address),
-                        );
+                        setPickupAddress(formatAddress(address));
                       }
                     }}
                     className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm outline-none focus:border-indigo-500"
                     defaultValue=""
                   >
-                    <option value="">
-                      Choose a saved address
-                    </option>
+                    <option value="">Choose a saved address</option>
 
                     {addresses.map((address) => (
-                      <option
-                        key={address.id}
-                        value={address.id}
-                      >
-                        {address.fullName} —{" "}
-                        {address.city},{" "}
+                      <option key={address.id} value={address.id}>
+                        {address.fullName} — {address.city},{" "}
                         {address.postalCode}
                       </option>
                     ))}
@@ -1165,10 +1044,7 @@ export default function SellPage() {
               )}
 
               <div className="mt-8">
-                <Field
-                  label="Pickup address"
-                  error={errors.pickupAddress}
-                >
+                <Field label="Pickup address" error={errors.pickupAddress}>
                   <div
                     className={`flex items-start gap-3 rounded-xl border p-4 ${
                       errors.pickupAddress
@@ -1176,17 +1052,12 @@ export default function SellPage() {
                         : "border-gray-200"
                     }`}
                   >
-                    <MapPin
-                      className="mt-0.5 text-indigo-600"
-                      size={19}
-                    />
+                    <MapPin className="mt-0.5 text-indigo-600" size={19} />
 
                     <textarea
                       value={pickupAddress}
                       onChange={(event) => {
-                        setPickupAddress(
-                          event.target.value,
-                        );
+                        setPickupAddress(event.target.value);
 
                         setErrors((current) => ({
                           ...current,
@@ -1201,59 +1072,40 @@ export default function SellPage() {
               </div>
 
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                <Field
-                  label="Pickup date"
-                  error={errors.pickupDate}
-                >
+                <Field label="Pickup date" error={errors.pickupDate}>
                   <input
                     type="date"
                     min={getTodayDate()}
                     value={pickupDate}
                     onChange={(event) => {
-                      setPickupDate(
-                        event.target.value,
-                      );
+                      setPickupDate(event.target.value);
 
                       setErrors((current) => ({
                         ...current,
                         pickupDate: "",
                       }));
                     }}
-                    className={inputClass(
-                      errors.pickupDate,
-                    )}
+                    className={inputClass(errors.pickupDate)}
                   />
                 </Field>
 
-                <Field
-                  label="Pickup slot"
-                  error={errors.pickupSlot}
-                >
+                <Field label="Pickup slot" error={errors.pickupSlot}>
                   <select
                     value={pickupSlot}
                     onChange={(event) => {
-                      setPickupSlot(
-                        event.target.value,
-                      );
+                      setPickupSlot(event.target.value);
 
                       setErrors((current) => ({
                         ...current,
                         pickupSlot: "",
                       }));
                     }}
-                    className={selectClass(
-                      errors.pickupSlot,
-                    )}
+                    className={selectClass(errors.pickupSlot)}
                   >
-                    <option value="">
-                      Select a time slot
-                    </option>
+                    <option value="">Select a time slot</option>
 
                     {PICKUP_SLOTS.map((slot) => (
-                      <option
-                        key={slot}
-                        value={slot}
-                      >
+                      <option key={slot} value={slot}>
                         {slot}
                       </option>
                     ))}
@@ -1269,9 +1121,9 @@ export default function SellPage() {
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-indigo-700">
-                      A ₹500 booking payment will be required
-                      to confirm your pickup. Payment will be
-                      handled securely on the next screen.
+                      A ₹500 booking payment will be required to confirm your
+                      pickup. Payment will be handled securely on the next
+                      screen.
                     </p>
                   </div>
 
@@ -1303,10 +1155,7 @@ export default function SellPage() {
               >
                 {submitting ? (
                   <>
-                    <Loader2
-                      size={17}
-                      className="animate-spin"
-                    />
+                    <Loader2 size={17} className="animate-spin" />
                     Creating your sell request...
                   </>
                 ) : (
@@ -1337,12 +1186,8 @@ function getTodayDate() {
   const today = new Date();
 
   const year = today.getFullYear();
-  const month = String(
-    today.getMonth() + 1,
-  ).padStart(2, "0");
-  const day = String(
-    today.getDate(),
-  ).padStart(2, "0");
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -1367,25 +1212,17 @@ function formatAddress(address: Address) {
 
 function inputClass(error?: string) {
   return `mt-2 h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 ${
-    error
-      ? "border-red-400 focus:border-red-500"
-      : "border-gray-200"
+    error ? "border-red-400 focus:border-red-500" : "border-gray-200"
   }`;
 }
 
 function selectClass(error?: string) {
   return `mt-2 h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 ${
-    error
-      ? "border-red-400 focus:border-red-500"
-      : "border-gray-200"
+    error ? "border-red-400 focus:border-red-500" : "border-gray-200"
   }`;
 }
 
-function ErrorMessage({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function ErrorMessage({ children }: { children: React.ReactNode }) {
   return (
     <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
       {children}
@@ -1393,14 +1230,8 @@ function ErrorMessage({
   );
 }
 
-function ValidationSummary({
-  errors,
-}: {
-  errors: Array<string | undefined>;
-}) {
-  const visibleErrors = errors.filter(
-    Boolean,
-  ) as string[];
+function ValidationSummary({ errors }: { errors: Array<string | undefined> }) {
+  const visibleErrors = errors.filter(Boolean) as string[];
 
   if (visibleErrors.length === 0) {
     return null;
@@ -1414,9 +1245,7 @@ function ValidationSummary({
 
       <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-red-700">
         {visibleErrors.map((error, index) => (
-          <li key={`${error}-${index}`}>
-            {error}
-          </li>
+          <li key={`${error}-${index}`}>{error}</li>
         ))}
       </ul>
     </div>
@@ -1438,16 +1267,12 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-sm font-bold">
-        {label}
-      </label>
+      <label className="text-sm font-bold">{label}</label>
 
       {children}
 
       {error && (
-        <p className="mt-2 text-xs font-medium text-red-600">
-          {error}
-        </p>
+        <p className="mt-2 text-xs font-medium text-red-600">{error}</p>
       )}
     </div>
   );
@@ -1479,9 +1304,7 @@ function Question({
           {icon}
         </div>
 
-        <h3 className="text-sm font-bold">
-          {title}
-        </h3>
+        <h3 className="text-sm font-bold">{title}</h3>
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -1512,9 +1335,7 @@ function Question({
       </div>
 
       {error && (
-        <p className="mt-2 text-xs font-medium text-red-600">
-          {error}
-        </p>
+        <p className="mt-2 text-xs font-medium text-red-600">{error}</p>
       )}
     </div>
   );
@@ -1528,9 +1349,7 @@ function SideInfo() {
   return (
     <aside className="hidden lg:block">
       <div className="sticky top-28 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-sm font-bold">
-          Why sell with PhoneBhai?
-        </p>
+        <p className="text-sm font-bold">Why sell with PhoneBhai?</p>
 
         <div className="mt-6 space-y-5">
           <InfoItem
@@ -1560,9 +1379,8 @@ function SideInfo() {
 
         <div className="mt-7 border-t border-gray-100 pt-5">
           <p className="text-xs leading-5 text-gray-400">
-            Final pricing is determined after physical
-            inspection and may differ from the initial
-            estimate.
+            Final pricing is determined after physical inspection and may differ
+            from the initial estimate.
           </p>
         </div>
       </div>
@@ -1586,13 +1404,9 @@ function InfoItem({
       </div>
 
       <div>
-        <p className="text-sm font-bold">
-          {title}
-        </p>
+        <p className="text-sm font-bold">{title}</p>
 
-        <p className="mt-1 text-xs leading-5 text-gray-500">
-          {text}
-        </p>
+        <p className="mt-1 text-xs leading-5 text-gray-500">{text}</p>
       </div>
     </div>
   );
