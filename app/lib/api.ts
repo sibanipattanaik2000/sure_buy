@@ -473,3 +473,62 @@ export async function validateCart() {
     method: "POST",
   });
 }
+
+
+/* =========================================================
+   WISHLIST
+========================================================= */
+
+export interface WishlistItem {
+  id: string;
+  productId: number;
+  slug: string;
+  name: string;
+  brand: string;
+  category: string;
+  condition: string;
+  price: number;
+  originalPrice: number;
+  warranty: string;
+  rating: number;
+  reviewCount: number;
+  image: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getWishlist() {
+  return apiRequest<WishlistItem[]>("/wishlist", {
+    method: "GET",
+  });
+}
+
+export async function addWishlistItem(productId: number) {
+  return apiRequest<WishlistItem>("/wishlist", {
+    method: "POST",
+    body: JSON.stringify({
+      productId,
+    }),
+  });
+}
+
+export async function removeWishlistItem(productId: number) {
+  return apiRequest(`/wishlist/${productId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function clearWishlistApi() {
+  return apiRequest("/wishlist", {
+    method: "DELETE",
+  });
+}
+
+export async function checkWishlist(productId: number) {
+  return apiRequest<{ wishlisted: boolean }>(
+    `/wishlist/${productId}/check`,
+    {
+      method: "GET",
+    },
+  );
+}
