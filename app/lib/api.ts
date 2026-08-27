@@ -245,10 +245,25 @@ export interface Product {
   stock?: number;
 }
 
+export interface ProductPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface ProductListResponse {
+  products: Product[];
+  pagination: ProductPagination;
+}
+
 export async function getProducts(params?: {
   page?: number;
   limit?: number;
   search?: string;
+  category?: string;
   brand?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -267,6 +282,10 @@ export async function getProducts(params?: {
     searchParams.set("search", params.search);
   }
 
+  if (params?.category) {
+    searchParams.set("category", params.category);
+  }
+
   if (params?.brand) {
     searchParams.set("brand", params.brand);
   }
@@ -281,9 +300,23 @@ export async function getProducts(params?: {
 
   const query = searchParams.toString();
 
-  return apiRequest<Product[]>(`/products${query ? `?${query}` : ""}`, {
-    method: "GET",
-  });
+  const response = await apiRequest<Product[]>(
+    `/products${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+    },
+  );
+
+  const raw = response as ApiResponse<Product[]> & {
+    products?: Product[];
+    pagination?: ProductPagination;
+  };
+
+  return {
+    ...response,
+    data: raw.data ?? raw.products ?? [],
+    pagination: raw.pagination,
+  };
 }
 
 export async function getProduct<T = Product>(id: string) {
@@ -531,4 +564,80 @@ export async function checkWishlist(productId: number) {
       method: "GET",
     },
   );
+}
+
+/* =========================================================
+   SELL
+========================================================= */
+
+export interface SellRequestMediaPayload {
+  url: string;
+  key: string;
+  mimeType: string;
+  size: number;
+  position: number;
+}
+
+export interface CreateSellRequestPayload {
+  productId: number;
+
+  workingStatus: string;
+  screenCondition: string;
+  deviceCondition: string;
+  batteryCondition: string;
+
+  pickupAddress: string;
+  pickupDate: string;
+  pickupSlot: string;
+
+  media?: SellRequestMediaPayload[];
+}
+
+export interface SellRequestProduct {
+  id: number;
+  name: string;
+  brand: string;
+  price: number;
+  images?: Array<{
+    id: number;
+    url: string;
+    altText?: string | null;
+    position: number;
+  }>;
+}
+
+export interface SellRequestResponse {
+  id: string;
+  userId: string;
+  productId: number;
+
+  workingStatus: string;
+  screenCondition: string;
+  deviceCondition: string;
+  batteryCondition: string;
+
+  estimatedValue: number;
+  finalValue?: number | null;
+
+  pickupAddress: string;
+  pickupDate: string;
+  pickupSlot: string;
+
+  status: string;
+
+  product: SellRequestProduct;
+
+  media: SellRequestMediaPayload[];
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function createSellRequest(
+  payload: CreateSellRequestPayload,
+) {
+  return apiRequest<SellRequestResponse>("/sell/requests", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
