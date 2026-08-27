@@ -396,7 +396,56 @@ export async function createOrder(payload: {
     body: JSON.stringify(payload),
   });
 }
+/* =========================================================
+   PAYMENTS
+========================================================= */
 
+export interface CreatePaymentOrderResponse {
+  orderId: string;
+  orderNumber: string;
+  razorpayOrderId: string;
+  amount: number;
+  amountInPaise: number;
+  currency: string;
+  keyId: string;
+}
+
+export interface VerifyPaymentPayload {
+  razorpayPaymentId: string;
+  razorpayOrderId: string;
+  razorpaySignature: string;
+}
+
+export interface VerifyPaymentResponse {
+  success: boolean;
+  alreadyProcessed: boolean;
+  orderId: string;
+  paymentId: string;
+  razorpayPaymentId?: string | null;
+  status?: string;
+}
+
+export async function createPaymentOrder(orderId: string) {
+  return apiRequest<CreatePaymentOrderResponse>(
+    `/payments/orders/${encodeURIComponent(orderId)}`,
+    {
+      method: "POST",
+    },
+  );
+}
+
+export async function verifyPayment(
+  orderId: string,
+  payload: VerifyPaymentPayload,
+) {
+  return apiRequest<VerifyPaymentResponse>(
+    `/payments/orders/${encodeURIComponent(orderId)}/verify`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
 export async function cancelOrder(id: string) {
   return apiRequest<Order>(`/orders/${id}/cancel`, {
     method: "PATCH",
@@ -661,3 +710,4 @@ export async function getSellCatalog() {
     method: "GET",
   });
 } 
+

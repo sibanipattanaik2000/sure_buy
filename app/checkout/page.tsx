@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-
+import Script from "next/script";
 import Link from "next/link";
 import { useCart } from "../context/CartContext";
 import {
@@ -24,7 +24,9 @@ import {
   addCartItem,
   createAddress,
   createOrder,
+  createPaymentOrder,
   getAddresses,
+  verifyPayment,
 } from "../lib/api";
 export default function CheckoutPage() {
   const router = useRouter();
@@ -79,29 +81,36 @@ export default function CheckoutPage() {
 
   if (!products || products.length === 0) {
     return (
-      <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
-        <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-            <ShieldCheck size={25} className="text-indigo-600" />
+      <>
+        <Script
+          src="https://checkout.razorpay.com/v1/checkout.js"
+          strategy="afterInteractive"
+        />
+
+        <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
+          <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
+              <ShieldCheck size={25} className="text-indigo-600" />
+            </div>
+
+            <h1 className="mt-5 text-2xl font-black text-gray-900">
+              Your checkout is empty
+            </h1>
+
+            <p className="mt-2 text-sm leading-6 text-gray-500">
+              Choose a product before proceeding to checkout.
+            </p>
+
+            <Link
+              href="/buy"
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+            >
+              Browse products
+              <ArrowRight size={16} />
+            </Link>
           </div>
-
-          <h1 className="mt-5 text-2xl font-black text-gray-900">
-            Your checkout is empty
-          </h1>
-
-          <p className="mt-2 text-sm leading-6 text-gray-500">
-            Choose a product before proceeding to checkout.
-          </p>
-
-          <Link
-            href="/buy"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-700"
-          >
-            Browse products
-            <ArrowRight size={16} />
-          </Link>
-        </div>
-      </main>
+        </main>
+      </>
     );
   }
 
@@ -400,10 +409,149 @@ export default function CheckoutPage() {
       }
 
       const order = orderResponse.data;
+/* =====================================================
+   ONLINE PAYMENT
+===================================================== */
 
+if (backendPaymentMethod !== "COD") {
+  const paymentOrderResponse =
+    await createPaymentOrder(order.id);
+
+  if (
+    !paymentOrderResponse.success ||
+    !paymentOrderResponse.data
+  ) {
+    throw new Error(
+      paymentOrderResponse.message ||
+        "Unable to start online payment.",
+    );
+  }
+
+  const paymentOrder =
+    paymentOrderResponse.data;
+
+  if (!window.Razorpay) {
+    throw new Error(
+      "Payment gateway is still loading. Please try again.",
+    );
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+
+    const finishSuccess = async () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+
+      try {
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    const razorpay = new window.Razorpay({
+      key: paymentOrder.keyId,
+
+      amount: paymentOrder.amountInPaise,
+
+      currency: paymentOrder.currency,
+
+      name: "Phone Bhai",
+
+      description:
+        `Payment for order ${order.orderNumber}`,
+
+      order_id:
+        paymentOrder.razorpayOrderId,
+
+      theme: {
+        color: "#4f46e5",
+      },
+
+      handler: async (response) => {
+        try {
+          const verification =
+            await verifyPayment(
+              order.id,
+              {
+                razorpayPaymentId:
+                  response.razorpay_payment_id,
+
+                razorpayOrderId:
+                  response.razorpay_order_id,
+
+                razorpaySignature:
+                  response.razorpay_signature,
+              },
+            );
+
+          if (
+            !verification.success ||
+            !verification.data
+          ) {
+            throw new Error(
+              verification.message ||
+                "Payment verification failed.",
+            );
+          }
+
+          await finishSuccess();
+        } catch (verificationError) {
+          if (!settled) {
+            settled = true;
+            reject(verificationError);
+          }
+        }
+      },
+
+      modal: {
+        ondismiss: () => {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+
+          reject(
+            new Error(
+              "Payment was cancelled. Your order is still pending.",
+            ),
+          );
+        },
+      },
+    });
+
+    razorpay.open();
+  });
+}
       /* =====================================================
        SUCCESS PAGE ADAPTER
     ===================================================== */
+if (backendPaymentMethod !== "COD") {
+  // create Razorpay order
+  // open Razorpay
+  // verify payment
+  // only then continue
+}
+           /* =====================================================
+       PAYMENT SUCCESS CONFIRMED
+       ===================================================== */
+
+      /*
+       * For COD:
+       *   create order -> clear cart -> success
+       *
+       * For online payment:
+       *   create order -> Razorpay -> verify signature
+       *   -> clear cart -> success
+       *
+       * Therefore this section is reached only after
+       * successful payment verification for online orders.
+       */
 
       const firstItem = order.items?.[0];
 
@@ -412,70 +560,61 @@ export default function CheckoutPage() {
         JSON.stringify({
           orderId: order.orderNumber || order.id,
 
-          productName: firstItem?.productName || "",
+          productName:
+            firstItem?.productName || "",
 
-          productImage: firstItem?.imageUrl || "",
-          brand: "",
+          productImage:
+            firstItem?.imageUrl || "",
 
-          storage: "",
+          brand:
+            firstItem?.brand || "",
 
-          color: "",
+          storage:
+            firstItem?.storage || "",
 
-          price: firstItem?.unitPrice || 0,
-          paymentMethod: backendPaymentMethod,
+          color:
+            firstItem?.color || "",
 
-          deliveryDate: "3–5 business days",
+          price:
+            firstItem?.unitPrice || 0,
+
+          paymentMethod:
+            backendPaymentMethod,
+
+          deliveryDate:
+            "3–5 business days",
         }),
       );
 
       /* =====================================================
-                  CLEAR CLIENT STATE
-        ===================================================== */
+       CLEAR CLIENT STATE
+       ===================================================== */
 
       try {
         await clearCart();
       } catch (cartError) {
         /*
-         * The order has already been successfully created.
-         * Cart cleanup must never prevent the user
-         * from reaching the order-success page.
+         * The order/payment has already succeeded.
+         * Cart cleanup failure must never prevent the
+         * customer from reaching the success page.
          */
-        console.warn("Cart cleanup skipped after successful order:", cartError);
+        console.warn(
+          "Cart cleanup skipped after successful order:",
+          cartError,
+        );
       }
 
       clearCheckout();
 
       /* =====================================================
-                           REDIRECT
-===================================================== */
+       REDIRECT
+       ===================================================== */
 
-
-/* =====================================================
-   CLEAR CLIENT STATE
-===================================================== */
-
-try {
-  await clearCart();
-} catch (cartError) {
-  /*
-   * Order has already been created successfully.
-   * Cart cleanup failure must not block success page.
-   */
-  console.warn(
-    "Cart cleanup skipped after successful order:",
-    cartError,
-  );
-}
-
-clearCheckout();
-
-/* =====================================================
-   REDIRECT TO ORDER SUCCESS
-===================================================== */
-
-router.replace(
-  `/order-success?orderId=${encodeURIComponent(order.id)}`,
-);
+      router.replace(
+        `/order-success?orderId=${encodeURIComponent(
+          order.id,
+        )}`,
+      );
     } catch (requestError) {
       console.error("Failed to place order:", requestError);
 
