@@ -641,3 +641,23 @@ export async function createSellRequest(
     body: JSON.stringify(payload),
   });
 }
+export interface SellCatalogModel {
+  id: number;
+  name: string;
+}
+
+export interface SellCatalogBrand {
+  name: string;
+  models: SellCatalogModel[];
+}
+
+export interface SellCatalog {
+  category: string;
+  brands: SellCatalogBrand[];
+}
+
+export async function getSellCatalog() {
+  return apiRequest<SellCatalog>("/sell/catalog", {
+    method: "GET",
+  });
+} 

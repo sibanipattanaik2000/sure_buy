@@ -564,41 +564,6 @@ export default function SellPage() {
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-[#111827]">
-      {/* HEADER */}
-
-      <section className="border-b border-gray-100 bg-white">
-        <div className="mx-auto max-w-5xl px-5 py-10 lg:px-8">
-          <Link
-            href="/"
-            className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-black"
-          >
-            <ArrowLeft size={16} />
-            Back to PhoneBhai
-          </Link>
-
-          <div className="max-w-3xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700">
-              <BadgeCheck size={15} />
-              Trusted phone selling
-            </div>
-
-            <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
-              Sell your phone.
-              <br />
-              <span className="text-indigo-600">
-                Get the value you deserve.
-              </span>
-            </h1>
-
-            <p className="mt-5 max-w-2xl text-base leading-7 text-gray-500">
-              Tell us about your phone, get an estimated
-              value and schedule a convenient doorstep
-              pickup.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* PROGRESS */}
 
       <section className="border-b border-gray-100 bg-white">
