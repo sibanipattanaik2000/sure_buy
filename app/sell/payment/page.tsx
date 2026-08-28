@@ -1,9 +1,7 @@
 "use client";
 
-import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -11,592 +9,652 @@ import {
   Loader2,
   ShieldCheck,
   Smartphone,
-  AlertCircle,
+  WalletCards,
 } from "lucide-react";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+import {
+  createSellPaymentOrder,
+  verifySellPayment,
+  type SellPaymentMethod,
+  type VerifySellPaymentPayload,
+} from "@/app/lib/api";
 
-type SellRequest = {
-  id: string;
-  status: string;
-  estimatedValue: string | number;
-  finalValue: string | number | null;
-  pickupAddress: string;
-  pickupDate: string;
-  pickupSlot: string;
-  product?: {
-    id: number;
-    name: string;
-    brand: string;
-    images?: {
-      url: string;
-    }[];
+type SellPaymentData = {
+  sellRequestId: string;
+  sellPaymentId: string;
+  razorpayOrderId: string;
+  amount: number;
+  amountInPaise: number;
+  currency: string;
+  keyId: string;
+  method: SellPaymentMethod;
+};
+
+type RazorpayPaymentResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+type RazorpayOptions = {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  theme?: {
+    color?: string;
+  };
+  handler: (response: RazorpayPaymentResponse) => void;
+  modal?: {
+    ondismiss?: () => void;
   };
 };
 
-type PaymentResponse = {
-  success: boolean;
-  message?: string;
-  data?: {
-    id: string;
-    amount: string | number;
-    currency: string;
-    status: string;
-    providerOrderId?: string | null;
-    provider?: string;
-    method?: string;
-  };
+type RazorpayInstance = {
+  open: () => void;
+  on: (
+    event: string,
+    callback: (response: unknown) => void,
+  ) => void;
 };
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Something went wrong. Please try again.";
+}
+
+function getApiErrorMessage(
+  error: unknown,
+  fallback: string,
+): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function SellPaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const sellRequestId = searchParams.get("sellRequestId");
+  const requestId = searchParams.get("requestId");
 
-  const [sellRequest, setSellRequest] = useState<SellRequest | null>(null);
-  const [payment, setPayment] = useState<PaymentResponse["data"] | null>(null);
+  const [paymentMethod, setPaymentMethod] =
+    useState<SellPaymentMethod>("UPI");
+
+  const [paymentData, setPaymentData] =
+    useState<SellPaymentData | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
+  const [creatingPayment, setCreatingPayment] =
+    useState(false);
   const [error, setError] = useState("");
 
-  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const paymentStartedRef = useRef(false);
 
-  useEffect(() => {
-    if (!sellRequestId) {
+  /**
+   * Load Razorpay checkout script once.
+   */
+  const loadRazorpay = useCallback(async (): Promise<boolean> => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    if (window.Razorpay) {
+      return true;
+    }
+
+    return new Promise<boolean>((resolve) => {
+      const existingScript = document.querySelector(
+        'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+      );
+
+      if (existingScript) {
+        existingScript.addEventListener(
+          "load",
+          () => resolve(true),
+          { once: true },
+        );
+
+        existingScript.addEventListener(
+          "error",
+          () => resolve(false),
+          { once: true },
+        );
+
+        return;
+      }
+
+      const script = document.createElement("script");
+
+      script.src =
+        "https://checkout.razorpay.com/v1/checkout.js";
+
+      script.async = true;
+
+      script.onload = () => resolve(true);
+
+      script.onerror = () => resolve(false);
+
+      document.body.appendChild(script);
+    });
+  }, []);
+
+  /**
+   * Create/reuse backend Razorpay order.
+   */
+  const createPaymentOrder = useCallback(async () => {
+    if (!requestId) {
       setError("Sell request ID is missing.");
       setLoading(false);
       return;
     }
-
-    loadSellRequest();
-  }, [sellRequestId]);
-
-  async function loadSellRequest() {
-    if (!sellRequestId) return;
 
     try {
       setLoading(true);
       setError("");
 
-      const token = localStorage.getItem("accessToken");
-
-      if (!token) {
-        router.push(
-          `/login?redirect=/sell/payment?sellRequestId=${encodeURIComponent(
-            sellRequestId
-          )}`
-        );
-        return;
-      }
-
-      const response = await fetch(
-        `${API_BASE_URL}/sell-requests/${sellRequestId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        }
+      const response = await createSellPaymentOrder(
+        requestId,
+        paymentMethod,
       );
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!response.success || !response.data) {
         throw new Error(
-          result.message || "Unable to load sell request."
+          response.message ||
+            "Unable to create payment order.",
         );
       }
 
-      setSellRequest(result.data);
-
-      await loadExistingPayment(token);
+      setPaymentData(response.data);
     } catch (err) {
+      console.error(
+        "SELL PAYMENT ORDER ERROR:",
+        err,
+      );
+
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load sell request."
+        getApiErrorMessage(
+          err,
+          "Unable to prepare payment. Please try again.",
+        ),
       );
     } finally {
       setLoading(false);
     }
-  }
+  }, [requestId, paymentMethod]);
 
-  async function loadExistingPayment(token: string) {
-    if (!sellRequestId) return;
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/sell-requests/${sellRequestId}/payment`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) return;
-
-      const result: PaymentResponse = await response.json();
-
-      if (result.success && result.data) {
-        setPayment(result.data);
-      }
-    } catch {
-      // Existing payment is optional.
-      // Creation will handle the actual payment state.
-    }
-  }
-
-  function getPayableAmount() {
-    if (!sellRequest) return 0;
-
-    /*
-     * IMPORTANT:
-     * This amount is display-only.
-     * The backend remains the source of truth.
-     */
-    const value =
-      sellRequest.finalValue ?? sellRequest.estimatedValue;
-
-    return Number(value);
-  }
-
-  async function createPayment() {
-    if (!sellRequestId) {
+  /**
+   * Create a new/reused payment order whenever
+   * request ID or payment method changes.
+   */
+  useEffect(() => {
+    if (!requestId) {
+      setLoading(false);
       setError("Sell request ID is missing.");
       return;
     }
 
-    if (!razorpayLoaded || !window.Razorpay) {
-      setError("Payment gateway is still loading. Please try again.");
+    void createPaymentOrder();
+  }, [requestId, createPaymentOrder]);
+
+  /**
+   * Verify payment with backend.
+   */
+  const verifyPaymentResponse = async (
+    response: RazorpayPaymentResponse,
+  ) => {
+    if (!requestId) {
+      throw new Error(
+        "Sell request ID is missing.",
+      );
+    }
+
+    const payload: VerifySellPaymentPayload = {
+      razorpayPaymentId:
+        response.razorpay_payment_id,
+
+      razorpayOrderId:
+        response.razorpay_order_id,
+
+      razorpaySignature:
+        response.razorpay_signature,
+    };
+
+    const verificationResponse =
+      await verifySellPayment(
+        requestId,
+        payload,
+      );
+
+    if (
+      !verificationResponse.success ||
+      !verificationResponse.data
+    ) {
+      throw new Error(
+        verificationResponse.message ||
+          "Payment verification failed.",
+      );
+    }
+
+    return verificationResponse.data;
+  };
+
+  /**
+   * Open Razorpay checkout.
+   */
+  const openRazorpayCheckout = async () => {
+    if (!paymentData || !requestId) {
       return;
     }
 
+    if (paymentStartedRef.current) {
+      return;
+    }
+
+    paymentStartedRef.current = true;
+
     try {
-      setProcessing(true);
+      setCreatingPayment(true);
       setError("");
 
-      const token = localStorage.getItem("accessToken");
+      const razorpayLoaded =
+        await loadRazorpay();
 
-      if (!token) {
-        router.push(
-          `/login?redirect=/sell/payment?sellRequestId=${encodeURIComponent(
-            sellRequestId
-          )}`
-        );
-        return;
-      }
-
-      /*
-       * DO NOT send amount from frontend.
-       * Backend determines the amount.
-       */
-      const response = await fetch(
-        `${API_BASE_URL}/sell-requests/${sellRequestId}/payment/create`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            method: "UPI",
-          }),
-        }
-      );
-
-      const result: PaymentResponse = await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
+      if (
+        !razorpayLoaded ||
+        typeof window === "undefined" ||
+        !window.Razorpay
+      ) {
         throw new Error(
-          result.message || "Unable to create payment."
+          "Unable to load Razorpay. Please check your internet connection and try again.",
         );
       }
 
-      setPayment(result.data);
+      const options: RazorpayOptions = {
+        key: paymentData.keyId,
 
-      const paymentData = result.data;
+        amount: paymentData.amountInPaise,
 
-      if (!paymentData.providerOrderId) {
-        throw new Error("Payment order was not created correctly.");
-      }
+        currency: paymentData.currency,
 
-      const razorpayKey =
-        process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+        name: "PhoneBhai",
 
-      if (!razorpayKey) {
-        throw new Error(
-          "Razorpay key is not configured."
-        );
-      }
+        description:
+          "Sell request pickup booking fee",
 
-      const options = {
-        key: razorpayKey,
-
-        amount: Math.round(
-          Number(paymentData.amount) * 100
-        ),
-
-        currency: paymentData.currency || "INR",
-
-        name: "SureBuy",
-
-        description: `Sell Request ${sellRequestId}`,
-
-        order_id: paymentData.providerOrderId,
-
-        handler: async function (response: {
-          razorpay_payment_id: string;
-          razorpay_order_id: string;
-          razorpay_signature: string;
-        }) {
-          await verifyPayment(response);
-        },
-
-        modal: {
-          ondismiss: function () {
-            setProcessing(false);
-          },
-        },
+        order_id:
+          paymentData.razorpayOrderId,
 
         theme: {
           color: "#111827",
         },
+
+        handler: async (
+          razorpayResponse: RazorpayPaymentResponse,
+        ) => {
+          try {
+            setCreatingPayment(true);
+
+            await verifyPaymentResponse(
+              razorpayResponse,
+            );
+
+            router.replace(
+              `/sell/payment/success?requestId=${encodeURIComponent(
+                requestId,
+              )}`,
+            );
+          } catch (err) {
+            console.error(
+              "SELL PAYMENT VERIFICATION ERROR:",
+              err,
+            );
+
+            router.replace(
+              `/sell/payment/failed?requestId=${encodeURIComponent(
+                requestId,
+              )}&reason=verification_failed`,
+            );
+          } finally {
+            setCreatingPayment(false);
+            paymentStartedRef.current = false;
+          }
+        },
+
+        modal: {
+          ondismiss: () => {
+            paymentStartedRef.current = false;
+            setCreatingPayment(false);
+
+            router.replace(
+              `/sell/payment/failed?requestId=${encodeURIComponent(
+                requestId,
+              )}&reason=cancelled`,
+            );
+          },
+        },
       };
 
-      const razorpay = new window.Razorpay(options);
+      const razorpay =
+        new window.Razorpay(options);
 
       razorpay.on(
         "payment.failed",
-        function (response: any) {
-          const reason =
-            response?.error?.description ||
-            "Payment failed.";
+        () => {
+          paymentStartedRef.current = false;
+          setCreatingPayment(false);
 
-          setProcessing(false);
-
-          router.push(
-            `/sell-payment-failed?sellRequestId=${encodeURIComponent(
-              sellRequestId
-            )}&reason=${encodeURIComponent(reason)}`
+          router.replace(
+            `/sell/payment/failed?requestId=${encodeURIComponent(
+              requestId,
+            )}&reason=payment_failed`,
           );
-        }
+        },
       );
 
       razorpay.open();
     } catch (err) {
-      setProcessing(false);
+      console.error(
+        "SELL RAZORPAY ERROR:",
+        err,
+      );
+
+      paymentStartedRef.current = false;
+      setCreatingPayment(false);
 
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to start payment."
+        getErrorMessage(err),
       );
     }
-  }
+  };
 
-  async function verifyPayment(razorpayResponse: {
-    razorpay_payment_id: string;
-    razorpay_order_id: string;
-    razorpay_signature: string;
-  }) {
-    if (!sellRequestId) return;
-
-    try {
-      const token = localStorage.getItem("accessToken");
-
-      if (!token) {
-        throw new Error("Authentication required.");
-      }
-
-      const response = await fetch(
-        `${API_BASE_URL}/sell-requests/${sellRequestId}/payment/verify`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            razorpayPaymentId:
-              razorpayResponse.razorpay_payment_id,
-
-            razorpayOrderId:
-              razorpayResponse.razorpay_order_id,
-
-            razorpaySignature:
-              razorpayResponse.razorpay_signature,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(
-          result.message ||
-            "Payment verification failed."
-        );
-      }
-
-      router.replace(
-        `/sell-payment-success?sellRequestId=${encodeURIComponent(
-          sellRequestId
-        )}`
-      );
-    } catch (err) {
-      setProcessing(false);
-
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Payment verification failed.";
-
-      router.push(
-        `/sell-payment-failed?sellRequestId=${encodeURIComponent(
-          sellRequestId
-        )}&reason=${encodeURIComponent(message)}`
-      );
-    }
-  }
-
-  const amount = getPayableAmount();
-
-  if (loading) {
+  /**
+   * Missing request ID.
+   */
+  if (!requestId && !loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center gap-3 text-gray-600">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          Loading payment details...
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+            <CreditCard className="h-7 w-7 text-red-600" />
+          </div>
+
+          <h1 className="text-xl font-semibold text-gray-900">
+            Payment cannot be started
+          </h1>
+
+          <p className="mt-2 text-sm text-gray-600">
+            Sell request ID is missing.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              router.push("/sell")
+            }
+            className="mt-6 w-full rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white"
+          >
+            Back to Sell
+          </button>
         </div>
       </main>
     );
   }
 
-  if (error && !sellRequest) {
+  /**
+   * Loading state.
+   */
+  if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 px-4 py-12">
-        <div className="max-w-xl mx-auto bg-white rounded-2xl p-8 shadow-sm text-center">
-          <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center">
+          <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-gray-700" />
 
-          <h1 className="text-xl font-semibold text-gray-900">
-            Unable to continue
-          </h1>
-
-          <p className="mt-2 text-gray-600">
-            {error}
+          <p className="text-sm text-gray-600">
+            Preparing secure payment...
           </p>
+        </div>
+      </main>
+    );
+  }
 
-          <Link
-            href="/sell"
-            className="inline-flex items-center gap-2 mt-6 px-5 py-3 rounded-xl bg-black text-white"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Sell
-          </Link>
+  /**
+   * Payment order creation failed.
+   */
+  if (error && !paymentData) {
+    return (
+      <main className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-3xl px-4 py-8">
+          <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+              <CreditCard className="h-7 w-7 text-red-600" />
+            </div>
+
+            <h1 className="text-xl font-semibold text-gray-900">
+              Unable to prepare payment
+            </h1>
+
+            <p className="mt-2 text-sm text-gray-600">
+              {error}
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                void createPaymentOrder()
+              }
+              className="mt-6 rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </main>
     );
   }
 
   return (
-    <>
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
-        onLoad={() => setRazorpayLoaded(true)}
-        onError={() =>
-          setError(
-            "Unable to load Razorpay payment gateway."
-          )
-        }
-      />
-
-      <main className="min-h-screen bg-gray-50">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <Link
-            href="/sell"
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-8"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Sell
-          </Link>
-
-          <div className="grid lg:grid-cols-[1fr_400px] gap-8">
-            <section className="space-y-6">
-              <div>
-                <p className="text-sm font-medium text-gray-500">
-                  SELL YOUR PHONE
-                </p>
-
-                <h1 className="text-3xl font-bold text-gray-900 mt-1">
-                  Complete Payment
-                </h1>
-
-                <p className="text-gray-600 mt-2">
-                  Securely complete your payment through Razorpay.
-                </p>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <div className="flex items-start gap-4">
-                  {sellRequest?.product?.images?.[0]?.url ? (
-                    <img
-                      src={sellRequest.product.images[0].url}
-                      alt={sellRequest.product.name}
-                      className="w-20 h-20 object-contain rounded-xl bg-gray-100"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center">
-                      <Smartphone className="w-8 h-8 text-gray-400" />
-                    </div>
-                  )}
-
-                  <div>
-                    <h2 className="font-semibold text-lg">
-                      {sellRequest?.product?.brand}{" "}
-                      {sellRequest?.product?.name}
-                    </h2>
-
-                    <p className="text-sm text-gray-500 mt-1">
-                      Sell Request: {sellRequest?.id}
-                    </p>
-
-                    <span className="inline-block mt-2 px-3 py-1 rounded-full bg-gray-100 text-xs font-medium">
-                      {sellRequest?.status}
-                    </span>
-                  </div>
+    <main className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <section className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
+            <div className="mb-8">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-900">
+                  <CreditCard className="h-6 w-6 text-white" />
                 </div>
-              </div>
 
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <h2 className="font-semibold text-lg mb-5">
-                  Payment method
-                </h2>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Secure Payment
+                  </h1>
 
-                <div className="border-2 border-gray-900 rounded-xl p-4 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center">
-                    <CreditCard className="w-5 h-5" />
-                  </div>
-
-                  <div className="flex-1">
-                    <p className="font-medium">
-                      Razorpay
-                    </p>
-
-                    <p className="text-sm text-gray-500">
-                      UPI, Cards, Net Banking & more
-                    </p>
-                  </div>
-
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-              </div>
-
-              {error && (
-                <div className="flex gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
-
-                  <p className="text-sm">
-                    {error}
+                  <p className="text-sm text-gray-500">
+                    Complete your sell request pickup booking
                   </p>
                 </div>
-              )}
-
-              <div className="flex items-start gap-3 text-sm text-gray-500">
-                <ShieldCheck className="w-5 h-5 shrink-0 text-green-600" />
-
-                <p>
-                  Your payment is processed securely through Razorpay.
-                  Your card/UPI credentials are never stored by SureBuy.
-                </p>
               </div>
-            </section>
+            </div>
 
-            <aside>
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-6">
-                <h2 className="font-semibold text-xl">
-                  Payment Summary
-                </h2>
-
-                <div className="border-t border-gray-200 mt-5 pt-5 space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">
-                      Sell value
-                    </span>
-
-                    <span className="font-medium">
-                      ₹
-                      {amount.toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </span>
-                  </div>
-
-                  <div className="border-t border-gray-200 pt-4 flex justify-between">
-                    <span className="font-semibold">
-                      Amount
-                    </span>
-
-                    <span className="text-xl font-bold">
-                      ₹
-                      {amount.toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </span>
-                  </div>
+            <div className="rounded-xl border border-gray-200 p-5">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                  <Smartphone className="h-5 w-5 text-gray-700" />
                 </div>
 
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    Pickup booking fee
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    This fee is required to schedule
+                    the pickup for your sell request.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <h2 className="mb-4 text-base font-semibold text-gray-900">
+                Payment method
+              </h2>
+
+              <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={createPayment}
-                  disabled={
-                    processing ||
-                    !razorpayLoaded ||
-                    !sellRequestId
+                  onClick={() =>
+                    setPaymentMethod("UPI")
                   }
-                  className="w-full mt-6 py-4 rounded-xl bg-black text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={creatingPayment}
+                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${
+                    paymentMethod === "UPI"
+                      ? "border-gray-900 bg-gray-50"
+                      : "border-gray-200 hover:border-gray-400"
+                  }`}
                 >
-                  {processing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-5 h-5" />
-                      Pay ₹
-                      {amount.toLocaleString("en-IN")}
-                    </>
+                  <WalletCards className="h-5 w-5" />
+
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      UPI
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                      Google Pay, PhonePe, Paytm
+                    </p>
+                  </div>
+
+                  {paymentMethod === "UPI" && (
+                    <CheckCircle2 className="ml-auto h-5 w-5 text-gray-900" />
                   )}
                 </button>
 
-                {!razorpayLoaded && (
-                  <p className="text-xs text-center text-gray-500 mt-3">
-                    Loading secure payment gateway...
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPaymentMethod("CARD")
+                  }
+                  disabled={creatingPayment}
+                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${
+                    paymentMethod === "CARD"
+                      ? "border-gray-900 bg-gray-50"
+                      : "border-gray-200 hover:border-gray-400"
+                  }`}
+                >
+                  <CreditCard className="h-5 w-5" />
 
-                {payment?.status === "PAID" && (
-                  <div className="mt-4 p-3 rounded-xl bg-green-50 text-green-700 text-sm">
-                    This payment has already been completed.
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      Card
+                    </p>
+
+                    <p className="text-xs text-gray-500">
+                      Credit or debit card
+                    </p>
                   </div>
-                )}
+
+                  {paymentMethod === "CARD" && (
+                    <CheckCircle2 className="ml-auto h-5 w-5 text-gray-900" />
+                  )}
+                </button>
               </div>
-            </aside>
-          </div>
+            </div>
+
+            {error && (
+              <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                void openRazorpayCheckout()
+              }
+              disabled={
+                creatingPayment ||
+                !paymentData
+              }
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-5 py-4 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {creatingPayment ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-5 w-5" />
+                  Pay ₹
+                  {paymentData?.amount?.toLocaleString(
+                    "en-IN",
+                  ) ?? "0"}
+                </>
+              )}
+            </button>
+
+            <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-500">
+              <ShieldCheck className="h-4 w-4" />
+              Secured by Razorpay
+            </div>
+          </section>
+
+          <aside className="h-fit rounded-2xl bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Payment summary
+            </h2>
+
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">
+                  Pickup booking fee
+                </span>
+
+                <span className="font-medium text-gray-900">
+                  ₹
+                  {paymentData?.amount?.toLocaleString(
+                    "en-IN",
+                  ) ?? "0"}
+                </span>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-gray-900">
+                    Total
+                  </span>
+
+                  <span className="text-xl font-bold text-gray-900">
+                    ₹
+                    {paymentData?.amount?.toLocaleString(
+                      "en-IN",
+                    ) ?? "0"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-xl bg-gray-50 p-4 text-xs leading-5 text-gray-600">
+              Your payment is processed securely through
+              Razorpay. PhoneBhai does not store your card
+              or UPI credentials.
+            </div>
+          </aside>
         </div>
-      </main>
-    </>
+      </div>
+    </main>
   );
 }

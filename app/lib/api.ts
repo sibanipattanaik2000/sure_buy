@@ -711,3 +711,115 @@ export async function getSellCatalog() {
   });
 } 
 
+/* =========================================================
+   SELL PAYMENTS
+========================================================= */
+
+export type SellPaymentMethod = "UPI" | "CARD";
+
+export interface CreateSellPaymentOrderResponse {
+  sellRequestId: string;
+  sellPaymentId: string;
+  razorpayOrderId: string;
+  amount: number;
+  amountInPaise: number;
+  currency: string;
+  keyId: string;
+  method: SellPaymentMethod;
+}
+
+export interface VerifySellPaymentPayload {
+  razorpayPaymentId: string;
+  razorpayOrderId: string;
+  razorpaySignature: string;
+}
+
+export interface VerifySellPaymentResponse {
+  success: boolean;
+  alreadyProcessed: boolean;
+  sellRequestId: string;
+  sellPaymentId: string;
+  razorpayPaymentId?: string | null;
+  status: string;
+}
+
+export interface SellPaymentStatusResponse {
+  sellRequestId: string;
+  sellRequestStatus: string;
+
+  estimatedValue: number;
+  finalValue: number | null;
+
+  pickupAddress: string;
+  pickupDate: string;
+  pickupSlot: string;
+
+  product: {
+    id: number;
+    name: string;
+    brand: string;
+    image: string | null;
+  };
+
+  payment: {
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    method: string;
+    razorpayPaymentId: string | null;
+    createdAt: string;
+  } | null;
+}
+
+/**
+ * Create/reuse Razorpay order for a sell pickup fee.
+ */
+export async function createSellPaymentOrder(
+  sellRequestId: string,
+  method: SellPaymentMethod,
+) {
+  return apiRequest<CreateSellPaymentOrderResponse>(
+    `/sell/payments/${encodeURIComponent(sellRequestId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        method,
+      }),
+    },
+  );
+}
+
+/**
+ * Verify Razorpay payment for a sell request.
+ *
+ * The backend performs the actual signature/payment verification.
+ */
+export async function verifySellPayment(
+  sellRequestId: string,
+  payload: VerifySellPaymentPayload,
+) {
+  return apiRequest<VerifySellPaymentResponse>(
+    `/sell/payments/${encodeURIComponent(sellRequestId)}/verify`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/**
+ * Get the current payment/request state.
+ *
+ * Used by sell payment success/failure pages.
+ */
+export async function getSellPaymentStatus(
+  sellRequestId: string,
+) {
+  return apiRequest<SellPaymentStatusResponse>(
+    `/sell/payments/${encodeURIComponent(sellRequestId)}/status`,
+    {
+      method: "GET",
+    },
+  );
+}
