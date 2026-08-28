@@ -3,17 +3,17 @@ export {};
 declare global {
   interface Window {
     Razorpay: new (
-      options: RazorpayCheckoutOptions,
-    ) => RazorpayCheckoutInstance;
+      options: RazorpayOptions,
+    ) => RazorpayInstance;
   }
 }
 
-interface RazorpayCheckoutOptions {
+interface RazorpayOptions {
   key: string;
   amount: number;
   currency: string;
   name: string;
-  description: string;
+  description?: string;
   order_id: string;
 
   prefill?: {
@@ -28,18 +28,43 @@ interface RazorpayCheckoutOptions {
     color?: string;
   };
 
+  handler: (
+    response: RazorpayPaymentResponse,
+  ) => void | Promise<void>;
+
   modal?: {
     ondismiss?: () => void;
   };
-
-  handler: (response: {
-    razorpay_payment_id: string;
-    razorpay_order_id: string;
-    razorpay_signature: string;
-  }) => void;
 }
 
-interface RazorpayCheckoutInstance {
+interface RazorpayPaymentResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayInstance {
   open: () => void;
   close?: () => void;
+
+  on: (
+    event: "payment.failed",
+    callback: (
+      response: RazorpayPaymentFailedResponse,
+    ) => void,
+  ) => void;
+}
+
+interface RazorpayPaymentFailedResponse {
+  error?: {
+    code?: string;
+    description?: string;
+    source?: string;
+    step?: string;
+    reason?: string;
+    metadata?: {
+      order_id?: string;
+      payment_id?: string;
+    };
+  };
 }

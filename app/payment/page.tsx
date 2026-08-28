@@ -83,7 +83,7 @@ export default function SellPaymentPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa] px-5">
         <div className="max-w-md rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-black">
+          <h1 className="text-xl font-black text-gray-800">
             Invalid payment request
           </h1>
 

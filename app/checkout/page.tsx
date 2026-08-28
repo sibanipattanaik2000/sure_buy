@@ -254,7 +254,7 @@ export default function CheckoutPage() {
     }
 
     setPlacingOrder(true);
-
+    let createdOrderId: string | null = null;
     try {
       /* =====================================================
        GET EXISTING ADDRESSES
@@ -409,135 +409,146 @@ export default function CheckoutPage() {
       }
 
       const order = orderResponse.data;
-/* =====================================================
-   ONLINE PAYMENT
+      createdOrderId = order.id;
+      /* =====================================================
+   ONLINE PAYMENT — RAZORPAY
 ===================================================== */
 
-if (backendPaymentMethod !== "COD") {
-  const paymentOrderResponse =
-    await createPaymentOrder(order.id);
+      if (backendPaymentMethod !== "COD") {
+        const paymentOrderResponse = await createPaymentOrder(order.id);
 
-  if (
-    !paymentOrderResponse.success ||
-    !paymentOrderResponse.data
-  ) {
-    throw new Error(
-      paymentOrderResponse.message ||
-        "Unable to start online payment.",
-    );
-  }
-
-  const paymentOrder =
-    paymentOrderResponse.data;
-
-  if (!window.Razorpay) {
-    throw new Error(
-      "Payment gateway is still loading. Please try again.",
-    );
-  }
-
-  await new Promise<void>((resolve, reject) => {
-    let settled = false;
-
-    const finishSuccess = async () => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-
-      try {
-        resolve();
-      } catch (error) {
-        reject(error);
-      }
-    };
-
-    const razorpay = new window.Razorpay({
-      key: paymentOrder.keyId,
-
-      amount: paymentOrder.amountInPaise,
-
-      currency: paymentOrder.currency,
-
-      name: "Phone Bhai",
-
-      description:
-        `Payment for order ${order.orderNumber}`,
-
-      order_id:
-        paymentOrder.razorpayOrderId,
-
-      theme: {
-        color: "#4f46e5",
-      },
-
-      handler: async (response) => {
-        try {
-          const verification =
-            await verifyPayment(
-              order.id,
-              {
-                razorpayPaymentId:
-                  response.razorpay_payment_id,
-
-                razorpayOrderId:
-                  response.razorpay_order_id,
-
-                razorpaySignature:
-                  response.razorpay_signature,
-              },
-            );
-
-          if (
-            !verification.success ||
-            !verification.data
-          ) {
-            throw new Error(
-              verification.message ||
-                "Payment verification failed.",
-            );
-          }
-
-          await finishSuccess();
-        } catch (verificationError) {
-          if (!settled) {
-            settled = true;
-            reject(verificationError);
-          }
-        }
-      },
-
-      modal: {
-        ondismiss: () => {
-          if (settled) {
-            return;
-          }
-
-          settled = true;
-
-          reject(
-            new Error(
-              "Payment was cancelled. Your order is still pending.",
-            ),
+        if (!paymentOrderResponse.success || !paymentOrderResponse.data) {
+          throw new Error(
+            paymentOrderResponse.message || "Unable to start online payment.",
           );
-        },
-      },
-    });
+        }
 
-    razorpay.open();
-  });
-}
+        const paymentOrder = paymentOrderResponse.data;
+
+        if (typeof window === "undefined" || !window.Razorpay) {
+          throw new Error(
+            "Payment gateway is unavailable. Please refresh and try again.",
+          );
+        }
+
+        await new Promise<void>((resolve, reject) => {
+          let settled = false;
+
+          const resolveOnce = () => {
+            if (settled) {
+              return;
+            }
+
+            settled = true;
+            resolve();
+          };
+
+          const rejectOnce = (error: Error) => {
+            if (settled) {
+              return;
+            }
+
+            settled = true;
+            reject(error);
+          };
+
+          const razorpay = new window.Razorpay({
+            key: paymentOrder.keyId,
+
+            amount: paymentOrder.amountInPaise,
+
+            currency: paymentOrder.currency,
+
+            name: "Phone Bhai",
+
+            description: `Payment for order ${order.orderNumber}`,
+
+            order_id: paymentOrder.razorpayOrderId,
+
+            /*
+             * Razorpay handles the actual
+             * UPI / Card / EMI UI.
+             */
+            prefill: {
+              name: fullName,
+              contact: phone,
+            },
+
+            notes: {
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+            },
+
+            theme: {
+              color: "#4f46e5",
+            },
+
+            handler: async (response) => {
+              try {
+                /*
+                 * The browser response is NOT
+                 * treated as payment success.
+                 *
+                 * We send it to our backend.
+                 */
+
+                const verification = await verifyPayment(order.id, {
+                  razorpayPaymentId: response.razorpay_payment_id,
+
+                  razorpayOrderId: response.razorpay_order_id,
+
+                  razorpaySignature: response.razorpay_signature,
+                });
+
+                /*
+                 * Only backend verification
+                 * can complete this payment.
+                 */
+
+                if (!verification.success || !verification.data) {
+                  throw new Error(
+                    verification.message || "Payment verification failed.",
+                  );
+                }
+
+                if (verification.data.status !== "PAID") {
+                  throw new Error("Payment has not been confirmed yet.");
+                }
+
+                resolveOnce();
+              } catch (error) {
+                rejectOnce(
+                  error instanceof Error
+                    ? error
+                    : new Error("Payment verification failed."),
+                );
+              }
+            },
+
+            modal: {
+              ondismiss: () => {
+                rejectOnce(
+                  new Error(
+                    "Payment was cancelled. Your order has not been confirmed.",
+                  ),
+                );
+              },
+            },
+          });
+
+          razorpay.on("payment.failed", (response) => {
+            const description = response?.error?.description;
+
+            rejectOnce(
+              new Error(description || "Payment failed. Please try again."),
+            );
+          });
+
+          razorpay.open();
+        });
+      }
+
       /* =====================================================
-       SUCCESS PAGE ADAPTER
-    ===================================================== */
-if (backendPaymentMethod !== "COD") {
-  // create Razorpay order
-  // open Razorpay
-  // verify payment
-  // only then continue
-}
-           /* =====================================================
        PAYMENT SUCCESS CONFIRMED
        ===================================================== */
 
@@ -560,29 +571,21 @@ if (backendPaymentMethod !== "COD") {
         JSON.stringify({
           orderId: order.orderNumber || order.id,
 
-          productName:
-            firstItem?.productName || "",
+          productName: firstItem?.productName || "",
 
-          productImage:
-            firstItem?.imageUrl || "",
+          productImage: firstItem?.imageUrl || "",
 
-          brand:
-            firstItem?.brand || "",
+          brand: firstItem?.brand || "",
 
-          storage:
-            firstItem?.storage || "",
+          storage: firstItem?.storage || "",
 
-          color:
-            firstItem?.color || "",
+          color: firstItem?.color || "",
 
-          price:
-            firstItem?.unitPrice || 0,
+          price: firstItem?.unitPrice || 0,
 
-          paymentMethod:
-            backendPaymentMethod,
+          paymentMethod: backendPaymentMethod,
 
-          deliveryDate:
-            "3–5 business days",
+          deliveryDate: "3–5 business days",
         }),
       );
 
@@ -598,23 +601,10 @@ if (backendPaymentMethod !== "COD") {
          * Cart cleanup failure must never prevent the
          * customer from reaching the success page.
          */
-        console.warn(
-          "Cart cleanup skipped after successful order:",
-          cartError,
-        );
+        console.warn("Cart cleanup skipped after successful order:", cartError);
       }
-
       clearCheckout();
-
-      /* =====================================================
-       REDIRECT
-       ===================================================== */
-
-      router.replace(
-        `/order-success?orderId=${encodeURIComponent(
-          order.id,
-        )}`,
-      );
+      router.replace(`/order-success?orderId=${encodeURIComponent(order.id)}`);
     } catch (requestError) {
       console.error("Failed to place order:", requestError);
 
