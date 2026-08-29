@@ -59,10 +59,7 @@ type RazorpayOptions = {
 
 type RazorpayInstance = {
   open: () => void;
-  on: (
-    event: string,
-    callback: (response: unknown) => void,
-  ) => void;
+  on: (event: string, callback: (response: unknown) => void) => void;
 };
 
 function getErrorMessage(error: unknown): string {
@@ -73,10 +70,7 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-function getApiErrorMessage(
-  error: unknown,
-  fallback: string,
-): string {
+function getApiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) {
     return error.message;
   }
@@ -90,15 +84,12 @@ export default function SellPaymentPage() {
 
   const requestId = searchParams.get("requestId");
 
-  const [paymentMethod, setPaymentMethod] =
-    useState<SellPaymentMethod>("UPI");
+  const [paymentMethod, setPaymentMethod] = useState<SellPaymentMethod>("UPI");
 
-  const [paymentData, setPaymentData] =
-    useState<SellPaymentData | null>(null);
+  const [paymentData, setPaymentData] = useState<SellPaymentData | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [creatingPayment, setCreatingPayment] =
-    useState(false);
+  const [creatingPayment, setCreatingPayment] = useState(false);
   const [error, setError] = useState("");
 
   const paymentStartedRef = useRef(false);
@@ -121,25 +112,20 @@ export default function SellPaymentPage() {
       );
 
       if (existingScript) {
-        existingScript.addEventListener(
-          "load",
-          () => resolve(true),
-          { once: true },
-        );
+        existingScript.addEventListener("load", () => resolve(true), {
+          once: true,
+        });
 
-        existingScript.addEventListener(
-          "error",
-          () => resolve(false),
-          { once: true },
-        );
+        existingScript.addEventListener("error", () => resolve(false), {
+          once: true,
+        });
 
         return;
       }
 
       const script = document.createElement("script");
 
-      script.src =
-        "https://checkout.razorpay.com/v1/checkout.js";
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
 
       script.async = true;
 
@@ -165,30 +151,18 @@ export default function SellPaymentPage() {
       setLoading(true);
       setError("");
 
-      const response = await createSellPaymentOrder(
-        requestId,
-        paymentMethod,
-      );
+      const response = await createSellPaymentOrder(requestId, paymentMethod);
 
       if (!response.success || !response.data) {
-        throw new Error(
-          response.message ||
-            "Unable to create payment order.",
-        );
+        throw new Error(response.message || "Unable to create payment order.");
       }
 
       setPaymentData(response.data);
     } catch (err) {
-      console.error(
-        "SELL PAYMENT ORDER ERROR:",
-        err,
-      );
+      console.error("SELL PAYMENT ORDER ERROR:", err);
 
       setError(
-        getApiErrorMessage(
-          err,
-          "Unable to prepare payment. Please try again.",
-        ),
+        getApiErrorMessage(err, "Unable to prepare payment. Please try again."),
       );
     } finally {
       setLoading(false);
@@ -212,39 +186,24 @@ export default function SellPaymentPage() {
   /**
    * Verify payment with backend.
    */
-  const verifyPaymentResponse = async (
-    response: RazorpayPaymentResponse,
-  ) => {
+  const verifyPaymentResponse = async (response: RazorpayPaymentResponse) => {
     if (!requestId) {
-      throw new Error(
-        "Sell request ID is missing.",
-      );
+      throw new Error("Sell request ID is missing.");
     }
 
     const payload: VerifySellPaymentPayload = {
-      razorpayPaymentId:
-        response.razorpay_payment_id,
+      razorpayPaymentId: response.razorpay_payment_id,
 
-      razorpayOrderId:
-        response.razorpay_order_id,
+      razorpayOrderId: response.razorpay_order_id,
 
-      razorpaySignature:
-        response.razorpay_signature,
+      razorpaySignature: response.razorpay_signature,
     };
 
-    const verificationResponse =
-      await verifySellPayment(
-        requestId,
-        payload,
-      );
+    const verificationResponse = await verifySellPayment(requestId, payload);
 
-    if (
-      !verificationResponse.success ||
-      !verificationResponse.data
-    ) {
+    if (!verificationResponse.success || !verificationResponse.data) {
       throw new Error(
-        verificationResponse.message ||
-          "Payment verification failed.",
+        verificationResponse.message || "Payment verification failed.",
       );
     }
 
@@ -269,8 +228,7 @@ export default function SellPaymentPage() {
       setCreatingPayment(true);
       setError("");
 
-      const razorpayLoaded =
-        await loadRazorpay();
+      const razorpayLoaded = await loadRazorpay();
 
       if (
         !razorpayLoaded ||
@@ -291,25 +249,18 @@ export default function SellPaymentPage() {
 
         name: "PhoneBhai",
 
-        description:
-          "Sell request pickup booking fee",
-
-        order_id:
-          paymentData.razorpayOrderId,
+        description: "Phone sale payment",
+        order_id: paymentData.razorpayOrderId,
 
         theme: {
           color: "#111827",
         },
 
-        handler: async (
-          razorpayResponse: RazorpayPaymentResponse,
-        ) => {
+        handler: async (razorpayResponse: RazorpayPaymentResponse) => {
           try {
             setCreatingPayment(true);
 
-            await verifyPaymentResponse(
-              razorpayResponse,
-            );
+            await verifyPaymentResponse(razorpayResponse);
 
             router.replace(
               `/sell/payment/success?requestId=${encodeURIComponent(
@@ -317,10 +268,7 @@ export default function SellPaymentPage() {
               )}`,
             );
           } catch (err) {
-            console.error(
-              "SELL PAYMENT VERIFICATION ERROR:",
-              err,
-            );
+            console.error("SELL PAYMENT VERIFICATION ERROR:", err);
 
             router.replace(
               `/sell/payment/failed?requestId=${encodeURIComponent(
@@ -347,36 +295,27 @@ export default function SellPaymentPage() {
         },
       };
 
-      const razorpay =
-        new window.Razorpay(options);
+      const razorpay = new window.Razorpay(options);
 
-      razorpay.on(
-        "payment.failed",
-        () => {
-          paymentStartedRef.current = false;
-          setCreatingPayment(false);
+      razorpay.on("payment.failed", () => {
+        paymentStartedRef.current = false;
+        setCreatingPayment(false);
 
-          router.replace(
-            `/sell/payment/failed?requestId=${encodeURIComponent(
-              requestId,
-            )}&reason=payment_failed`,
-          );
-        },
-      );
+        router.replace(
+          `/sell/payment/failed?requestId=${encodeURIComponent(
+            requestId,
+          )}&reason=payment_failed`,
+        );
+      });
 
       razorpay.open();
     } catch (err) {
-      console.error(
-        "SELL RAZORPAY ERROR:",
-        err,
-      );
+      console.error("SELL RAZORPAY ERROR:", err);
 
       paymentStartedRef.current = false;
       setCreatingPayment(false);
 
-      setError(
-        getErrorMessage(err),
-      );
+      setError(getErrorMessage(err));
     }
   };
 
@@ -401,9 +340,7 @@ export default function SellPaymentPage() {
 
           <button
             type="button"
-            onClick={() =>
-              router.push("/sell")
-            }
+            onClick={() => router.push("/sell")}
             className="mt-6 w-full rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white"
           >
             Back to Sell
@@ -422,9 +359,7 @@ export default function SellPaymentPage() {
         <div className="text-center">
           <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-gray-700" />
 
-          <p className="text-sm text-gray-600">
-            Preparing secure payment...
-          </p>
+          <p className="text-sm text-gray-600">Preparing secure payment...</p>
         </div>
       </main>
     );
@@ -446,15 +381,11 @@ export default function SellPaymentPage() {
               Unable to prepare payment
             </h1>
 
-            <p className="mt-2 text-sm text-gray-600">
-              {error}
-            </p>
+            <p className="mt-2 text-sm text-gray-600">{error}</p>
 
             <button
               type="button"
-              onClick={() =>
-                void createPaymentOrder()
-              }
+              onClick={() => void createPaymentOrder()}
               className="mt-6 rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white"
             >
               Try Again
@@ -496,12 +427,12 @@ export default function SellPaymentPage() {
 
                 <div>
                   <p className="font-semibold text-gray-900">
-                    Pickup booking fee
+                    Phone sale payment
                   </p>
 
                   <p className="mt-1 text-sm text-gray-500">
-                    This fee is required to schedule
-                    the pickup for your sell request.
+                    Complete the payment for your phone sale. The minimum
+                    payment is ₹500.
                   </p>
                 </div>
               </div>
@@ -515,9 +446,7 @@ export default function SellPaymentPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setPaymentMethod("UPI")
-                  }
+                  onClick={() => setPaymentMethod("UPI")}
                   disabled={creatingPayment}
                   className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${
                     paymentMethod === "UPI"
@@ -528,9 +457,7 @@ export default function SellPaymentPage() {
                   <WalletCards className="h-5 w-5" />
 
                   <div>
-                    <p className="font-medium text-gray-900">
-                      UPI
-                    </p>
+                    <p className="font-medium text-gray-900">UPI</p>
 
                     <p className="text-xs text-gray-500">
                       Google Pay, PhonePe, Paytm
@@ -544,9 +471,7 @@ export default function SellPaymentPage() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setPaymentMethod("CARD")
-                  }
+                  onClick={() => setPaymentMethod("CARD")}
                   disabled={creatingPayment}
                   className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${
                     paymentMethod === "CARD"
@@ -557,9 +482,7 @@ export default function SellPaymentPage() {
                   <CreditCard className="h-5 w-5" />
 
                   <div>
-                    <p className="font-medium text-gray-900">
-                      Card
-                    </p>
+                    <p className="font-medium text-gray-900">Card</p>
 
                     <p className="text-xs text-gray-500">
                       Credit or debit card
@@ -581,13 +504,8 @@ export default function SellPaymentPage() {
 
             <button
               type="button"
-              onClick={() =>
-                void openRazorpayCheckout()
-              }
-              disabled={
-                creatingPayment ||
-                !paymentData
-              }
+              onClick={() => void openRazorpayCheckout()}
+              disabled={creatingPayment || !paymentData}
               className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-5 py-4 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {creatingPayment ? (
@@ -598,10 +516,7 @@ export default function SellPaymentPage() {
               ) : (
                 <>
                   <CreditCard className="h-5 w-5" />
-                  Pay ₹
-                  {paymentData?.amount?.toLocaleString(
-                    "en-IN",
-                  ) ?? "0"}
+                  Pay ₹{paymentData?.amount?.toLocaleString("en-IN") ?? "0"}
                 </>
               )}
             </button>
@@ -619,38 +534,27 @@ export default function SellPaymentPage() {
 
             <div className="mt-6 space-y-4">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">
-                  Pickup booking fee
-                </span>
+                <span className="text-gray-500">Pickup booking fee</span>
 
                 <span className="font-medium text-gray-900">
-                  ₹
-                  {paymentData?.amount?.toLocaleString(
-                    "en-IN",
-                  ) ?? "0"}
+                  ₹{paymentData?.amount?.toLocaleString("en-IN") ?? "0"}
                 </span>
               </div>
 
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">
-                    Total
-                  </span>
+                  <span className="font-semibold text-gray-900">Total</span>
 
                   <span className="text-xl font-bold text-gray-900">
-                    ₹
-                    {paymentData?.amount?.toLocaleString(
-                      "en-IN",
-                    ) ?? "0"}
+                    ₹{paymentData?.amount?.toLocaleString("en-IN") ?? "0"}
                   </span>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 rounded-xl bg-gray-50 p-4 text-xs leading-5 text-gray-600">
-              Your payment is processed securely through
-              Razorpay. PhoneBhai does not store your card
-              or UPI credentials.
+              Your payment is processed securely through Razorpay. PhoneBhai
+              does not store your card or UPI credentials.
             </div>
           </aside>
         </div>
