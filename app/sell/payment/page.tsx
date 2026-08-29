@@ -263,7 +263,7 @@ export default function SellPaymentPage() {
             await verifyPaymentResponse(razorpayResponse);
 
             router.replace(
-              `/sell/payment/success?requestId=${encodeURIComponent(
+              `/sell-payment-success?requestId=${encodeURIComponent(
                 requestId,
               )}`,
             );
@@ -287,7 +287,7 @@ export default function SellPaymentPage() {
             setCreatingPayment(false);
 
             router.replace(
-              `/sell/payment/failed?requestId=${encodeURIComponent(
+              `/sell-payment-failed?requestId=${encodeURIComponent(
                 requestId,
               )}&reason=cancelled`,
             );

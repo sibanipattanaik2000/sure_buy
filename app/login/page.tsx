@@ -7,8 +7,8 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { loginUser } from "@/app/lib/api";
 export default function LoginPage() {
-  const router = useRouter();
-
+const router = useRouter();
+const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -33,7 +33,7 @@ const handleSubmit = async (
   try {
     setLoading(true);
 
-   await loginUser({
+  await login({
   email: email.trim(),
   password,
 });

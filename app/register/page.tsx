@@ -110,7 +110,7 @@ export default function RegisterPage() {
         phone: form.phone.trim(),
       });
 
-      router.push("/login");
+      router.push("/verify-user")
     } catch (error) {
       console.error("REGISTER ERROR:", error);
 
