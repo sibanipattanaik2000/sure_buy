@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -56,12 +56,6 @@ type RazorpayOptions = {
     ondismiss?: () => void;
   };
 };
-
-type RazorpayInstance = {
-  open: () => void;
-  on: (event: string, callback: (response: unknown) => void) => void;
-};
-
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
@@ -78,7 +72,7 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export default function SellPaymentPage() {
+ function SellPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -263,7 +257,7 @@ export default function SellPaymentPage() {
             await verifyPaymentResponse(razorpayResponse);
 
             router.replace(
-              `/sell-payment-success?requestId=${encodeURIComponent(
+              `/sell/sell-payment-success?requestId=${encodeURIComponent(
                 requestId,
               )}`,
             );
@@ -271,7 +265,7 @@ export default function SellPaymentPage() {
             console.error("SELL PAYMENT VERIFICATION ERROR:", err);
 
             router.replace(
-              `/sell/payment/failed?requestId=${encodeURIComponent(
+              `/sell/sell-payment-failed?requestId=${encodeURIComponent(
                 requestId,
               )}&reason=verification_failed`,
             );
@@ -287,7 +281,7 @@ export default function SellPaymentPage() {
             setCreatingPayment(false);
 
             router.replace(
-              `/sell-payment-failed?requestId=${encodeURIComponent(
+              `/sell/sell-payment-failed?requestId=${encodeURIComponent(
                 requestId,
               )}&reason=cancelled`,
             );
@@ -302,7 +296,7 @@ export default function SellPaymentPage() {
         setCreatingPayment(false);
 
         router.replace(
-          `/sell/payment/failed?requestId=${encodeURIComponent(
+          `/sell/sell-payment-failed?requestId=${encodeURIComponent(
             requestId,
           )}&reason=payment_failed`,
         );
@@ -560,5 +554,25 @@ export default function SellPaymentPage() {
         </div>
       </div>
     </main>
+  );
+}
+function SellPaymentLoading() {
+  return (
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="text-center">
+        <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-gray-700" />
+
+        <p className="text-sm text-gray-600">
+          Preparing secure payment...
+        </p>
+      </div>
+    </main>
+  );
+}
+export default function SellPaymentPage() {
+  return (
+    <Suspense fallback={<SellPaymentLoading />}>
+      <SellPaymentContent />
+    </Suspense>
   );
 }

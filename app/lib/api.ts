@@ -452,7 +452,6 @@ export async function cancelOrder(id: string) {
   });
 }
 
-
 /* =========================================================
    CART
 ========================================================= */
@@ -501,39 +500,26 @@ export async function getCart() {
   });
 }
 
-export async function addCartItem(
-  payload: AddCartItemPayload,
-) {
+export async function addCartItem(payload: AddCartItemPayload) {
   return apiRequest<CartResponse>("/cart/items", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export async function updateCartItem(
-  itemId: string,
-  quantity: number,
-) {
-  return apiRequest<CartResponse>(
-    `/cart/items/${itemId}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify({
-        quantity,
-      }),
-    },
-  );
+export async function updateCartItem(itemId: string, quantity: number) {
+  return apiRequest<CartResponse>(`/cart/items/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      quantity,
+    }),
+  });
 }
 
-export async function deleteCartItem(
-  itemId: string,
-) {
-  return apiRequest<CartResponse>(
-    `/cart/items/${itemId}`,
-    {
-      method: "DELETE",
-    },
-  );
+export async function deleteCartItem(itemId: string) {
+  return apiRequest<CartResponse>(`/cart/items/${itemId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function clearCartApi() {
@@ -555,7 +541,6 @@ export async function validateCart() {
     method: "POST",
   });
 }
-
 
 /* =========================================================
    WISHLIST
@@ -607,12 +592,9 @@ export async function clearWishlistApi() {
 }
 
 export async function checkWishlist(productId: number) {
-  return apiRequest<{ wishlisted: boolean }>(
-    `/wishlist/${productId}/check`,
-    {
-      method: "GET",
-    },
-  );
+  return apiRequest<{ wishlisted: boolean }>(`/wishlist/${productId}/check`, {
+    method: "GET",
+  });
 }
 
 /* =========================================================
@@ -682,13 +664,79 @@ export interface SellRequestResponse {
   updatedAt: string;
 }
 
-export async function createSellRequest(
-  payload: CreateSellRequestPayload,
-) {
+export interface SellRequestDetailsResponse {
+  id: string;
+
+  product: {
+    id: number;
+    name: string;
+    brand: string;
+
+    images: Array<{
+      id: number;
+      url: string;
+      altText?: string | null;
+      position: number;
+    }>;
+  };
+
+  conditions: {
+    workingStatus: string;
+    screenCondition: string;
+    deviceCondition: string;
+    batteryCondition: string;
+  };
+
+  valuation: {
+    estimatedValue: number;
+    finalValue: number | null;
+  };
+
+  pickup: {
+    address: string;
+    date: string;
+    slot: string;
+  };
+
+  status: string;
+
+  media: Array<{
+    id: string;
+    url: string;
+    key: string;
+    mimeType: string;
+    size: number;
+    position: number;
+    createdAt: string;
+  }>;
+
+  payment: {
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    method: string;
+    razorpayPaymentId: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
+export async function createSellRequest(payload: CreateSellRequestPayload) {
   return apiRequest<SellRequestResponse>("/sell/requests", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+export async function getSellRequest(sellRequestId: string) {
+  return apiRequest<SellRequestDetailsResponse>(
+    `/sell/requests/${encodeURIComponent(sellRequestId)}`,
+    {
+      method: "GET",
+    },
+  );
 }
 export interface SellCatalogModel {
   id: number;
@@ -709,64 +757,46 @@ export async function getSellCatalog() {
   return apiRequest<SellCatalog>("/sell/catalog", {
     method: "GET",
   });
-} 
+}
 export interface VerifyPhonePayload {
   phone: string;
   code: string;
 }
 
 export async function sendPhoneOtp(phone: string) {
-  return apiRequest(
-    "/auth/phone/send-otp",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        phone,
-      }),
-    },
-  );
+  return apiRequest("/auth/phone/send-otp", {
+    method: "POST",
+    body: JSON.stringify({
+      phone,
+    }),
+  });
 }
 
-export async function verifyPhoneOtp(
-  payload: VerifyPhonePayload,
-) {
-  return apiRequest<LoginResponse>(
-    "/auth/phone/verify",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+export async function verifyPhoneOtp(payload: VerifyPhonePayload) {
+  return apiRequest<LoginResponse>("/auth/phone/verify", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
-export async function forgotPassword(
-  phone: string,
-) {
-  return apiRequest(
-    "/auth/forgot-password",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        phone,
-      }),
-    },
-  );
+export async function forgotPassword(phone: string) {
+  return apiRequest("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({
+      phone,
+    }),
+  });
 }
 
-export async function resetPassword(
-  payload: {
-    phone: string;
-    code: string;
-    newPassword: string;
-  },
-) {
-  return apiRequest(
-    "/auth/reset-password",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+export async function resetPassword(payload: {
+  phone: string;
+  code: string;
+  newPassword: string;
+}) {
+  return apiRequest("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 /* =========================================================
    SELL PAYMENTS
@@ -870,9 +900,7 @@ export async function verifySellPayment(
  *
  * Used by sell payment success/failure pages.
  */
-export async function getSellPaymentStatus(
-  sellRequestId: string,
-) {
+export async function getSellPaymentStatus(sellRequestId: string) {
   return apiRequest<SellPaymentStatusResponse>(
     `/sell/payments/${encodeURIComponent(sellRequestId)}/status`,
     {

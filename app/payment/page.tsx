@@ -1,5 +1,7 @@
+
 "use client";
 
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -12,27 +14,20 @@ import {
   Smartphone,
   Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 
-import {
-  ApiError,
-  getOrder,
-} from "@/app/lib/api";
+import { ApiError } from "@/app/lib/api";
 
-export default function SellPaymentPage() {
+function SellPaymentContent() {
   const searchParams = useSearchParams();
 
-  const requestId =
-    searchParams.get("requestId");
+  const requestId = searchParams.get("requestId");
 
   const [paymentMethod, setPaymentMethod] =
     useState<"UPI" | "CARD">("UPI");
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
   async function handlePayment() {
     setError("");
@@ -41,7 +36,7 @@ export default function SellPaymentPage() {
      * Payment gateway integration belongs here.
      *
      * Do not mark the sell request as paid from the browser.
-     * The backend must create/verify the gateway payment.
+     * The backend must create and verify the gateway payment.
      */
 
     setLoading(true);
@@ -51,12 +46,12 @@ export default function SellPaymentPage() {
        * TODO:
        *
        * 1. POST /sell/payments/create
-       * 2. Backend creates Razorpay/other payment order
-       * 3. Open gateway checkout
-       * 4. Gateway returns payment details
+       * 2. Backend creates Razorpay payment order
+       * 3. Open Razorpay checkout
+       * 4. Razorpay returns payment details
        * 5. POST /sell/payments/verify
-       * 6. Backend verifies signature
-       * 7. Redirect to confirmation
+       * 6. Backend verifies Razorpay signature
+       * 7. Redirect to sell-payment-success/confirmation
        */
 
       await new Promise((resolve) =>
@@ -139,9 +134,7 @@ export default function SellPaymentPage() {
             <div className="mt-8 space-y-3">
               <PaymentOption
                 selected={paymentMethod === "UPI"}
-                onClick={() =>
-                  setPaymentMethod("UPI")
-                }
+                onClick={() => setPaymentMethod("UPI")}
                 icon={<Wallet size={20} />}
                 title="UPI"
                 description="Google Pay, PhonePe, Paytm and other UPI apps"
@@ -149,9 +142,7 @@ export default function SellPaymentPage() {
 
               <PaymentOption
                 selected={paymentMethod === "CARD"}
-                onClick={() =>
-                  setPaymentMethod("CARD")
-                }
+                onClick={() => setPaymentMethod("CARD")}
                 icon={<CreditCard size={20} />}
                 title="Card"
                 description="Credit or debit card"
@@ -241,6 +232,31 @@ export default function SellPaymentPage() {
           </div>
         </div>
       </section>
+    </main>
+  );
+}
+
+export default function SellPaymentPage() {
+  return (
+    <Suspense fallback={<SellPaymentLoading />}>
+      <SellPaymentContent />
+    </Suspense>
+  );
+}
+
+function SellPaymentLoading() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa] px-5">
+      <div className="flex flex-col items-center text-center">
+        <Loader2
+          size={32}
+          className="animate-spin text-indigo-600"
+        />
+
+        <p className="mt-4 text-sm font-semibold text-gray-500">
+          Loading payment...
+        </p>
+      </div>
     </main>
   );
 }

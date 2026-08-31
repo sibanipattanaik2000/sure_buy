@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
@@ -13,89 +13,82 @@ import {
 
 import { getSellPaymentStatus } from "@/app/lib/api";
 
-export default function SellPaymentSuccessPage() {
+function SellPaymentSuccessContent() {
   const searchParams = useSearchParams();
 
   const requestId =
-    searchParams.get("requestId") ||
-    searchParams.get("sellRequestId");
+    searchParams.get("requestId") || searchParams.get("sellRequestId");
 
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
 
-useEffect(() => {
-  if (!requestId) {
-    setLoading(false);
-    setError("Sell request ID is missing.");
-    return;
-  }
+  useEffect(() => {
+    if (!requestId) {
+      setLoading(false);
+      setError("Sell request ID is missing.");
+      return;
+    }
 
-  const currentRequestId = requestId;
+    const currentRequestId = requestId;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  async function verifyStatus() {
-    try {
-      setLoading(true);
-      setError("");
+    async function verifyStatus() {
+      try {
+        setLoading(true);
+        setError("");
 
-      const response =
-        await getSellPaymentStatus(currentRequestId);
+        const response = await getSellPaymentStatus(currentRequestId);
 
-      if (!response.success || !response.data) {
-        throw new Error(
-          response.message ||
-            "Unable to verify payment status.",
-        );
-      }
+        if (!response.success || !response.data) {
+          throw new Error(
+            response.message || "Unable to verify payment status.",
+          );
+        }
 
-      if (cancelled) {
-        return;
-      }
+        if (cancelled) {
+          return;
+        }
 
-      const paymentStatus =
-        response.data.payment?.status?.toUpperCase();
+        const paymentStatus = response.data.payment?.status?.toUpperCase();
 
-      if (paymentStatus !== "PAID") {
+        if (paymentStatus !== "PAID") {
+          setVerified(false);
+          setError(
+            "Your payment could not be confirmed yet. Please check your payment status or try again.",
+          );
+          return;
+        }
+
+        setVerified(true);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("SELL PAYMENT SUCCESS STATUS ERROR:", err);
+
         setVerified(false);
+
         setError(
-          "Your payment could not be confirmed yet. Please check your payment status or try again.",
+          err instanceof Error
+            ? err.message
+            : "Unable to verify payment status.",
         );
-        return;
-      }
-
-      setVerified(true);
-    } catch (err) {
-      if (cancelled) {
-        return;
-      }
-
-      console.error(
-        "SELL PAYMENT SUCCESS STATUS ERROR:",
-        err,
-      );
-
-      setVerified(false);
-
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to verify payment status.",
-      );
-    } finally {
-      if (!cancelled) {
-        setLoading(false);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
-  }
 
-  void verifyStatus();
+    void verifyStatus();
 
-  return () => {
-    cancelled = true;
-  };
-}, [requestId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId]);
 
   if (loading) {
     return (
@@ -128,15 +121,12 @@ useEffect(() => {
           </h1>
 
           <p className="text-gray-600 mt-3">
-            {error ||
-              "We could not confirm the payment for this sell request."}
+            {error || "We could not confirm the payment for this sell request."}
           </p>
 
           {requestId && (
             <div className="mt-6 rounded-xl bg-gray-50 border border-gray-200 p-4 text-left">
-              <p className="text-xs text-gray-500">
-                SELL REQUEST ID
-              </p>
+              <p className="text-xs text-gray-500">SELL REQUEST ID</p>
 
               <p className="font-medium text-gray-900 mt-1 break-all">
                 {requestId}
@@ -180,14 +170,12 @@ useEffect(() => {
         </h1>
 
         <p className="text-gray-600 mt-3">
-          Your payment has been successfully verified.
-          Your sell request is now being processed.
+          Your payment has been successfully verified. Your sell request is now
+          being processed.
         </p>
 
         <div className="mt-6 rounded-xl bg-gray-50 border border-gray-200 p-4">
-          <p className="text-xs text-gray-500">
-            SELL REQUEST ID
-          </p>
+          <p className="text-xs text-gray-500">SELL REQUEST ID</p>
 
           <p className="font-semibold text-gray-900 mt-1 break-all">
             {requestId}
@@ -198,14 +186,11 @@ useEffect(() => {
           <PackageCheck className="w-5 h-5 text-blue-600 shrink-0" />
 
           <div>
-            <p className="font-medium text-blue-900">
-              What's next?
-            </p>
+            <p className="font-medium text-blue-900">What's next?</p>
 
             <p className="text-sm text-blue-800 mt-1">
-              Your pickup request is now scheduled. We'll continue
-              processing your phone sale and keep you updated about
-              the next step.
+              Your pickup request is now scheduled. We'll continue processing
+              your phone sale and keep you updated about the next step.
             </p>
           </div>
         </div>
@@ -219,14 +204,40 @@ useEffect(() => {
           </Link>
 
           <Link
-            href={`/sell/orders/${encodeURIComponent(requestId)}`}
+            href={`/sell/requests/${encodeURIComponent(requestId)}`}
             className="py-3 px-4 rounded-xl bg-black text-white font-medium flex items-center justify-center gap-2"
           >
-            Track Request
+            View Sell Request
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
     </main>
+  );
+}
+
+function SellPaymentSuccessLoading() {
+  return (
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-lg rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+        <Loader2 className="mx-auto h-10 w-10 animate-spin text-gray-700" />
+
+        <h1 className="mt-5 text-xl font-semibold text-gray-900">
+          Loading payment status
+        </h1>
+
+        <p className="mt-2 text-sm text-gray-500">
+          Please wait while we securely check your payment.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+export default function SellPaymentSuccessPage() {
+  return (
+    <Suspense fallback={<SellPaymentSuccessLoading />}>
+      <SellPaymentSuccessContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -19,7 +19,7 @@ import {
 
 import { ApiError, getOrder, Order } from "../lib/api";
 
-export default function OrderSuccessPage() {
+function OrderSuccessContent() {
   const searchParams = useSearchParams();
 
   const orderId = searchParams.get("orderId");
@@ -46,9 +46,7 @@ export default function OrderSuccessPage() {
         const response = await getOrder(orderId);
 
         if (!response.success || !response.data) {
-          throw new Error(
-            response.message || "Unable to load your order.",
-          );
+          throw new Error(response.message || "Unable to load your order.");
         }
 
         if (!cancelled) {
@@ -66,10 +64,7 @@ export default function OrderSuccessPage() {
                 "Your session has expired. Please log in again to view this order.",
               );
             } else {
-              setError(
-                requestError.message ||
-                  "Unable to load your order.",
-              );
+              setError(requestError.message || "Unable to load your order.");
             }
           } else {
             setError(
@@ -107,10 +102,7 @@ export default function OrderSuccessPage() {
         setCopied(false);
       }, 2000);
     } catch (copyError) {
-      console.error(
-        "Unable to copy order number:",
-        copyError,
-      );
+      console.error("Unable to copy order number:", copyError);
     }
   };
 
@@ -154,10 +146,7 @@ export default function OrderSuccessPage() {
 
         <div className="text-center">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle2
-              size={42}
-              className="text-green-600"
-            />
+            <CheckCircle2 size={42} className="text-green-600" />
           </div>
 
           <h1 className="mt-6 text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
@@ -165,9 +154,9 @@ export default function OrderSuccessPage() {
           </h1>
 
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-500">
-            Thank you for shopping with SureBuy. Your order
-            has been successfully placed and we&apos;ll keep
-            you updated about its delivery.
+            Thank you for shopping with SureBuy. Your order has been
+            successfully placed and we&apos;ll keep you updated about its
+            delivery.
           </p>
 
           {/* ORDER NUMBER */}
@@ -189,11 +178,7 @@ export default function OrderSuccessPage() {
               className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-500 transition hover:bg-indigo-50 hover:text-indigo-600"
               aria-label="Copy order number"
             >
-              {copied ? (
-                <Check size={16} />
-              ) : (
-                <Clipboard size={16} />
-              )}
+              {copied ? <Check size={16} /> : <Clipboard size={16} />}
             </button>
           </div>
         </div>
@@ -214,13 +199,10 @@ export default function OrderSuccessPage() {
                   </div>
 
                   <div>
-                    <h2 className="text-lg font-black">
-                      Order summary
-                    </h2>
+                    <h2 className="text-lg font-black">Order summary</h2>
 
                     <p className="mt-1 text-xs text-gray-500">
-                      {totalItems}{" "}
-                      {totalItems === 1 ? "item" : "items"}
+                      {totalItems} {totalItems === 1 ? "item" : "items"}
                     </p>
                   </div>
                 </div>
@@ -232,10 +214,7 @@ export default function OrderSuccessPage() {
 
               <div className="mt-6 space-y-5">
                 {order.items.map((item) => (
-                  <OrderItem
-                    key={item.id}
-                    item={item}
-                  />
+                  <OrderItem key={item.id} item={item} />
                 ))}
               </div>
             </section>
@@ -249,9 +228,7 @@ export default function OrderSuccessPage() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-black">
-                    Delivery information
-                  </h2>
+                  <h2 className="text-lg font-black">Delivery information</h2>
 
                   <p className="mt-1 text-xs text-gray-500">
                     Your order will be delivered to this address.
@@ -271,8 +248,7 @@ export default function OrderSuccessPage() {
                       ? `, ${order.shippingAddress.addressLine2}`
                       : ""}
                     <br />
-                    {order.shippingAddress.city},{" "}
-                    {order.shippingAddress.state}{" "}
+                    {order.shippingAddress.city}, {order.shippingAddress.state}{" "}
                     {order.shippingAddress.postalCode}
                   </p>
 
@@ -338,50 +314,32 @@ export default function OrderSuccessPage() {
 
           <aside>
             <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black">
-                Payment details
-              </h2>
+              <h2 className="text-lg font-black">Payment details</h2>
 
               <div className="mt-6 space-y-4 text-sm">
                 <div className="flex justify-between gap-4">
-                  <span className="text-gray-500">
-                    Subtotal
-                  </span>
+                  <span className="text-gray-500">Subtotal</span>
 
                   <span className="font-semibold">
-                    {formatCurrency(
-                      order.subtotal,
-                      order.currency,
-                    )}
+                    {formatCurrency(order.subtotal, order.currency)}
                   </span>
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <span className="text-gray-500">
-                    Discount
-                  </span>
+                  <span className="text-gray-500">Discount</span>
 
                   <span className="font-semibold text-green-600">
-                    -{" "}
-                    {formatCurrency(
-                      order.discountAmount,
-                      order.currency,
-                    )}
+                    - {formatCurrency(order.discountAmount, order.currency)}
                   </span>
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <span className="text-gray-500">
-                    Delivery
-                  </span>
+                  <span className="text-gray-500">Delivery</span>
 
                   <span className="font-bold text-green-600">
                     {Number(order.deliveryAmount) === 0
                       ? "FREE"
-                      : formatCurrency(
-                          order.deliveryAmount,
-                          order.currency,
-                        )}
+                      : formatCurrency(order.deliveryAmount, order.currency)}
                   </span>
                 </div>
               </div>
@@ -389,15 +347,10 @@ export default function OrderSuccessPage() {
               <div className="my-5 border-t border-gray-100" />
 
               <div className="flex items-center justify-between gap-4">
-                <span className="font-black">
-                  Total amount
-                </span>
+                <span className="font-black">Total amount</span>
 
                 <span className="text-xl font-black">
-                  {formatCurrency(
-                    order.totalAmount,
-                    order.currency,
-                  )}
+                  {formatCurrency(order.totalAmount, order.currency)}
                 </span>
               </div>
 
@@ -427,8 +380,7 @@ export default function OrderSuccessPage() {
 
                   <span
                     className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                      order.paymentStatus?.toUpperCase() ===
-                      "PAID"
+                      order.paymentStatus?.toUpperCase() === "PAID"
                         ? "bg-green-50 text-green-700"
                         : "bg-yellow-50 text-yellow-700"
                     }`}
@@ -467,16 +419,18 @@ export default function OrderSuccessPage() {
     </main>
   );
 }
-
+export default function OrderSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <OrderSuccessContent />
+    </Suspense>
+  );
+}
 /* =========================================================
    ORDER ITEM
 ========================================================= */
 
-function OrderItem({
-  item,
-}: {
-  item: Order["items"][number];
-}) {
+function OrderItem({ item }: { item: Order["items"][number] }) {
   const quantity = Math.max(1, item.quantity || 1);
 
   return (
@@ -489,10 +443,7 @@ function OrderItem({
             className="h-full w-full object-contain"
           />
         ) : (
-          <Package
-            size={30}
-            className="text-gray-300"
-          />
+          <Package size={30} className="text-gray-300" />
         )}
       </div>
 
@@ -503,9 +454,7 @@ function OrderItem({
           </p>
         )}
 
-        <h3 className="mt-1 text-base font-black">
-          {item.productName}
-        </h3>
+        <h3 className="mt-1 text-base font-black">{item.productName}</h3>
 
         <div className="mt-2 flex flex-wrap gap-2">
           {item.storage && (
@@ -528,17 +477,14 @@ function OrderItem({
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <p className="text-lg font-black">
-            {formatCurrency(item.unitPrice)}
-          </p>
+          <p className="text-lg font-black">{formatCurrency(item.unitPrice)}</p>
 
           <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
             Qty: {quantity}
           </span>
 
           <span className="text-xs font-semibold text-gray-400">
-            Total:{" "}
-            {formatCurrency(item.subtotal)}
+            Total: {formatCurrency(item.subtotal)}
           </span>
         </div>
       </div>
@@ -565,22 +511,16 @@ function OrderStep({
     <div className="flex gap-3">
       <div
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          active
-            ? "bg-green-100 text-green-600"
-            : "bg-gray-100 text-gray-500"
+          active ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"
         }`}
       >
         {icon}
       </div>
 
       <div>
-        <h3 className="text-xs font-black">
-          {title}
-        </h3>
+        <h3 className="text-xs font-black">{title}</h3>
 
-        <p className="mt-1 text-[11px] leading-5 text-gray-500">
-          {text}
-        </p>
+        <p className="mt-1 text-[11px] leading-5 text-gray-500">{text}</p>
       </div>
     </div>
   );
@@ -605,13 +545,9 @@ function TrustItem({
         {icon}
       </div>
 
-      <h3 className="mt-4 text-sm font-black">
-        {title}
-      </h3>
+      <h3 className="mt-4 text-sm font-black">{title}</h3>
 
-      <p className="mt-1 text-xs leading-5 text-gray-500">
-        {text}
-      </p>
+      <p className="mt-1 text-xs leading-5 text-gray-500">{text}</p>
     </div>
   );
 }
@@ -662,11 +598,7 @@ function LoadingState() {
    ERROR
 ========================================================= */
 
-function ErrorState({
-  message,
-}: {
-  message: string;
-}) {
+function ErrorState({ message }: { message: string }) {
   return (
     <main className="min-h-screen bg-[#f7f8fa]">
       <header className="border-b border-gray-200 bg-white">
@@ -683,10 +615,7 @@ function ErrorState({
       <section className="mx-auto max-w-xl px-5 py-20">
         <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
-            <Package
-              size={28}
-              className="text-gray-500"
-            />
+            <Package size={28} className="text-gray-500" />
           </div>
 
           <h1 className="mt-6 text-2xl font-black text-gray-950">
@@ -741,9 +670,7 @@ function formatCurrency(
   }).format(amount);
 }
 
-function formatStatus(
-  status: string | null | undefined,
-) {
+function formatStatus(status: string | null | undefined) {
   if (!status) {
     return "Processing";
   }
@@ -751,17 +678,11 @@ function formatStatus(
   return status
     .toLowerCase()
     .split(/[_\s-]+/)
-    .map(
-      (word) =>
-        word.charAt(0).toUpperCase() +
-        word.slice(1),
-    )
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
 
-function isProcessingStatus(
-  status: string | null | undefined,
-) {
+function isProcessingStatus(status: string | null | undefined) {
   if (!status) {
     return false;
   }

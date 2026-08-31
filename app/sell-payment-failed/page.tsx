@@ -1,14 +1,17 @@
+
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   XCircle,
   RefreshCcw,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
 
-export default function SellPaymentFailedPage() {
+function SellPaymentFailedContent() {
   const searchParams = useSearchParams();
 
   const requestId =
@@ -47,8 +50,8 @@ export default function SellPaymentFailedPage() {
         </h1>
 
         <p className="text-gray-600 mt-3">
-          Your payment could not be completed.
-          No successful payment has been recorded.
+          Your payment could not be completed. No successful payment has been
+          recorded.
         </p>
 
         <div className="mt-6 rounded-xl bg-red-50 border border-red-200 p-4 text-left">
@@ -80,9 +83,9 @@ export default function SellPaymentFailedPage() {
             </p>
 
             <p className="text-sm text-yellow-800 mt-1">
-              If money was deducted from your account, do not make
-              repeated payments immediately. The payment may still be
-              processing. Check your payment status or contact support.
+              If money was deducted from your account, do not make repeated
+              payments immediately. The payment may still be processing.
+              Check your payment status or contact support.
             </p>
           </div>
         )}
@@ -110,5 +113,31 @@ export default function SellPaymentFailedPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function SellPaymentFailedLoading() {
+  return (
+    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-lg bg-white rounded-3xl shadow-sm border border-gray-200 p-8 text-center">
+        <Loader2 className="w-10 h-10 mx-auto animate-spin text-gray-700" />
+
+        <h1 className="text-xl font-semibold text-gray-900 mt-5">
+          Loading payment status...
+        </h1>
+
+        <p className="text-sm text-gray-500 mt-2">
+          Please wait.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+export default function SellPaymentFailedPage() {
+  return (
+    <Suspense fallback={<SellPaymentFailedLoading />}>
+      <SellPaymentFailedContent />
+    </Suspense>
   );
 }
