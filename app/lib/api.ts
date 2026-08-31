@@ -710,7 +710,64 @@ export async function getSellCatalog() {
     method: "GET",
   });
 } 
+export interface VerifyPhonePayload {
+  phone: string;
+  code: string;
+}
 
+export async function sendPhoneOtp(phone: string) {
+  return apiRequest(
+    "/auth/phone/send-otp",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        phone,
+      }),
+    },
+  );
+}
+
+export async function verifyPhoneOtp(
+  payload: VerifyPhonePayload,
+) {
+  return apiRequest<LoginResponse>(
+    "/auth/phone/verify",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function forgotPassword(
+  phone: string,
+) {
+  return apiRequest(
+    "/auth/forgot-password",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        phone,
+      }),
+    },
+  );
+}
+
+export async function resetPassword(
+  payload: {
+    phone: string;
+    code: string;
+    newPassword: string;
+  },
+) {
+  return apiRequest(
+    "/auth/reset-password",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
 /* =========================================================
    SELL PAYMENTS
 ========================================================= */

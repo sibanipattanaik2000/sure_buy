@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -10,16 +11,32 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+
+import {
+  ApiError,
+  sendPhoneOtp,
+  verifyPhoneOtp,
+} from "@/app/lib/api";
 
 export default function VerifyUserPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const phone = searchParams.get("phone") || "";
+
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [timer, setTimer] = useState(30);
-  const router = useRouter();
+
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  /* RESEND TIMER */
+
+  /* =========================================================
+     RESEND TIMER
+  ========================================================= */
 
   useEffect(() => {
     if (timer <= 0) return;
@@ -31,10 +48,23 @@ export default function VerifyUserPage() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  /* HANDLE OTP INPUT */
+  /* =========================================================
+     PHONE VALIDATION
+  ========================================================= */
+
+  useEffect(() => {
+    if (!phone) {
+      setError(
+        "Phone number is missing. Please return to registration and try again.",
+      );
+    }
+  }, [phone]);
+
+  /* =========================================================
+     HANDLE OTP INPUT
+  ========================================================= */
 
   const handleOtpChange = (index: number, value: string) => {
-    // Only allow numbers
     if (!/^\d*$/.test(value)) {
       return;
     }
@@ -46,13 +76,14 @@ export default function VerifyUserPage() {
     setOtp(newOtp);
     setError("");
 
-    // Move to next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
-  /* HANDLE BACKSPACE */
+  /* =========================================================
+     HANDLE BACKSPACE
+  ========================================================= */
 
   const handleKeyDown = (
     index: number,
@@ -63,7 +94,9 @@ export default function VerifyUserPage() {
     }
   };
 
-  /* HANDLE PASTE */
+  /* =========================================================
+     HANDLE PASTE
+  ========================================================= */
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
@@ -75,23 +108,37 @@ export default function VerifyUserPage() {
 
     if (!pastedData) return;
 
-    const newOtp = [...otp];
+    const newOtp = ["", "", "", "", "", ""];
 
     pastedData.split("").forEach((digit, index) => {
       newOtp[index] = digit;
     });
 
     setOtp(newOtp);
+    setError("");
 
     const nextIndex = Math.min(pastedData.length, 5);
 
     inputRefs.current[nextIndex]?.focus();
   };
 
-  /* VERIFY OTP */
+  /* =========================================================
+     VERIFY OTP
+  ========================================================= */
 
-  const handleVerify = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleVerify = async (
+    e: React.FormEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault();
+
+    setError("");
+
+    if (!phone) {
+      setError(
+        "Phone number is missing. Please return to registration.",
+      );
+      return;
+    }
 
     const enteredOtp = otp.join("");
 
@@ -100,33 +147,100 @@ export default function VerifyUserPage() {
       return;
     }
 
-    setSuccess(true);
+    try {
+      setLoading(true);
 
-    setTimeout(() => {
-      router.push("/");
-    }, 1000);
+      await verifyPhoneOtp({
+        phone,
+        code: enteredOtp,
+      });
+
+      setSuccess(true);
+
+      /*
+       * Backend sets the authentication cookie after
+       * successful phone verification.
+       */
+
+      setTimeout(() => {
+        router.push("/");
+        router.refresh();
+      }, 1000);
+    } catch (error) {
+      console.error("VERIFY PHONE ERROR:", error);
+
+      if (error instanceof ApiError) {
+        if (error.status === 400) {
+          setError(error.message || "Invalid or expired OTP.");
+        } else if (error.status === 404) {
+          setError("Account not found.");
+        } else if (error.status === 429) {
+          setError(
+            "Too many attempts. Please wait and try again.",
+          );
+        } else {
+          setError(
+            error.message ||
+              "Unable to verify phone number. Please try again.",
+          );
+        }
+      } else {
+        setError(
+          "Unable to verify phone number. Please try again.",
+        );
+      }
+
+      setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* RESEND OTP */
+  /* =========================================================
+     RESEND OTP
+  ========================================================= */
 
-  const handleResend = () => {
-    if (timer > 0) return;
+  const handleResend = async () => {
+    if (timer > 0 || !phone || resending) {
+      return;
+    }
 
-    setOtp(["", "", "", "", "", ""]);
-    setError("");
-    setSuccess(false);
-    setTimer(30);
+    try {
+      setResending(true);
+      setError("");
 
-    inputRefs.current[0]?.focus();
+      await sendPhoneOtp(phone);
 
-    // Real resend OTP API will be connected later.
-    console.log("OTP resent");
+      setOtp(["", "", "", "", "", ""]);
+      setTimer(30);
+
+      inputRefs.current[0]?.focus();
+    } catch (error) {
+      console.error("RESEND OTP ERROR:", error);
+
+      if (error instanceof ApiError) {
+        setError(
+          error.message ||
+            "Unable to resend OTP. Please try again.",
+        );
+      } else {
+        setError(
+          "Unable to resend OTP. Please try again.",
+        );
+      }
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
     <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 px-5 py-12 sm:py-16">
       <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-2">
-        {/* LEFT SIDE */}
+
+        {/* =====================================================
+            LEFT SIDE
+        ===================================================== */}
 
         <div className="hidden lg:block">
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white shadow-lg">
@@ -135,18 +249,25 @@ export default function VerifyUserPage() {
 
           <h1 className="max-w-lg text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
             Verify your{" "}
-            <span className="text-indigo-600">PhoneBhai account.</span>
+            <span className="text-indigo-600">
+              PhoneBhai account.
+            </span>
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
-            We've sent a verification code to your registered contact. Enter the
-            code to securely verify your PhoneBhai account.
+            We&apos;ve sent a verification code to your
+            registered mobile number. Enter the code to
+            securely verify your PhoneBhai account.
           </p>
 
           <div className="mt-10 space-y-5">
+
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50">
-                <ShieldCheck size={21} className="text-indigo-600" />
+                <ShieldCheck
+                  size={21}
+                  className="text-indigo-600"
+                />
               </div>
 
               <div>
@@ -162,23 +283,32 @@ export default function VerifyUserPage() {
 
             <div className="flex items-center gap-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-                <CheckCircle2 size={21} className="text-green-600" />
+                <CheckCircle2
+                  size={21}
+                  className="text-green-600"
+                />
               </div>
 
               <div>
-                <p className="text-sm font-bold text-gray-900">Almost there</p>
+                <p className="text-sm font-bold text-gray-900">
+                  Almost there
+                </p>
 
                 <p className="mt-1 text-xs text-gray-500">
                   Verify once and start using PhoneBhai.
                 </p>
               </div>
             </div>
+
           </div>
         </div>
 
-        {/* VERIFICATION CARD */}
+        {/* =====================================================
+            VERIFICATION CARD
+        ===================================================== */}
 
         <div className="mx-auto w-full max-w-md">
+
           {/* MOBILE HEADER */}
 
           <div className="mb-8 text-center lg:hidden">
@@ -198,13 +328,17 @@ export default function VerifyUserPage() {
           {/* CARD */}
 
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] sm:p-8">
+
             {!success ? (
               <>
                 {/* CARD HEADER */}
 
                 <div className="mb-8 text-center">
                   <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-                    <ShieldCheck size={25} className="text-indigo-600" />
+                    <ShieldCheck
+                      size={25}
+                      className="text-indigo-600"
+                    />
                   </div>
 
                   <h2 className="text-2xl font-black tracking-tight text-gray-950">
@@ -212,14 +346,21 @@ export default function VerifyUserPage() {
                   </h2>
 
                   <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-500">
-                    Enter the 6-digit verification code sent to your registered
-                    mobile number.
+                    Enter the 6-digit verification code
+                    sent to your registered mobile number.
                   </p>
+
+                  {phone && (
+                    <p className="mt-3 text-sm font-bold text-gray-900">
+                      +91 {phone}
+                    </p>
+                  )}
                 </div>
 
                 {/* FORM */}
 
                 <form onSubmit={handleVerify}>
+
                   {/* OTP BOXES */}
 
                   <div className="flex justify-center gap-2 sm:gap-3">
@@ -233,11 +374,19 @@ export default function VerifyUserPage() {
                         inputMode="numeric"
                         maxLength={1}
                         value={digit}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(index, e)}
+                        disabled={loading}
+                        onChange={(e) =>
+                          handleOtpChange(
+                            index,
+                            e.target.value,
+                          )
+                        }
+                        onKeyDown={(e) =>
+                          handleKeyDown(index, e)
+                        }
                         onPaste={handlePaste}
                         aria-label={`OTP digit ${index + 1}`}
-                        className={`h-12 w-11 rounded-xl border bg-white text-center text-lg font-bold text-gray-900 outline-none transition sm:h-14 sm:w-12 ${
+                        className={`h-12 w-11 rounded-xl border bg-white text-center text-lg font-bold text-gray-900 outline-none transition disabled:cursor-not-allowed disabled:bg-gray-50 sm:h-14 sm:w-12 ${
                           error
                             ? "border-red-400 focus:ring-4 focus:ring-red-500/10"
                             : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
@@ -249,7 +398,10 @@ export default function VerifyUserPage() {
                   {/* ERROR */}
 
                   {error && (
-                    <p className="mt-4 text-center text-xs font-semibold text-red-500">
+                    <p
+                      role="alert"
+                      className="mt-4 text-center text-xs font-semibold text-red-500"
+                    >
                       {error}
                     </p>
                   )}
@@ -258,13 +410,26 @@ export default function VerifyUserPage() {
 
                   <button
                     type="submit"
-                    className="group mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/20"
+                    disabled={loading || !phone}
+                    className="group mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                   >
-                    Verify account
-                    <ArrowRight
-                      size={17}
-                      className="transition-transform group-hover:translate-x-1"
-                    />
+                    {loading ? (
+                      <>
+                        <RefreshCw
+                          size={17}
+                          className="animate-spin"
+                        />
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        Verify account
+                        <ArrowRight
+                          size={17}
+                          className="transition-transform group-hover:translate-x-1"
+                        />
+                      </>
+                    )}
                   </button>
                 </form>
 
@@ -272,22 +437,35 @@ export default function VerifyUserPage() {
 
                 <div className="mt-7 text-center">
                   <p className="text-sm text-gray-500">
-                    Didn't receive the code?
+                    Didn&apos;t receive the code?
                   </p>
 
                   {timer > 0 ? (
                     <p className="mt-2 text-xs font-semibold text-gray-400">
-                      Resend OTP in{" "}
-                      <span className="text-indigo-600">{timer}s</span>
+                      Resend OTP{" "}
+                      <span className="text-indigo-600">
+                        in {timer}s
+                      </span>
                     </p>
                   ) : (
                     <button
                       type="button"
                       onClick={handleResend}
-                      className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-indigo-600 transition hover:text-indigo-700"
+                      disabled={resending || !phone}
+                      className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-indigo-600 transition hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <RefreshCw size={15} />
-                      Resend OTP
+                      <RefreshCw
+                        size={15}
+                        className={
+                          resending
+                            ? "animate-spin"
+                            : ""
+                        }
+                      />
+
+                      {resending
+                        ? "Sending..."
+                        : "Resend OTP"}
                     </button>
                   )}
                 </div>
@@ -305,11 +483,16 @@ export default function VerifyUserPage() {
                 </div>
               </>
             ) : (
-              /* SUCCESS STATE */
+              /* =================================================
+                 SUCCESS STATE
+              ================================================= */
 
               <div className="py-8 text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
-                  <CheckCircle2 size={34} className="text-green-600" />
+                  <CheckCircle2
+                    size={34}
+                    className="text-green-600"
+                  />
                 </div>
 
                 <h2 className="mt-6 text-2xl font-black text-gray-950">
@@ -317,7 +500,8 @@ export default function VerifyUserPage() {
                 </h2>
 
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-500">
-                  Your PhoneBhai account has been successfully verified.
+                  Your PhoneBhai account has been successfully
+                  verified.
                 </p>
 
                 <Link
@@ -329,6 +513,7 @@ export default function VerifyUserPage() {
                 </Link>
               </div>
             )}
+
           </div>
 
           {/* SECURITY */}

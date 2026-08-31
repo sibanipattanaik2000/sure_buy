@@ -102,15 +102,19 @@ export default function RegisterPage() {
 
       const lastName = nameParts.slice(1).join(" ") || "User";
 
+      const phone = form.phone.trim();
+
       await registerUser({
         firstName,
         lastName,
         email: form.email.trim(),
         password: form.password,
-        phone: form.phone.trim(),
+        phone,
       });
 
-      router.push("/verify-user")
+      router.push(
+        `/verify-user?phone=${encodeURIComponent(phone)}&mode=register`,
+      );
     } catch (error) {
       console.error("REGISTER ERROR:", error);
 
