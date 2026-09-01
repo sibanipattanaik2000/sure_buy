@@ -1,31 +1,68 @@
-import Link from "next/link";
-import {
-  ArrowUpRight,
-  Mail,
-  MapPin,
-  Phone,
-  Zap,
-} from "lucide-react";
+"use client";
 
-import {
-    FaFacebook,
-  FaFacebookF,
-  FaInstagram,
-  FaLinkedinIn,
-  FaTwitter,
-} from "react-icons/fa";
+import Link from "next/link";
+import { FormEvent, useState } from "react";
+
+import { ArrowUpRight, Mail, MapPin, Phone, Zap } from "lucide-react";
+
+import { FaFacebook, FaInstagram } from "react-icons/fa";
 
 import { FaXTwitter } from "react-icons/fa6";
 
+import { subscribeNewsletter } from "@/app/lib/newsletter";
+
 export default function Footer() {
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function handleSubscribe(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError("Please enter your email address.");
+      setMessage("");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await subscribeNewsletter(normalizedEmail);
+
+      if (!response.success) {
+        throw new Error(response.message || "Unable to subscribe right now.");
+      }
+
+      setMessage(
+        response.message ||
+          "You're successfully subscribed to PhoneBhai updates.",
+      );
+
+      setEmail("");
+    } catch (error) {
+      console.error("NEWSLETTER SUBSCRIBE ERROR:", error);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to subscribe right now. Please try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
   return (
     <footer className="bg-[#0b0f19] text-white">
-
       {/* NEWSLETTER / CTA */}
 
       <div className="border-b border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-0 px-0 py-10 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-400">
               Stay updated
@@ -40,17 +77,53 @@ export default function Footer() {
             </p>
           </div>
 
-          <div className="flex w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.04] p-1.5">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              aria-label="Email address"
-              className="min-w-0 flex-1 bg-transparent px-4 text-sm text-white outline-none placeholder:text-gray-500"
-            />
+          <div className="w-full max-w-md">
+            <form
+              onSubmit={handleSubscribe}
+              className="flex w-full rounded-2xl border border-white/10 bg-white/[0.04] p-1.5"
+            >
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setError("");
+                  setMessage("");
+                }}
+                placeholder="Enter your email"
+                aria-label="Email address"
+                autoComplete="email"
+                disabled={submitting}
+                required
+                className="min-w-0 flex-1 bg-transparent px-4 text-sm text-white outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+              />
 
-            <button className="rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-black transition hover:bg-gray-200">
-              Subscribe
-            </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitting ? "Subscribing..." : "Subscribe"}
+              </button>
+            </form>
+
+            {message && (
+              <p
+                role="status"
+                className="mt-2 px-1 text-xs font-medium text-green-400"
+              >
+                {message}
+              </p>
+            )}
+
+            {error && (
+              <p
+                role="alert"
+                className="mt-2 px-1 text-xs font-medium text-red-400"
+              >
+                {error}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -59,14 +132,10 @@ export default function Footer() {
 
       <div className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
-
           {/* BRAND */}
 
           <div>
-            <Link
-              href="/"
-              className="group inline-flex items-center gap-2.5"
-            >
+            <Link href="/" className="group inline-flex items-center gap-2.5">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black transition group-hover:scale-105">
                 <Zap size={18} />
               </div>
@@ -84,20 +153,26 @@ export default function Footer() {
             {/* CONTACT */}
 
             <div className="mt-6 space-y-3">
-              <ContactItem
-                icon={<Mail size={15} />}
-                text="support@PhoneBhai.com"
-              />
+              <a
+                href="mailto:support@PhoneBhai.com"
+                className="flex items-center gap-3 text-xs text-gray-400 transition hover:text-white"
+              >
+                <Mail size={15} className="text-indigo-400" />
+                support@PhoneBhai.com
+              </a>
 
-              <ContactItem
-                icon={<Phone size={15} />}
-                text="+91 8079979945"
-              />
+              <a
+                href="tel:+918079979945"
+                className="flex items-center gap-3 text-xs text-gray-400 transition hover:text-white"
+              >
+                <Phone size={15} className="text-indigo-400" />
+                +91 8079979945
+              </a>
 
-              <ContactItem
-                icon={<MapPin size={15} />}
-                text="India"
-              />
+              <div className="flex items-center gap-3 text-xs text-gray-400">
+                <MapPin size={15} className="text-indigo-400" />
+                India
+              </div>
             </div>
           </div>
 
@@ -107,9 +182,9 @@ export default function Footer() {
             title="Company"
             links={[
               ["About PhoneBhai", "/about"],
-              ["Careers", "/careers"],
-              ["Contact", "/contact"],
-              ["Our stores", "/stores"],
+              ["How it works", "/how-it-works"],
+              ["Buy devices", "/buy"],
+              ["Sell your device", "/sell"],
             ]}
           />
 
@@ -120,8 +195,8 @@ export default function Footer() {
             links={[
               ["Buy a device", "/buy"],
               ["Sell your device", "/sell"],
-              ["Device repair", "/repair"],
               ["Track order", "/orders"],
+              ["Inspection & pricing", "/inspection-policy"],
             ]}
           />
 
@@ -130,10 +205,10 @@ export default function Footer() {
           <FooterColumn
             title="Support"
             links={[
-              ["Help center", "/help"],
-              ["FAQs", "/faq"],
-              ["Warranty", "/warranty"],
-              ["Shipping", "/shipping"],
+              ["Track order", "/orders"],
+              ["Cancellation policy", "/cancellation-policy"],
+              ["Device handover", "/device-handover-policy"],
+              ["How it works", "/how-it-works"],
             ]}
           />
         </div>
@@ -159,91 +234,86 @@ export default function Footer() {
 
         {/* SOCIAL + LEGAL */}
 
-      {/* SOCIAL + LEGAL */}
+        {/* SOCIAL + LEGAL */}
 
-<div className="mt-10 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
+        <div className="mt-10 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
+          {/* SOCIAL */}
 
-{/* SOCIAL */}
+          <div className="flex items-center gap-2">
+            <a
+              href="https://www.facebook.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
+            >
+              <FaFacebook size={15} />
+            </a>
 
-<div className="flex items-center gap-2">
-  <a
-    href="https://www.facebook.com/"
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="Facebook"
-    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
-  >
-    <FaFacebook size={15} />
-  </a>
+            <a
+              href="https://www.instagram.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
+            >
+              <FaInstagram size={15} />
+            </a>
 
-  <a
-    href="https://www.instagram.com/"
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="Instagram"
-    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
-  >
-    <FaInstagram size={15} />
-  </a>
+            <a
+              href="https://x.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="X"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
+            >
+              <FaXTwitter size={15} />
+            </a>
+          </div>
 
-  <a
-    href="https://x.com/"
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="X"
-    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
-  >
-    <FaXTwitter size={15} />
-  </a>
-</div>
+          {/* LEGAL */}
 
-  {/* LEGAL */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
+            <Link
+              href="/privacy-policy"
+              className="transition hover:text-white"
+            >
+              Privacy Policy
+            </Link>
 
-  <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
-    <Link
-      href="/privacy-policy"
-      className="transition hover:text-white"
-    >
-      Privacy Policy
-    </Link>
+            <Link
+              href="/terms-and-conditions"
+              className="transition hover:text-white"
+            >
+              Terms & Conditions
+            </Link>
 
-    <Link
-      href="/terms-and-conditions"
-      className="transition hover:text-white"
-    >
-      Terms & Conditions
-    </Link>
+            <Link
+              href="/cancellation-policy"
+              className="transition hover:text-white"
+            >
+              Cancellation Policy
+            </Link>
 
-    <Link
-      href="/cancellation-policy"
-      className="transition hover:text-white"
-    >
-      Cancellation Policy
-    </Link>
+            <Link
+              href="/inspection-policy"
+              className="transition hover:text-white"
+            >
+              Inspection & Pricing
+            </Link>
 
-    <Link
-      href="/inspection-policy"
-      className="transition hover:text-white"
-    >
-      Inspection & Pricing
-    </Link>
+            <Link href="/cookie-policy" className="transition hover:text-white">
+              Cookies
+            </Link>
 
-    <Link
-      href="/cookie-policy"
-      className="transition hover:text-white"
-    >
-      Cookies
-    </Link>
-
-    <Link
-      href="/device-handover-policy"
-      className="transition hover:text-white"
-    >
-      Device Handover
-    </Link>
-  </div>
-
-</div>
+            <Link
+              href="/device-handover-policy"
+              className="transition hover:text-white"
+            >
+              Device Handover
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* COPYRIGHT */}
@@ -298,13 +368,7 @@ function FooterColumn({
 
 /* CONTACT */
 
-function ContactItem({
-  icon,
-  text,
-}: {
-  icon: React.ReactNode;
-  text: string;
-}) {
+function ContactItem({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <div className="flex items-center gap-3 text-xs text-gray-400">
       <span className="text-indigo-400">{icon}</span>
@@ -315,13 +379,7 @@ function ContactItem({
 
 /* TRUST */
 
-function TrustItem({
-  title,
-  text,
-}: {
-  title: string;
-  text: string;
-}) {
+function TrustItem({ title, text }: { title: string; text: string }) {
   return (
     <div className="rounded-2xl border border-white/5 bg-white/[0.025] p-5">
       <p className="text-sm font-bold">{title}</p>
