@@ -18,12 +18,15 @@ import {
   X,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
-import { getProducts } from "@/app/lib/api";
+
 type ProductImage = {
   id: number | string;
   url: string;
   position?: number;
   altText?: string | null;
+  key?: string | null;
+  type?: "IMAGE" | "VIDEO";
+  mimeType?: string | null;
 };
 
 type ProductVariant = {
@@ -34,6 +37,7 @@ type ProductVariant = {
   price?: string | number | null;
   originalPrice?: string | number | null;
   stock?: number;
+  images?: ProductImage[];
 };
 
 type ApiProduct = {
@@ -78,8 +82,7 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
   "http://localhost:5000/api/v1";
 
-const FALLBACK_IMAGE = "/images/iphone-15.png";
-
+const FALLBACK_IMAGE = "https://media.phonebhai.com/products/placeholder.png";
 const normalizeCondition = (condition?: string | null) => {
   switch (condition) {
     case "LIKE_NEW":
@@ -96,17 +99,49 @@ const normalizeCondition = (condition?: string | null) => {
 };
 
 const normalizeProduct = (product: ApiProduct): Product => {
-  const firstVariant = product.variants?.[0];
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const productImages = Array.isArray(product.images)
+    ? product.images
+    : [];
+
+  const firstVariant = variants[0];
+
+  const variantImage =
+    variants
+      .flatMap((variant) =>
+        Array.isArray((variant as ProductVariant & { images?: ProductImage[] }).images)
+          ? (variant as ProductVariant & { images?: ProductImage[] }).images!
+          : [],
+      )
+      .sort(
+        (a, b) =>
+          (a.position ?? 0) - (b.position ?? 0),
+      )
+      .find((image) => Boolean(image?.url))?.url;
+
+  const productImage =
+    [...productImages]
+      .sort(
+        (a, b) =>
+          (a.position ?? 0) - (b.position ?? 0),
+      )
+      .find((image) => Boolean(image?.url))?.url;
 
   const image =
-    [...(product.images || [])]
-      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-      .find((item) => Boolean(item.url))?.url || FALLBACK_IMAGE;
+    variantImage ||
+    productImage ||
+    FALLBACK_IMAGE;
 
-  const price = Number(firstVariant?.price ?? product.price ?? 0);
+  const price = Number(
+    firstVariant?.price ??
+      product.price ??
+      0,
+  );
 
   const originalPrice = Number(
-    firstVariant?.originalPrice ?? product.originalPrice ?? price,
+    firstVariant?.originalPrice ??
+      product.originalPrice ??
+      price,
   );
 
   return {
@@ -120,8 +155,14 @@ const normalizeProduct = (product: ApiProduct): Product => {
     price,
     originalPrice,
     rating: Number(product.rating ?? 0),
-    reviews: Number(product.reviewCount ?? product.reviewsCount ?? 0),
-    warranty: product.warranty || "Warranty included",
+    reviews: Number(
+      product.reviewCount ??
+        product.reviewsCount ??
+        0,
+    ),
+    warranty:
+      product.warranty ||
+      "Warranty included",
     color: firstVariant?.color || "",
     image,
     active: product.active !== false,

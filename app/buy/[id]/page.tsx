@@ -249,7 +249,18 @@ export default function ProductDetailsPage() {
   const [paymentMethod, setPaymentMethodState] = useState("upi");
 
   const [quantity, setQuantity] = useState(1);
+useEffect(() => {
+  if (!product || product.variants.length === 0) {
+    return;
+  }
 
+  const firstVariant = product.variants[0];
+
+  setSelectedStorage(firstVariant.storage);
+  setSelectedColor(firstVariant.color);
+  setSelectedImage(0);
+  setQuantity(1);
+}, [product]);
   /* =======================================================
      FETCH PRODUCT
   ======================================================= */
@@ -982,7 +993,7 @@ export default function ProductDetailsPage() {
             )}
 
             {/* COLOR */}
-            <div className="mt-2">
+<div className="mt-3 flex flex-wrap items-center gap-3">
               {colorOptions.map((color) => {
                 const isAvailable =
                   !selectedStorage || availableColorsForStorage.has(color);

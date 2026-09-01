@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -11,6 +12,7 @@ import {
 } from "react";
 
 import { useAuth } from "./AuthContext";
+import { useRouter } from "next/navigation";
 
 import {
   getWishlist,
@@ -59,10 +61,8 @@ const WishlistContext =
   );
 
 /**
- * Convert backend wishlist item into the
- * existing frontend WishlistPhone shape.
- *
- * This keeps your existing wishlist UI compatible.
+ * Convert backend wishlist item into
+ * the existing frontend WishlistPhone shape.
  */
 function mapWishlistItem(
   item: WishlistItem,
@@ -86,6 +86,8 @@ export function WishlistProvider({
     loading: authLoading,
   } = useAuth();
 
+  const router = useRouter();
+
   const [wishlist, setWishlist] =
     useState<WishlistPhone[]>([]);
 
@@ -97,10 +99,6 @@ export function WishlistProvider({
    */
   const refreshWishlist =
     useCallback(async () => {
-      /**
-       * Do not call wishlist API until
-       * authentication state is known.
-       */
       if (authLoading) {
         return;
       }
@@ -116,8 +114,7 @@ export function WishlistProvider({
       setLoading(true);
 
       try {
-        const response =
-          await getWishlist();
+        const response = await getWishlist();
 
         if (
           !response.success ||
@@ -143,8 +140,7 @@ export function WishlistProvider({
     }, [user, authLoading]);
 
   /**
-   * Load wishlist whenever authenticated
-   * user changes.
+   * Load wishlist whenever authentication changes.
    */
   useEffect(() => {
     refreshWishlist();
@@ -167,10 +163,14 @@ export function WishlistProvider({
    */
   const addToWishlist = useCallback(
     async (phone: WishlistPhone) => {
+      /**
+       * Redirect unauthenticated users.
+       * Never throw LOGIN_REQUIRED into
+       * the React event handler.
+       */
       if (!user) {
-        throw new Error(
-          "LOGIN_REQUIRED",
-        );
+        router.push("/login");
+        return;
       }
 
       /**
@@ -203,10 +203,17 @@ export function WishlistProvider({
           ),
         );
 
-        throw error;
+        console.error(
+          "Failed to add wishlist item:",
+          error,
+        );
       }
     },
-    [user, isWishlisted],
+    [
+      user,
+      router,
+      isWishlisted,
+    ],
   );
 
   /**
@@ -215,10 +222,12 @@ export function WishlistProvider({
   const removeFromWishlist =
     useCallback(
       async (id: string) => {
+        /**
+         * Redirect unauthenticated users.
+         */
         if (!user) {
-          throw new Error(
-            "LOGIN_REQUIRED",
-          );
+          router.push("/login");
+          return;
         }
 
         const previousWishlist =
@@ -245,10 +254,17 @@ export function WishlistProvider({
             previousWishlist,
           );
 
-          throw error;
+          console.error(
+            "Failed to remove wishlist item:",
+            error,
+          );
         }
       },
-      [user, wishlist],
+      [
+        user,
+        router,
+        wishlist,
+      ],
     );
 
   /**
@@ -256,10 +272,15 @@ export function WishlistProvider({
    */
   const toggleWishlist = useCallback(
     async (phone: WishlistPhone) => {
+      /**
+       * IMPORTANT:
+       * Never throw LOGIN_REQUIRED here.
+       * This function is called directly by
+       * button onClick handlers.
+       */
       if (!user) {
-        throw new Error(
-          "LOGIN_REQUIRED",
-        );
+        router.push("/login");
+        return;
       }
 
       if (isWishlisted(phone.id)) {
@@ -272,6 +293,7 @@ export function WishlistProvider({
     },
     [
       user,
+      router,
       isWishlisted,
       removeFromWishlist,
       addToWishlist,
@@ -283,10 +305,12 @@ export function WishlistProvider({
    */
   const clearWishlist =
     useCallback(async () => {
+      /**
+       * Redirect unauthenticated users.
+       */
       if (!user) {
-        throw new Error(
-          "LOGIN_REQUIRED",
-        );
+        router.push("/login");
+        return;
       }
 
       const previousWishlist =
@@ -301,15 +325,22 @@ export function WishlistProvider({
         await clearWishlistApi();
       } catch (error) {
         /**
-         * Roll back if backend fails.
+         * Roll back if API fails.
          */
         setWishlist(
           previousWishlist,
         );
 
-        throw error;
+        console.error(
+          "Failed to clear wishlist:",
+          error,
+        );
       }
-    }, [user, wishlist]);
+    }, [
+      user,
+      router,
+      wishlist,
+    ]);
 
   const value =
     useMemo<WishlistContextType>(
