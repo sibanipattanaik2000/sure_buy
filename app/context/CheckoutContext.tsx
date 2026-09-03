@@ -4,9 +4,12 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   ReactNode,
 } from "react";
+
+import { useAuth } from "@/app/context/AuthContext";
 
 /* =========================================================
    TYPES
@@ -89,15 +92,14 @@ const CheckoutContext = createContext<CheckoutContextType | undefined>(
    STORAGE
 ========================================================= */
 
-const STORAGE_KEY = "phonebuy-checkout";
+const CHECKOUT_STORAGE_PREFIX = "phonebhai-checkout";
+const SAVED_ADDRESS_STORAGE_PREFIX = "phonebhai-saved-address";
 
-/*
- * Permanent saved delivery address.
- *
- * This is intentionally separate from checkout.
- * Clearing checkout will NOT remove the saved address.
- */
-export const SAVED_ADDRESS_KEY = "phonebuy-saved-address";
+export const getCheckoutStorageKey = (userId: string) =>
+  `${CHECKOUT_STORAGE_PREFIX}:${userId}`;
+
+export const getSavedAddressStorageKey = (userId: string) =>
+  `${SAVED_ADDRESS_STORAGE_PREFIX}:${userId}`;
 
 /* =========================================================
    INITIAL STATE
@@ -118,21 +120,59 @@ const createInitialCheckout = (): CheckoutData => ({
 ========================================================= */
 
 export function CheckoutProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
+
   const [checkout, setCheckout] = useState<CheckoutData>(
     createInitialCheckout(),
   );
 
   const [hydrated, setHydrated] = useState(false);
 
+  /*
+   * Keeps track of which user's checkout has actually
+   * been loaded into React state.
+   *
+   * This prevents User A's state from accidentally
+   * being saved under User B's storage key during
+   * an account switch.
+   */
+  const loadedUserIdRef = useRef<string | null>(null);
+
+  const userId = user?.id ?? null;
+
   /* =======================================================
-     LOAD CHECKOUT
+     LOAD CHECKOUT FOR CURRENT USER
   ======================================================= */
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+    if (authLoading) {
+      return;
+    }
 
-      if (saved) {
+    /*
+     * Do not allow the previous user's checkout
+     * to remain visible while switching accounts.
+     */
+    setHydrated(false);
+    setCheckout(createInitialCheckout());
+    loadedUserIdRef.current = null;
+
+    /*
+     * No authenticated user.
+     */
+    if (!userId) {
+      setHydrated(true);
+      return;
+    }
+
+    const storageKey = getCheckoutStorageKey(userId);
+
+    try {
+      const saved = localStorage.getItem(storageKey);
+
+      if (!saved) {
+        setCheckout(createInitialCheckout());
+      } else {
         const parsed = JSON.parse(saved);
 
         if (parsed && typeof parsed === "object") {
@@ -148,38 +188,64 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
                 ? [parsed.product]
                 : [],
           });
+        } else {
+          setCheckout(createInitialCheckout());
         }
       }
+
+      /*
+       * Only after loading the user's own checkout
+       * do we mark that user's state as hydrated.
+       */
+      loadedUserIdRef.current = userId;
     } catch (error) {
       console.error("Failed to load checkout:", error);
 
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(storageKey);
+
+      setCheckout(createInitialCheckout());
+
+      loadedUserIdRef.current = userId;
     } finally {
       setHydrated(true);
     }
-  }, []);
+  }, [authLoading, userId]);
 
   /* =======================================================
-     SAVE CHECKOUT
+     SAVE CHECKOUT FOR CURRENT USER
   ======================================================= */
 
   useEffect(() => {
-    if (!hydrated) {
+    /*
+     * Never save until:
+     *
+     * 1. Auth is ready
+     * 2. Checkout has loaded
+     * 3. A user exists
+     * 4. The loaded checkout belongs to THIS user
+     */
+    if (
+      !hydrated ||
+      authLoading ||
+      !userId ||
+      loadedUserIdRef.current !== userId
+    ) {
       return;
     }
 
+    const storageKey = getCheckoutStorageKey(userId);
+
     try {
       if (checkout.products.length === 0 && !checkout.product) {
-        localStorage.removeItem(STORAGE_KEY);
-
+        localStorage.removeItem(storageKey);
         return;
       }
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(checkout));
+      localStorage.setItem(storageKey, JSON.stringify(checkout));
     } catch (error) {
       console.error("Failed to save checkout:", error);
     }
-  }, [checkout, hydrated]);
+  }, [checkout, hydrated, authLoading, userId]);
 
   /* =======================================================
      SINGLE PRODUCT
@@ -190,7 +256,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     storage: string,
     color: string,
   ) => {
-    const checkoutProduct = {
+    const checkoutProduct: CheckoutProduct = {
       ...product,
       storage,
       color,
@@ -199,17 +265,11 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
     setCheckout((current) => ({
       ...current,
-
       product: checkoutProduct,
-
       products: [checkoutProduct],
-
       selectedStorage: storage,
-
       selectedColor: color,
-
       source: "buy-now",
-      paymentMethod: current.paymentMethod,
     }));
   };
 
@@ -220,7 +280,6 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const setProductsFromCart = (products: CheckoutProduct[]) => {
     if (!products.length) {
       setCheckout(createInitialCheckout());
-
       return;
     }
 
@@ -233,15 +292,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
     setCheckout((current) => ({
       ...current,
-
       product: firstProduct,
-
       products: normalizedProducts,
-
       selectedStorage: firstProduct.storage,
-
       selectedColor: firstProduct.color,
-
       source: "cart",
     }));
   };
@@ -262,20 +316,22 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   ======================================================= */
 
   const setAddress = (address: DeliveryAddress) => {
-    /*
-     * Save it to the current checkout.
-     */
     setCheckout((current) => ({
       ...current,
       address,
     }));
 
-    /*
-     * Also persist it independently
-     * for My Account.
-     */
+    if (!userId) {
+      return;
+    }
+
     try {
-      localStorage.setItem(SAVED_ADDRESS_KEY, JSON.stringify(address));
+      const addressStorageKey = getSavedAddressStorageKey(userId);
+
+      localStorage.setItem(
+        addressStorageKey,
+        JSON.stringify(address),
+      );
     } catch (error) {
       console.error("Failed to save delivery address:", error);
     }
@@ -290,15 +346,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
 
     setCheckout(emptyCheckout);
 
+    if (!userId) {
+      return;
+    }
+
     try {
-      /*
-       * IMPORTANT:
-       * This removes only the temporary
-       * checkout session.
-       *
-       * Saved address remains untouched.
-       */
-      localStorage.removeItem(STORAGE_KEY);
+      const storageKey = getCheckoutStorageKey(userId);
+
+      localStorage.removeItem(storageKey);
     } catch (error) {
       console.error("Failed to clear checkout:", error);
     }
@@ -312,15 +367,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     <CheckoutContext.Provider
       value={{
         checkout,
-
         setProduct,
-
         setProductsFromCart,
-
         setPaymentMethod,
-
         setAddress,
-
         clearCheckout,
       }}
     >

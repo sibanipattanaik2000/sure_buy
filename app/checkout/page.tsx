@@ -28,8 +28,10 @@ import {
   getAddresses,
   verifyPayment,
 } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
 export default function CheckoutPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
 
   const { checkout, setAddress, setPaymentMethod, clearCheckout } =
     useCheckout();
@@ -47,30 +49,106 @@ export default function CheckoutPage() {
     state: "",
   });
   useEffect(() => {
-    try {
-      const savedAddress = localStorage.getItem("phonebuy-saved-address");
-
-      if (!savedAddress) {
-        return;
-      }
-
-      const parsed = JSON.parse(savedAddress);
-
-      if (parsed && typeof parsed === "object") {
-        setForm({
-          fullName: parsed.fullName || "",
-          phone: parsed.phone || "",
-          pincode: parsed.pincode || "",
-          address: parsed.address || "",
-          area: parsed.area || "",
-          city: parsed.city || "",
-          state: parsed.state || "",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to load saved address:", error);
+    if (authLoading) {
+      return;
     }
-  }, []);
+
+    /*
+     * No logged-in user:
+     * checkout must start with an empty address.
+     */
+    if (!user) {
+      setForm({
+        fullName: "",
+        phone: "",
+        pincode: "",
+        address: "",
+        area: "",
+        city: "",
+        state: "",
+      });
+
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadUserAddress = async () => {
+      try {
+        const response = await getAddresses();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.success) {
+          console.error("Unable to load saved addresses:", response.message);
+          return;
+        }
+
+        const addresses = response.data ?? [];
+
+        /*
+         * Backend is the source of truth.
+         *
+         * Prefer the user's default address.
+         * Otherwise use their first saved address.
+         */
+        const selectedAddress =
+          addresses.find((address) => address.isDefault) ??
+          addresses[0] ??
+          null;
+
+        /*
+         * This user has no saved address.
+         * Keep checkout completely empty.
+         */
+        if (!selectedAddress) {
+          setForm({
+            fullName: "",
+            phone: "",
+            pincode: "",
+            address: "",
+            area: "",
+            city: "",
+            state: "",
+          });
+
+          return;
+        }
+
+        /*
+         * Your backend address model stores addressLine1.
+         *
+         * The checkout form has separate address + area fields.
+         * We therefore put the saved addressLine1 into
+         * the address field and leave area empty.
+         *
+         * The complete address is still preserved and sent
+         * correctly when the order is submitted.
+         */
+        setForm({
+          fullName: selectedAddress.fullName || "",
+          phone: selectedAddress.phone || "",
+          pincode: selectedAddress.postalCode || "",
+          address: selectedAddress.addressLine1 || "",
+          area: "",
+          city: selectedAddress.city || "",
+          state: selectedAddress.state || "",
+        });
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load user address:", error);
+        }
+      }
+    };
+
+    loadUserAddress();
+
+    return () => {  
+      cancelled = true;
+    };
+  }, [user, authLoading]);
   const [error, setError] = useState("");
 
   const [placingOrder, setPlacingOrder] = useState(false);
