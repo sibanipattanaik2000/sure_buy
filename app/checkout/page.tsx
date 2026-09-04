@@ -511,11 +511,7 @@ export default function CheckoutPage() {
 
         const paymentOrder = paymentOrderResponse.data;
 
-        if (
-          !razorpayLoaded ||
-          typeof window === "undefined" ||
-          !window.Razorpay
-        ) {
+        if (!razorpayLoaded || !window.Razorpay) {
           throw new Error(
             "Payment gateway is still loading. Please wait a moment and try again.",
           );
