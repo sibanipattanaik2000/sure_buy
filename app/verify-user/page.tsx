@@ -12,13 +12,20 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { ApiError, sendPhoneOtp, verifyPhoneOtp } from "@/app/lib/api";
+import {
+  ApiError,
+  forgotPassword,
+  sendPhoneOtp,
+  verifyPhoneOtp,
+} from "@/app/lib/api";
 
 function VerifyUserContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const phone = searchParams.get("phone") || "";
+  const mode = searchParams.get("mode") || "register";
+  const isResetMode = mode === "reset";
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
@@ -50,10 +57,12 @@ function VerifyUserContent() {
   useEffect(() => {
     if (!phone) {
       setError(
-        "Phone number is missing. Please return to registration and try again.",
+        isResetMode
+          ? "Phone number is missing. Please return to password recovery and try again."
+          : "Phone number is missing. Please return to registration and try again.",
       );
     }
-  }, [phone]);
+  }, [phone, isResetMode]);
 
   /* =========================================================
      HANDLE OTP INPUT
@@ -118,7 +127,7 @@ function VerifyUserContent() {
   };
 
   /* =========================================================
-     VERIFY OTP
+     VERIFY / CONTINUE OTP
   ========================================================= */
 
   const handleVerify = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -127,7 +136,11 @@ function VerifyUserContent() {
     setError("");
 
     if (!phone) {
-      setError("Phone number is missing. Please return to registration.");
+      setError(
+        isResetMode
+          ? "Phone number is missing. Please return to password recovery."
+          : "Phone number is missing. Please return to registration.",
+      );
       return;
     }
 
@@ -141,6 +154,36 @@ function VerifyUserContent() {
     try {
       setLoading(true);
 
+      /*
+       * =======================================================
+       * PASSWORD RESET FLOW
+       * =======================================================
+       *
+       * Do NOT call verifyPhoneOtp() here.
+       *
+       * The reset-password backend endpoint already accepts:
+       *
+       * phone + code + newPassword
+       *
+       * We therefore carry the OTP to the reset-password page.
+       */
+      if (isResetMode) {
+        router.replace(
+          `/reset-password?phone=${encodeURIComponent(
+            phone,
+          )}&code=${encodeURIComponent(enteredOtp)}`,
+        );
+
+        return;
+      }
+
+      /*
+       * =======================================================
+       * REGISTRATION FLOW
+       * =======================================================
+       *
+       * Existing registration verification remains unchanged.
+       */
       await verifyPhoneOtp({
         phone,
         code: enteredOtp,
@@ -150,9 +193,8 @@ function VerifyUserContent() {
 
       /*
        * Backend sets the authentication cookie after
-       * successful phone verification.
+       * successful registration phone verification.
        */
-
       setTimeout(() => {
         router.push("/");
         router.refresh();
@@ -169,7 +211,8 @@ function VerifyUserContent() {
           setError("Too many attempts. Please wait and try again.");
         } else {
           setError(
-            error.message || "Unable to verify phone number. Please try again.",
+            error.message ||
+              "Unable to verify phone number. Please try again.",
           );
         }
       } else {
@@ -196,7 +239,19 @@ function VerifyUserContent() {
       setResending(true);
       setError("");
 
-      await sendPhoneOtp(phone);
+      /*
+       * Reset flow:
+       * Use forgotPassword() so Twilio generates the correct
+       * password-reset OTP.
+       *
+       * Registration flow:
+       * Keep using sendPhoneOtp().
+       */
+      if (isResetMode) {
+        await forgotPassword(phone);
+      } else {
+        await sendPhoneOtp(phone);
+      }
 
       setOtp(["", "", "", "", "", ""]);
       setTimer(30);
@@ -206,7 +261,13 @@ function VerifyUserContent() {
       console.error("RESEND OTP ERROR:", error);
 
       if (error instanceof ApiError) {
-        setError(error.message || "Unable to resend OTP. Please try again.");
+        if (error.status === 429) {
+          setError("Too many requests. Please wait before requesting another OTP.");
+        } else {
+          setError(
+            error.message || "Unable to resend OTP. Please try again.",
+          );
+        }
       } else {
         setError("Unable to resend OTP. Please try again.");
       }
@@ -228,13 +289,27 @@ function VerifyUserContent() {
           </div>
 
           <h1 className="max-w-lg text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
-            Verify your{" "}
-            <span className="text-indigo-600">PhoneBhai account.</span>
+            {isResetMode ? (
+              <>
+                Reset your{" "}
+                <span className="text-indigo-600">
+                  PhoneBhai password.
+                </span>
+              </>
+            ) : (
+              <>
+                Verify your{" "}
+                <span className="text-indigo-600">
+                  PhoneBhai account.
+                </span>
+              </>
+            )}
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
-            We&apos;ve sent a verification code to your registered mobile
-            number. Enter the code to securely verify your PhoneBhai account.
+            {isResetMode
+              ? "Enter the 6-digit OTP sent to your registered mobile number to continue resetting your password."
+              : "We've sent a verification code to your registered mobile number. Enter the code to securely verify your PhoneBhai account."}
           </p>
 
           <div className="mt-10 space-y-5">
@@ -260,10 +335,14 @@ function VerifyUserContent() {
               </div>
 
               <div>
-                <p className="text-sm font-bold text-gray-900">Almost there</p>
+                <p className="text-sm font-bold text-gray-900">
+                  {isResetMode ? "Almost there" : "Almost there"}
+                </p>
 
                 <p className="mt-1 text-xs text-gray-500">
-                  Verify once and start using PhoneBhai.
+                  {isResetMode
+                    ? "Verify the OTP and create your new password."
+                    : "Verify once and start using PhoneBhai."}
                 </p>
               </div>
             </div>
@@ -283,11 +362,13 @@ function VerifyUserContent() {
             </div>
 
             <h1 className="text-3xl font-black tracking-tight text-gray-950">
-              Verify your account
+              {isResetMode ? "Reset your password" : "Verify your account"}
             </h1>
 
             <p className="mt-2 text-sm text-gray-500">
-              Enter the verification code to continue.
+              {isResetMode
+                ? "Enter the OTP to continue."
+                : "Enter the verification code to continue."}
             </p>
           </div>
 
@@ -304,12 +385,15 @@ function VerifyUserContent() {
                   </div>
 
                   <h2 className="text-2xl font-black tracking-tight text-gray-950">
-                    Enter verification code
+                    {isResetMode
+                      ? "Enter reset code"
+                      : "Enter verification code"}
                   </h2>
 
                   <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-500">
-                    Enter the 6-digit verification code sent to your registered
-                    mobile number.
+                    {isResetMode
+                      ? "Enter the 6-digit OTP sent to your registered mobile number to continue resetting your password."
+                      : "Enter the 6-digit verification code sent to your registered mobile number."}
                   </p>
 
                   {phone && (
@@ -336,7 +420,9 @@ function VerifyUserContent() {
                         maxLength={1}
                         value={digit}
                         disabled={loading}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onChange={(e) =>
+                          handleOtpChange(index, e.target.value)
+                        }
                         onKeyDown={(e) => handleKeyDown(index, e)}
                         onPaste={handlePaste}
                         aria-label={`OTP digit ${index + 1}`}
@@ -360,7 +446,7 @@ function VerifyUserContent() {
                     </p>
                   )}
 
-                  {/* VERIFY BUTTON */}
+                  {/* VERIFY / CONTINUE BUTTON */}
 
                   <button
                     type="submit"
@@ -370,14 +456,15 @@ function VerifyUserContent() {
                     {loading ? (
                       <>
                         <RefreshCw size={17} className="animate-spin" />
-                        Verifying...
+                        {isResetMode ? "Continuing..." : "Verifying..."}
                       </>
                     ) : (
                       <>
-                        Verify account
+                        {isResetMode ? "Continue" : "Verify account"}
+
                         <ArrowRight
                           size={17}
-                          className="transition-transform group-hover:translate-x-1"
+                          className="transition-transform duration-200 group-hover:translate-x-1"
                         />
                       </>
                     )}
@@ -394,7 +481,9 @@ function VerifyUserContent() {
                   {timer > 0 ? (
                     <p className="mt-2 text-xs font-semibold text-gray-400">
                       Resend OTP{" "}
-                      <span className="text-indigo-600">in {timer}s</span>
+                      <span className="text-indigo-600">
+                        in {timer}s
+                      </span>
                     </p>
                   ) : (
                     <button
@@ -417,17 +506,20 @@ function VerifyUserContent() {
 
                 <div className="mt-6 border-t border-gray-100 pt-6 text-center">
                   <Link
-                    href="/register"
+                    href={isResetMode ? "/forgot-password" : "/register"}
                     className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-indigo-600"
                   >
                     <ArrowLeft size={15} />
-                    Back to registration
+
+                    {isResetMode
+                      ? "Back to password recovery"
+                      : "Back to registration"}
                   </Link>
                 </div>
               </>
             ) : (
               /* =================================================
-                 SUCCESS STATE
+                 REGISTRATION SUCCESS STATE
               ================================================= */
 
               <div className="py-8 text-center">
@@ -465,6 +557,7 @@ function VerifyUserContent() {
     </main>
   );
 }
+
 export default function VerifyUserPage() {
   return (
     <Suspense
