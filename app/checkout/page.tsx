@@ -158,21 +158,6 @@ export default function CheckoutPage() {
 
   if (!products || products.length === 0) {
     return (
-      <>
-        <Script
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          strategy="afterInteractive"
-          onLoad={() => {
-            setRazorpayLoaded(true);
-          }}
-          onError={() => {
-            setRazorpayLoaded(false);
-            setError(
-              "Unable to load the payment gateway. Please refresh and try again.",
-            );
-          }}
-        />
-
         <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
           <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
@@ -196,7 +181,6 @@ export default function CheckoutPage() {
             </Link>
           </div>
         </main>
-      </>
     );
   }
 
@@ -681,6 +665,15 @@ export default function CheckoutPage() {
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="afterInteractive"
+        onLoad={() => {
+          setRazorpayLoaded(true);
+        }}
+        onError={() => {
+          setRazorpayLoaded(false);
+          setError(
+            "Unable to load the payment gateway. Please refresh and try again.",
+          );
+        }}
       />
       <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
         <form
