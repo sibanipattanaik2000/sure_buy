@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,7 +15,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError, resetPassword } from "@/app/lib/api";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -388,5 +388,21 @@ function PasswordCheck({ valid, text }: { valid: boolean; text: string }) {
 
       {text}
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-[calc(100vh-72px)] items-center justify-center bg-gray-50 px-5">
+          <div className="text-sm font-semibold text-gray-500">
+            Loading...
+          </div>
+        </main>
+      }
+    >
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
