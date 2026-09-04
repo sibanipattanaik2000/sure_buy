@@ -26,6 +26,7 @@ import {
   createOrder,
   createPaymentOrder,
   getAddresses,
+  getCart,
   verifyPayment,
 } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
@@ -158,29 +159,29 @@ export default function CheckoutPage() {
 
   if (!products || products.length === 0) {
     return (
-        <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
-          <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-              <ShieldCheck size={25} className="text-indigo-600" />
-            </div>
-
-            <h1 className="mt-5 text-2xl font-black text-gray-900">
-              Your checkout is empty
-            </h1>
-
-            <p className="mt-2 text-sm leading-6 text-gray-500">
-              Choose a product before proceeding to checkout.
-            </p>
-
-            <Link
-              href="/buy"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-700"
-            >
-              Browse products
-              <ArrowRight size={16} />
-            </Link>
+      <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
+        <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
+            <ShieldCheck size={25} className="text-indigo-600" />
           </div>
-        </main>
+
+          <h1 className="mt-5 text-2xl font-black text-gray-900">
+            Your checkout is empty
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-gray-500">
+            Choose a product before proceeding to checkout.
+          </p>
+
+          <Link
+            href="/buy"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+          >
+            Browse products
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </main>
     );
   }
 
@@ -228,7 +229,34 @@ export default function CheckoutPage() {
       [field]: value,
     }));
   };
+const waitForRazorpay = async (): Promise<boolean> => {
+  if (typeof window !== "undefined" && window.Razorpay) {
+    setRazorpayLoaded(true);
+    return true;
+  }
 
+  /*
+   * Razorpay may still be loading because checkout.js
+   * uses afterInteractive.
+   *
+   * Wait instead of immediately failing the order.
+   */
+  for (let attempt = 0; attempt < 100; attempt++) {
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 100);
+    });
+
+    if (
+      typeof window !== "undefined" &&
+      window.Razorpay
+    ) {
+      setRazorpayLoaded(true);
+      return true;
+    }
+  }
+
+  return false;
+};
   /*
    * SUBMIT
    */
@@ -431,40 +459,58 @@ export default function CheckoutPage() {
               : "CARD";
 
       /* =====================================================
-   ENSURE PRODUCTS EXIST IN BACKEND CART
+   ENSURE CHECKOUT PRODUCTS EXIST IN BACKEND CART
 ===================================================== */
 
-      if (checkout.source === "buy-now") {
-        const buyNowProduct = products[0];
+      const currentCartResponse = await getCart();
 
-        if (!buyNowProduct) {
-          throw new Error("No product selected for checkout.");
+      if (!currentCartResponse.success || !currentCartResponse.data) {
+        throw new Error(
+          currentCartResponse.message || "Unable to load your cart.",
+        );
+      }
+
+      const currentCart = currentCartResponse.data;
+
+      for (const checkoutProduct of products) {
+        const desiredQuantity = Math.max(
+          1,
+          Math.floor(Number(checkoutProduct.quantity) || 1),
+        );
+
+        const existingCartItem = currentCart.items.find(
+          (item) =>
+            String(item.productId) === String(checkoutProduct.id) &&
+            (item.variantId ?? null) === (checkoutProduct.variantId ?? null),
+        );
+
+        const existingQuantity = existingCartItem?.quantity ?? 0;
+
+        const quantityToAdd = Math.max(0, desiredQuantity - existingQuantity);
+
+        if (quantityToAdd <= 0) {
+          continue;
         }
 
-        console.log("Adding Buy Now product to backend cart:", {
-          productId: buyNowProduct.id,
-          variantId: buyNowProduct.variantId,
-          quantity: buyNowProduct.quantity ?? 1,
-        });
-
         const cartResponse = await addCartItem({
-          productId: buyNowProduct.id,
-          ...(buyNowProduct.variantId !== null &&
-          buyNowProduct.variantId !== undefined
+          productId: String(checkoutProduct.id),
+
+          ...(checkoutProduct.variantId !== null &&
+          checkoutProduct.variantId !== undefined
             ? {
-                variantId: buyNowProduct.variantId,
+                variantId: checkoutProduct.variantId,
               }
             : {}),
-          quantity: Math.max(1, buyNowProduct.quantity || 1),
+
+          quantity: quantityToAdd,
         });
 
-        if (!cartResponse.success) {
+        if (!cartResponse.success || !cartResponse.data) {
           throw new Error(
-            cartResponse.message || "Unable to add the product to your cart.",
+            cartResponse.message || "Unable to prepare your cart for checkout.",
           );
         }
       }
-
       /* =====================================================
    CREATE BACKEND ORDER
 ===================================================== */
@@ -495,11 +541,13 @@ export default function CheckoutPage() {
 
         const paymentOrder = paymentOrderResponse.data;
 
-        if (!razorpayLoaded || !window.Razorpay) {
-          throw new Error(
-            "Payment gateway is still loading. Please wait a moment and try again.",
-          );
-        }
+const razorpayReady = await waitForRazorpay();
+
+if (!razorpayReady || !window.Razorpay) {
+  throw new Error(
+    "Unable to load the payment gateway. Please refresh the page and try again.",
+  );
+}
 
         await new Promise<void>((resolve, reject) => {
           let settled = false;
@@ -636,7 +684,9 @@ export default function CheckoutPage() {
        ===================================================== */
 
       try {
-        await clearCart();
+        if (backendPaymentMethod === "COD") {
+          await clearCart();
+        }
       } catch (cartError) {
         /*
          * The order/payment has already succeeded.
@@ -662,19 +712,22 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <Script
-        src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
-        onLoad={() => {
-          setRazorpayLoaded(true);
-        }}
-        onError={() => {
-          setRazorpayLoaded(false);
-          setError(
-            "Unable to load the payment gateway. Please refresh and try again.",
-          );
-        }}
-      />
+     <Script
+  id="razorpay-checkout-script"
+  src="https://checkout.razorpay.com/v1/checkout.js"
+  strategy="afterInteractive"
+  onLoad={() => {
+    if (typeof window !== "undefined" && window.Razorpay) {
+      setRazorpayLoaded(true);
+    }
+  }}
+  onError={() => {
+    setRazorpayLoaded(false);
+    setError(
+      "Unable to load the payment gateway. Please refresh and try again.",
+    );
+  }}
+/>
       <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
         <form
           onSubmit={handleSubmit}
