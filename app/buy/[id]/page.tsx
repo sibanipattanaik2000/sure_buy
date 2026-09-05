@@ -50,6 +50,7 @@ type ApiVariant = {
   productId: number;
   storage: string;
   color: string;
+  colorHex?: string | null;
   price: number | string;
   originalPrice: number | string;
   stock: number;
@@ -168,49 +169,7 @@ function sortImages(images: ApiImage[]): ApiImage[] {
   return [...images].sort((a, b) => a.position - b.position);
 }
 
-function getColorClass(color: string): string {
-  const normalizedColor = color.toLowerCase();
-
-  if (normalizedColor.includes("black")) {
-    return "bg-gray-900";
-  }
-
-  if (normalizedColor.includes("blue")) {
-    return "bg-blue-500";
-  }
-
-  if (normalizedColor.includes("purple")) {
-    return "bg-purple-500";
-  }
-
-  if (normalizedColor.includes("green")) {
-    return "bg-green-500";
-  }
-
-  if (normalizedColor.includes("red")) {
-    return "bg-red-500";
-  }
-
-  if (normalizedColor.includes("pink")) {
-    return "bg-pink-400";
-  }
-
-  if (normalizedColor.includes("gold")) {
-    return "bg-yellow-400";
-  }
-
-  if (normalizedColor.includes("silver")) {
-    return "bg-gray-300";
-  }
-
-  if (normalizedColor.includes("white")) {
-    return "bg-white";
-  }
-
-  return "bg-gray-200";
-}
-
-/* =========================================================
+/* =====  ====================================================
    PAGE
 ========================================================= */
 
@@ -249,18 +208,18 @@ export default function ProductDetailsPage() {
   const [paymentMethod, setPaymentMethodState] = useState("upi");
 
   const [quantity, setQuantity] = useState(1);
-useEffect(() => {
-  if (!product || product.variants.length === 0) {
-    return;
-  }
+  useEffect(() => {
+    if (!product || product.variants.length === 0) {
+      return;
+    }
 
-  const firstVariant = product.variants[0];
+    const firstVariant = product.variants[0];
 
-  setSelectedStorage(firstVariant.storage);
-  setSelectedColor(firstVariant.color);
-  setSelectedImage(0);
-  setQuantity(1);
-}, [product]);
+    setSelectedStorage(firstVariant.storage);
+    setSelectedColor(firstVariant.color);
+    setSelectedImage(0);
+    setQuantity(1);
+  }, [product]);
   /* =======================================================
      FETCH PRODUCT
   ======================================================= */
@@ -993,41 +952,68 @@ useEffect(() => {
             )}
 
             {/* COLOR */}
-<div className="mt-3 flex flex-wrap items-center gap-3">
-              {colorOptions.map((color) => {
-                const isAvailable =
-                  !selectedStorage || availableColorsForStorage.has(color);
+            <div className="mt-2">
+              {/* COLOR */}
+              {colorOptions.length > 0 && (
+                <div className="mt-6">
+                  <p className="text-sm font-bold">Colour</p>
 
-                const isSelected = selectedColor === color;
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {colorOptions.map((color) => {
+                      const matchingVariant =
+                        product.variants.find(
+                          (variant) =>
+                            variant.color === color &&
+                            variant.storage === selectedStorage,
+                        ) ||
+                        product.variants.find(
+                          (variant) => variant.color === color,
+                        );
 
-                return (
-                  <button
-                    key={color}
-                    type="button"
-                    disabled={!isAvailable}
-                    onClick={() => handleColorChange(color)}
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-                      isSelected
-                        ? "border-indigo-600 bg-indigo-50"
-                        : isAvailable
-                          ? "border-gray-200 bg-white hover:border-gray-400"
-                          : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
-                    }`}
-                  >
-                    <span
-                      className={`h-5 w-5 rounded-full border border-gray-300 ${getColorClass(
-                        color,
-                      )}`}
-                    />
+                      const isAvailable =
+                        !selectedStorage ||
+                        availableColorsForStorage.has(color);
 
-                    {color}
+                      const isSelected = selectedColor === color;
 
-                    {isSelected && (
-                      <Check size={15} className="text-indigo-600" />
-                    )}
-                  </button>
-                );
-              })}
+                      const colorHex = matchingVariant?.colorHex;
+
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          disabled={!isAvailable}
+                          onClick={() => handleColorChange(color)}
+                          aria-label={`Select ${color}`}
+                          aria-pressed={isSelected}
+                          className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                            isSelected
+                              ? "border-indigo-600 bg-indigo-50 text-gray-900"
+                              : isAvailable
+                                ? "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                                : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
+                          }`}
+                        >
+                          <span
+                            className={`h-5 w-5 shrink-0 rounded-full border border-gray-300 ${
+                              !isAvailable ? "opacity-40" : ""
+                            }`}
+                            style={{
+                              backgroundColor: colorHex || "#E5E7EB",
+                            }}
+                          />
+
+                          <span>{color}</span>
+
+                          {isSelected && (
+                            <Check size={15} className="text-indigo-600" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             {/* STOCK */}
 
