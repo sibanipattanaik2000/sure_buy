@@ -908,3 +908,84 @@ export async function getSellPaymentStatus(sellRequestId: string) {
     },
   );
 }
+/* =========================================================
+   ADMIN PRODUCTS
+========================================================= */
+
+export type AdminProductMediaType = "IMAGE" | "VIDEO";
+
+export interface AdminProductVariantPayload {
+  storage: string;
+  color: string;
+  colorHex?: string | null;
+  price: number;
+  originalPrice: number;
+  stock?: number;
+}
+
+export interface AdminProductMediaPayload {
+  variantIndex?: number | null;
+  url: string;
+  key?: string | null;
+  altText?: string | null;
+  type: AdminProductMediaType;
+  mimeType?: string | null;
+  size?: number | null;
+  position?: number;
+}
+
+export interface CreateAdminProductPayload {
+  slug: string;
+  brand: string;
+  name: string;
+  category: string;
+  condition: "EXCELLENT" | "LIKE_NEW" | "GOOD";
+
+  price: number;
+  originalPrice: number;
+
+  warranty: string;
+  description: string;
+
+  emiFrom?: number | null;
+  active?: boolean;
+
+  highlights?: string[];
+
+  variants: AdminProductVariantPayload[];
+
+  media?: AdminProductMediaPayload[];
+}
+
+export interface ProductMediaUploadUrlResponse {
+  uploadUrl: string;
+  key: string;
+  url: string;
+  type: AdminProductMediaType;
+  mimeType: string;
+  size: number;
+}
+
+export async function createProductMediaUploadUrl(payload: {
+  slug: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+}) {
+  return apiRequest<ProductMediaUploadUrlResponse>(
+    "/admin/product-media/upload-url",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function createAdminProduct(
+  payload: CreateAdminProductPayload,
+) {
+  return apiRequest<unknown>("/admin/products", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

@@ -198,101 +198,105 @@ function ProductCard({
   const saving = Math.max(0, product.originalPrice - product.price);
 
   return (
-    <article className="group overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-      <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#f4f5f7] sm:h-64">
-        {discount > 0 && (
-          <span className="absolute left-3 top-3 z-10 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
-            {discount}% OFF
+<Link
+  href={`/buy/${product.id}`}
+  className="group block overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+>
+  <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#f4f5f7] sm:h-64">
+    {discount > 0 && (
+      <span className="absolute left-3 top-3 z-10 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
+        {discount}% OFF
+      </span>
+    )}
+
+    <button
+      type="button"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onWishlist();
+      }}
+      aria-label={
+        liked
+          ? `Remove ${product.name} from wishlist`
+          : `Add ${product.name} to wishlist`
+      }
+      className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition ${
+        liked ? "text-red-500" : "text-gray-500 hover:text-red-500"
+      }`}
+    >
+      <Heart size={17} fill={liked ? "currentColor" : "none"} />
+    </button>
+
+    <div className="relative flex h-40 w-32 items-center justify-center transition duration-500 group-hover:scale-105">
+      <img
+        src={product.image}
+        alt={product.name}
+        loading="lazy"
+        className="h-full w-full object-contain"
+        onError={(event) => {
+          event.currentTarget.src = FALLBACK_IMAGE;
+        }}
+      />
+    </div>
+
+    <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold shadow-sm backdrop-blur">
+      {product.condition}
+    </span>
+  </div>
+
+  <div className="p-4 sm:p-5">
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+        {product.brand}
+      </p>
+
+      <div className="flex items-center gap-1 text-[10px] font-bold">
+        <Star size={12} fill="currentColor" className="text-yellow-500" />
+        {product.rating > 0 ? product.rating.toFixed(1) : "New"}
+      </div>
+    </div>
+
+    <h2 className="mt-1 text-sm font-bold sm:text-base">{product.name}</h2>
+
+    <p className="mt-1 text-xs text-gray-500">
+      {[product.storage, product.color].filter(Boolean).join(" • ")}
+    </p>
+
+    <div className="mt-5">
+      <div className="flex items-end gap-2">
+        <span className="text-lg font-black sm:text-xl">
+          ₹{product.price.toLocaleString("en-IN")}
+        </span>
+
+        {product.originalPrice > product.price && (
+          <span className="text-xs text-gray-400 line-through">
+            ₹{product.originalPrice.toLocaleString("en-IN")}
           </span>
         )}
-
-        <button
-          type="button"
-          onClick={onWishlist}
-          aria-label={
-            liked
-              ? `Remove ${product.name} from wishlist`
-              : `Add ${product.name} to wishlist`
-          }
-          className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition ${
-            liked ? "text-red-500" : "text-gray-500 hover:text-red-500"
-          }`}
-        >
-          <Heart size={17} fill={liked ? "currentColor" : "none"} />
-        </button>
-
-        <div className="relative flex h-40 w-32 items-center justify-center transition duration-500 group-hover:scale-105">
-          <img
-            src={product.image}
-            alt={product.name}
-            loading="lazy"
-            className="h-full w-full object-contain"
-            onError={(event) => {
-              event.currentTarget.src = FALLBACK_IMAGE;
-            }}
-          />
-        </div>
-
-        <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold shadow-sm backdrop-blur">
-          {product.condition}
-        </span>
       </div>
 
-      <div className="p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            {product.brand}
-          </p>
-
-          <div className="flex items-center gap-1 text-[10px] font-bold">
-            <Star size={12} fill="currentColor" className="text-yellow-500" />
-            {product.rating > 0 ? product.rating.toFixed(1) : "New"}
-          </div>
-        </div>
-
-        <h2 className="mt-1 text-sm font-bold sm:text-base">{product.name}</h2>
-
-        <p className="mt-1 text-xs text-gray-500">
-          {[product.storage, product.color].filter(Boolean).join(" • ")}
+      {saving > 0 && (
+        <p className="mt-1 text-[10px] text-green-600">
+          You save ₹{saving.toLocaleString("en-IN")}
         </p>
+      )}
+    </div>
 
-        <div className="mt-5">
-          <div className="flex items-end gap-2">
-            <span className="text-lg font-black sm:text-xl">
-              ₹{product.price.toLocaleString("en-IN")}
-            </span>
+    <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
+      <BadgeCheck size={15} className="text-indigo-600" />
 
-            {product.originalPrice > product.price && (
-              <span className="text-xs text-gray-400 line-through">
-                ₹{product.originalPrice.toLocaleString("en-IN")}
-              </span>
-            )}
-          </div>
+      <span className="text-[10px] font-semibold text-gray-500">
+        {product.warranty}
+      </span>
+    </div>
 
-          {saving > 0 && (
-            <p className="mt-1 text-[10px] text-green-600">
-              You save ₹{saving.toLocaleString("en-IN")}
-            </p>
-          )}
-        </div>
-
-        <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
-          <BadgeCheck size={15} className="text-indigo-600" />
-
-          <span className="text-[10px] font-semibold text-gray-500">
-            {product.warranty}
-          </span>
-        </div>
-
-        <Link
-          href={`/buy/${product.id}`}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-bold text-white transition hover:bg-indigo-600"
-        >
-          View details
-          <ArrowRight size={14} />
-        </Link>
-      </div>
-    </article>
+    <div className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-bold text-white transition group-hover:bg-indigo-600">
+      View details
+      <ArrowRight size={14} />
+    </div>
+  </div>
+</Link>
   );
 }
 
