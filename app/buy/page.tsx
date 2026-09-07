@@ -60,6 +60,12 @@ type ApiProduct = {
   variants?: ProductVariant[];
 };
 
+type ProductMedia = {
+  url: string;
+  type: "IMAGE" | "VIDEO";
+  altText?: string | null;
+};
+
 type Product = {
   id: number;
   slug?: string;
@@ -74,7 +80,7 @@ type Product = {
   reviews: number;
   warranty: string;
   color: string;
-  image: string;
+  media: ProductMedia;
   active: boolean;
 };
 
@@ -100,48 +106,80 @@ const normalizeCondition = (condition?: string | null) => {
 
 const normalizeProduct = (product: ApiProduct): Product => {
   const variants = Array.isArray(product.variants) ? product.variants : [];
-  const productImages = Array.isArray(product.images)
-    ? product.images
-    : [];
+  const productImages = Array.isArray(product.images) ? product.images : [];
 
   const firstVariant = variants[0];
 
-  const variantImage =
-    variants
-      .flatMap((variant) =>
-        Array.isArray((variant as ProductVariant & { images?: ProductImage[] }).images)
-          ? (variant as ProductVariant & { images?: ProductImage[] }).images!
-          : [],
-      )
-      .sort(
-        (a, b) =>
-          (a.position ?? 0) - (b.position ?? 0),
-      )
-      .find((image) => Boolean(image?.url))?.url;
+  const variantMedia = variants
+    .flatMap((variant) => (Array.isArray(variant.images) ? variant.images : []))
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .find((media) => Boolean(media?.url));
 
-  const productImage =
-    [...productImages]
-      .sort(
-        (a, b) =>
-          (a.position ?? 0) - (b.position ?? 0),
-      )
-      .find((image) => Boolean(image?.url))?.url;
+  const productMedia = [...productImages]
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .find((media) => Boolean(media?.url));
 
-  const image =
-    variantImage ||
-    productImage ||
-    FALLBACK_IMAGE;
+  const selectedMedia = variantMedia || productMedia;
 
-  const price = Number(
-    firstVariant?.price ??
-      product.price ??
-      0,
-  );
+  [
+    {
+      resource: "/d:/Surebuy/sure_buy/app/buy/page.tsx",
+      owner: "typescript",
+      code: "2304",
+      severity: 8,
+      message: "Cannot find name 'variantImage'.",
+      source: "ts",
+      startLineNumber: 143,
+      startColumn: 5,
+      endLineNumber: 143,
+      endColumn: 17,
+      modelVersionId: 57,
+      origin: "extHost1",
+    },
+    {
+      resource: "/d:/Surebuy/sure_buy/app/buy/page.tsx",
+      owner: "typescript",
+      code: "2552",
+      severity: 8,
+      message: "Cannot find name 'productImage'. Did you mean 'productImages'?",
+      source: "ts",
+      startLineNumber: 144,
+      startColumn: 5,
+      endLineNumber: 144,
+      endColumn: 17,
+      relatedInformation: [
+        {
+          startLineNumber: 109,
+          startColumn: 9,
+          endLineNumber: 109,
+          endColumn: 22,
+          message: "'productImages' is declared here.",
+          resource: "/d:/Surebuy/sure_buy/app/buy/page.tsx",
+        },
+      ],
+      modelVersionId: 57,
+      origin: "extHost1",
+    },
+    {
+      resource: "/d:/Surebuy/sure_buy/app/buy/page.tsx",
+      owner: "typescript",
+      code: "2339",
+      severity: 8,
+      message: "Property 'image' does not exist on type 'Product'.",
+      source: "ts",
+      startLineNumber: 848,
+      startColumn: 40,
+      endLineNumber: 848,
+      endColumn: 45,
+      modelVersionId: 57,
+      origin: "extHost1",
+    },
+  ];
+
+  const price = Number(firstVariant?.price ?? product.price ?? 0);
 
   const originalPrice = Number(
-    firstVariant?.originalPrice ??
-      product.originalPrice ??
-      price,
+    firstVariant?.originalPrice ?? product.originalPrice ?? price,
   );
 
   return {
@@ -155,16 +193,19 @@ const normalizeProduct = (product: ApiProduct): Product => {
     price,
     originalPrice,
     rating: Number(product.rating ?? 0),
-    reviews: Number(
-      product.reviewCount ??
-        product.reviewsCount ??
-        0,
-    ),
-    warranty:
-      product.warranty ||
-      "Warranty included",
+    reviews: Number(product.reviewCount ?? product.reviewsCount ?? 0),
+    warranty: product.warranty || "Warranty included",
     color: firstVariant?.color || "",
-    image,
+    media: selectedMedia
+      ? {
+          url: selectedMedia.url,
+          type: selectedMedia.type === "VIDEO" ? "VIDEO" : "IMAGE",
+          altText: selectedMedia.altText,
+        }
+      : {
+          url: FALLBACK_IMAGE,
+          type: "IMAGE",
+        },
     active: product.active !== false,
   };
 };
@@ -198,105 +239,119 @@ function ProductCard({
   const saving = Math.max(0, product.originalPrice - product.price);
 
   return (
-<Link
-  href={`/buy/${product.id}`}
-  className="group block overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
->
-  <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#f4f5f7] sm:h-64">
-    {discount > 0 && (
-      <span className="absolute left-3 top-3 z-10 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
-        {discount}% OFF
-      </span>
-    )}
-
-    <button
-      type="button"
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onWishlist();
-      }}
-      aria-label={
-        liked
-          ? `Remove ${product.name} from wishlist`
-          : `Add ${product.name} to wishlist`
-      }
-      className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition ${
-        liked ? "text-red-500" : "text-gray-500 hover:text-red-500"
-      }`}
+    <Link
+      href={`/buy/${product.id}`}
+      className="group block overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
     >
-      <Heart size={17} fill={liked ? "currentColor" : "none"} />
-    </button>
-
-    <div className="relative flex h-40 w-32 items-center justify-center transition duration-500 group-hover:scale-105">
-      <img
-        src={product.image}
-        alt={product.name}
-        loading="lazy"
-        className="h-full w-full object-contain"
-        onError={(event) => {
-          event.currentTarget.src = FALLBACK_IMAGE;
-        }}
-      />
-    </div>
-
-    <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold shadow-sm backdrop-blur">
-      {product.condition}
-    </span>
-  </div>
-
-  <div className="p-4 sm:p-5">
-    <div className="flex items-center justify-between gap-2">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-        {product.brand}
-      </p>
-
-      <div className="flex items-center gap-1 text-[10px] font-bold">
-        <Star size={12} fill="currentColor" className="text-yellow-500" />
-        {product.rating > 0 ? product.rating.toFixed(1) : "New"}
-      </div>
-    </div>
-
-    <h2 className="mt-1 text-sm font-bold sm:text-base">{product.name}</h2>
-
-    <p className="mt-1 text-xs text-gray-500">
-      {[product.storage, product.color].filter(Boolean).join(" • ")}
-    </p>
-
-    <div className="mt-5">
-      <div className="flex items-end gap-2">
-        <span className="text-lg font-black sm:text-xl">
-          ₹{product.price.toLocaleString("en-IN")}
-        </span>
-
-        {product.originalPrice > product.price && (
-          <span className="text-xs text-gray-400 line-through">
-            ₹{product.originalPrice.toLocaleString("en-IN")}
+      <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#f4f5f7] sm:h-64">
+        {discount > 0 && (
+          <span className="absolute left-3 top-3 z-10 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
+            {discount}% OFF
           </span>
         )}
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onWishlist();
+          }}
+          aria-label={
+            liked
+              ? `Remove ${product.name} from wishlist`
+              : `Add ${product.name} to wishlist`
+          }
+          className={`absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition ${
+            liked ? "text-red-500" : "text-gray-500 hover:text-red-500"
+          }`}
+        >
+          <Heart size={17} fill={liked ? "currentColor" : "none"} />
+        </button>
+
+        <div className="relative flex h-40 w-32 items-center justify-center transition duration-500 group-hover:scale-105">
+          {product.media.type === "VIDEO" ? (
+            <video
+              src={product.media.url}
+              muted
+              autoPlay
+              loop
+              playsInline
+              preload="metadata"
+              className="h-full w-full object-contain"
+            >
+              Your browser does not support video playback.
+            </video>
+          ) : (
+            <img
+              src={product.media.url}
+              alt={product.media.altText || product.name}
+              loading="lazy"
+              className="h-full w-full object-contain"
+              onError={(event) => {
+                event.currentTarget.src = FALLBACK_IMAGE;
+              }}
+            />
+          )}
+        </div>
+
+        <span className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold shadow-sm backdrop-blur">
+          {product.condition}
+        </span>
       </div>
 
-      {saving > 0 && (
-        <p className="mt-1 text-[10px] text-green-600">
-          You save ₹{saving.toLocaleString("en-IN")}
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+            {product.brand}
+          </p>
+
+          <div className="flex items-center gap-1 text-[10px] font-bold">
+            <Star size={12} fill="currentColor" className="text-yellow-500" />
+            {product.rating > 0 ? product.rating.toFixed(1) : "New"}
+          </div>
+        </div>
+
+        <h2 className="mt-1 text-sm font-bold sm:text-base">{product.name}</h2>
+
+        <p className="mt-1 text-xs text-gray-500">
+          {[product.storage, product.color].filter(Boolean).join(" • ")}
         </p>
-      )}
-    </div>
 
-    <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
-      <BadgeCheck size={15} className="text-indigo-600" />
+        <div className="mt-5">
+          <div className="flex items-end gap-2">
+            <span className="text-lg font-black sm:text-xl">
+              ₹{product.price.toLocaleString("en-IN")}
+            </span>
 
-      <span className="text-[10px] font-semibold text-gray-500">
-        {product.warranty}
-      </span>
-    </div>
+            {product.originalPrice > product.price && (
+              <span className="text-xs text-gray-400 line-through">
+                ₹{product.originalPrice.toLocaleString("en-IN")}
+              </span>
+            )}
+          </div>
 
-    <div className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-bold text-white transition group-hover:bg-indigo-600">
-      View details
-      <ArrowRight size={14} />
-    </div>
-  </div>
-</Link>
+          {saving > 0 && (
+            <p className="mt-1 text-[10px] text-green-600">
+              You save ₹{saving.toLocaleString("en-IN")}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-4">
+          <BadgeCheck size={15} className="text-indigo-600" />
+
+          <span className="text-[10px] font-semibold text-gray-500">
+            {product.warranty}
+          </span>
+        </div>
+
+        <div className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-bold text-white transition group-hover:bg-indigo-600">
+          View details
+          <ArrowRight size={14} />
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -325,7 +380,7 @@ function TrustCard({
 export default function BuyPage() {
   const [category, setCategory] = useState("All");
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [maxPrice, setMaxPrice] = useState(100000);
+  const [maxPrice, setMaxPrice] = useState(600000);
   const [sort, setSort] = useState("featured");
   const [search, setSearch] = useState("");
   const [mobileFilters, setMobileFilters] = useState(false);
@@ -336,106 +391,104 @@ export default function BuyPage() {
 
   const { wishlist, toggleWishlist } = useWishlist();
 
-useEffect(() => {
-  const controller = new AbortController();
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      setError("");
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-      const params = new URLSearchParams({
-        page: "1",
-        limit: "100",
-      });
+        const params = new URLSearchParams({
+          page: "1",
+          limit: "100",
+        });
 
-      const trimmedSearch = search.trim();
+        const trimmedSearch = search.trim();
 
-      if (trimmedSearch) {
-        params.set("search", trimmedSearch);
-      }
-
-      const url = `${API_BASE_URL}/products?${params.toString()}`;
-
-      console.log("Fetching products from:", url);
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-        cache: "no-store",
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        let message = `Unable to load products (${response.status})`;
-
-        try {
-          const errorData = await response.json();
-
-          if (errorData?.message) {
-            message = errorData.message;
-          }
-        } catch {
-          // Ignore invalid error JSON
+        if (trimmedSearch) {
+          params.set("search", trimmedSearch);
         }
 
-        throw new Error(message);
+        const url = `${API_BASE_URL}/products?${params.toString()}`;
+
+        console.log("Fetching products from:", url);
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          let message = `Unable to load products (${response.status})`;
+
+          try {
+            const errorData = await response.json();
+
+            if (errorData?.message) {
+              message = errorData.message;
+            }
+          } catch {
+            // Ignore invalid error JSON
+          }
+
+          throw new Error(message);
+        }
+
+        const data = await response.json();
+
+        if (!data?.success) {
+          throw new Error(
+            data?.message || "Backend returned an unsuccessful response.",
+          );
+        }
+
+        const apiProducts: ApiProduct[] = Array.isArray(data.data)
+          ? data.data
+          : Array.isArray(data.products)
+            ? data.products
+            : [];
+
+        const normalizedProducts = apiProducts
+          .filter((product) => product.active !== false)
+          .map(normalizeProduct);
+
+        setProducts(normalizedProducts);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
+
+        console.error("BUY PRODUCTS FETCH ERROR:", err);
+
+        setProducts([]);
+
+        if (err instanceof TypeError && err.message === "Failed to fetch") {
+          setError(
+            `Cannot connect to the backend API. Please make sure the backend is running and CORS/API URL are configured correctly.`,
+          );
+        } else {
+          setError(
+            err instanceof Error ? err.message : "Unable to load products.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
+    };
 
-      const data = await response.json();
+    loadProducts();
 
-      if (!data?.success) {
-        throw new Error(
-          data?.message || "Backend returned an unsuccessful response.",
-        );
-      }
-
-      const apiProducts: ApiProduct[] = Array.isArray(data.data)
-        ? data.data
-        : Array.isArray(data.products)
-          ? data.products
-          : [];
-
-      const normalizedProducts = apiProducts
-        .filter((product) => product.active !== false)
-        .map(normalizeProduct);
-
-      setProducts(normalizedProducts);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        return;
-      }
-
-      console.error("BUY PRODUCTS FETCH ERROR:", err);
-
-      setProducts([]);
-
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        setError(
-          `Cannot connect to the backend API. Please make sure the backend is running and CORS/API URL are configured correctly.`,
-        );
-      } else {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load products.",
-        );
-      }
-    } finally {
-      if (!controller.signal.aborted) {
-        setLoading(false);
-      }
-    }
-  };
-
-  loadProducts();
-
-  return () => {
-    controller.abort();
-  };
-}, [search]);
+    return () => {
+      controller.abort();
+    };
+  }, [search]);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -510,7 +563,7 @@ useEffect(() => {
 
   const clearFilters = () => {
     setSelectedBrands([]);
-    setMaxPrice(100000);
+    setMaxPrice(600000);
     setCategory("All");
   };
 
@@ -611,7 +664,7 @@ useEffect(() => {
                 <h2 className="font-bold">Filters</h2>
 
                 {(selectedBrands.length > 0 ||
-                  maxPrice < 100000 ||
+                  maxPrice < 600000 ||
                   category !== "All") && (
                   <button
                     type="button"
@@ -663,7 +716,7 @@ useEffect(() => {
                 <input
                   type="range"
                   min="10000"
-                  max="100000"
+                  max="600000"
                   step="5000"
                   value={maxPrice}
                   onChange={(event) => setMaxPrice(Number(event.target.value))}
@@ -809,7 +862,7 @@ useEffect(() => {
                         name: product.name,
                         brand: product.brand,
                         price: product.price,
-                        image: product.image,
+                        image: product.media.url,
                         storage: product.storage,
                       })
                     }

@@ -150,14 +150,17 @@ function productHref(product: HomeProduct): string {
   return `/buy/${encodeURIComponent(product.slug || String(product.id))}`;
 }
 
-function productImage(product: HomeProduct): string {
-  const images = Array.isArray(product.images) ? product.images : [];
+function productMedia(product: HomeProduct): HomeImage | null {
+  const variantMedia = (product.variants || [])
+    .flatMap((variant) => (Array.isArray(variant.images) ? variant.images : []))
+    .filter((media) => Boolean(media?.url))
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-  const image = [...images]
-    .filter((item) => item?.type !== "VIDEO")
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0];
+  const productMediaItems = (product.images || [])
+    .filter((media) => Boolean(media?.url))
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-  return image?.url || product.image || "";
+  return variantMedia[0] || productMediaItems[0] || null;
 }
 
 function productStock(product: HomeProduct): number {
@@ -182,8 +185,7 @@ function ProductCard({
   product: HomeProduct;
   index: number;
 }) {
-  const image = productImage(product);
-
+  const media = productMedia(product);
   const price = toNumber(product.price);
 
   const originalPrice = toNumber(product.originalPrice);
@@ -220,20 +222,32 @@ function ProductCard({
       <Link href={productHref(product)} className="block">
         {/* IMAGE */}
         <div className="relative h-60 overflow-hidden bg-[#f6f7f9]">
-          {image ? (
-            <img
-              src={image}
-              alt={product.name}
-              loading={index < 4 ? "eager" : "lazy"}
-              className="h-full w-full object-contain p-8 transition duration-500 group-hover:scale-105"
-            />
+          {media?.url ? (
+            media.type === "VIDEO" ? (
+              <video
+                key={`video-${media.id}-${media.url}`}
+                src={media.url}
+                muted
+                autoPlay
+                loop
+                playsInline
+                preload="metadata"
+                className="h-full w-full object-contain p-8 transition duration-500 group-hover:scale-105"
+              >
+                Your browser does not support video playback.
+              </video>
+            ) : (
+              <img
+                key={`image-${media.id}-${media.url}`}
+                src={media.url}
+                alt={product.name}
+                loading={index < 4 ? "eager" : "lazy"}
+                className="h-full w-full object-contain p-8 transition duration-500 group-hover:scale-105"
+              />
+            )
           ) : (
             <div className="flex h-full items-center justify-center">
-              <Smartphone
-                size={80}
-                strokeWidth={1}
-                className="text-gray-300"
-              />
+              <Smartphone size={80} strokeWidth={1} className="text-gray-300" />
             </div>
           )}
 
@@ -338,7 +352,6 @@ function ProductSection({
   return (
     <section className="bg-white px-5 py-14 lg:px-8 lg:py-16">
       <div className="mx-auto max-w-7xl">
-
         {/* SECTION HEADER */}
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
@@ -368,11 +381,7 @@ function ProductSection({
         {/* PRODUCTS */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {visibleProducts.map((product, index) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              index={index}
-            />
+            <ProductCard key={product.id} product={product} index={index} />
           ))}
         </div>
 
@@ -386,7 +395,6 @@ function ProductSection({
             <ArrowRight size={15} />
           </Link>
         </div>
-
       </div>
     </section>
   );
@@ -441,9 +449,7 @@ export default function Home() {
           return;
         }
 
-        setError(
-          err instanceof Error ? err.message : "Unable to load phones",
-        );
+        setError(err instanceof Error ? err.message : "Unable to load phones");
       } finally {
         if (mounted) {
           setLoading(false);
@@ -462,10 +468,7 @@ export default function Home() {
      SECTIONS
   ======================================================= */
 
-  const freshArrivals = useMemo(
-    () => products.slice(0, 8),
-    [products],
-  );
+  const freshArrivals = useMemo(() => products.slice(0, 8), [products]);
 
   const topRated = useMemo(
     () =>
@@ -479,11 +482,9 @@ export default function Home() {
     () =>
       [...products]
         .sort((a, b) => {
-          const aSaving =
-            toNumber(a.originalPrice) - toNumber(a.price);
+          const aSaving = toNumber(a.originalPrice) - toNumber(a.price);
 
-          const bSaving =
-            toNumber(b.originalPrice) - toNumber(b.price);
+          const bSaving = toNumber(b.originalPrice) - toNumber(b.price);
 
           return bSaving - aSaving;
         })
@@ -505,9 +506,7 @@ export default function Home() {
     }
 
     const interval = window.setInterval(() => {
-      setCurrentSlide(
-        (current) => (current + 1) % heroBannerCount,
-      );
+      setCurrentSlide((current) => (current + 1) % heroBannerCount);
     }, 5000);
 
     return () => window.clearInterval(interval);
@@ -520,9 +519,7 @@ export default function Home() {
       return;
     }
 
-    setCurrentSlide(
-      (current) => (current + 1) % heroBannerCount,
-    );
+    setCurrentSlide((current) => (current + 1) % heroBannerCount);
   }
 
   /* PREVIOUS */
@@ -533,8 +530,7 @@ export default function Home() {
     }
 
     setCurrentSlide(
-      (current) =>
-        (current - 1 + heroBannerCount) % heroBannerCount,
+      (current) => (current - 1 + heroBannerCount) % heroBannerCount,
     );
   }
 
@@ -544,16 +540,13 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-[#111827]">
-
       {/* ===================================================
           HERO
       =================================================== */}
 
       <section className="bg-white px-2 py-2 sm:px-3 sm:py-3 lg:px-5 lg:py-5">
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[0.75rem] bg-[#111827] shadow-xl sm:rounded-[1rem] lg:rounded-[1.5rem]">
-
           <div className="relative h-[280px] overflow-hidden sm:h-[360px] lg:h-[470px]">
-
             {/* =================================================
                 BANNER SLIDES
             ================================================= */}
@@ -592,26 +585,20 @@ export default function Home() {
 
                 <div className="absolute inset-0 flex items-center">
                   <div className="max-w-xl px-10 sm:px-14 lg:px-20">
-
                     <motion.div
                       initial={{
                         opacity: 0,
                         y: 20,
                       }}
                       animate={{
-                        opacity:
-                          currentSlide === index ? 1 : 0,
-                        y:
-                          currentSlide === index
-                            ? 0
-                            : 20,
+                        opacity: currentSlide === index ? 1 : 0,
+                        y: currentSlide === index ? 0 : 20,
                       }}
                       transition={{
                         duration: 0.5,
                         delay: 0.15,
                       }}
                     >
-
                       <h1 className="max-w-lg text-2xl font-black leading-tight text-white sm:text-3xl lg:text-5xl">
                         {banner.title}
                       </h1>
@@ -628,9 +615,7 @@ export default function Home() {
 
                         <ArrowRight size={15} />
                       </Link>
-
                     </motion.div>
-
                   </div>
                 </div>
               </motion.div>
@@ -681,7 +666,6 @@ export default function Home() {
                 />
               ))}
             </div>
-
           </div>
         </div>
       </section>
@@ -692,30 +676,24 @@ export default function Home() {
 
       <section className="border-y border-gray-100 bg-white">
         <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-gray-100 lg:grid-cols-4 lg:divide-y-0">
-
-          {trustItems.map(
-            ({ icon: Icon, title, text }) => (
-              <div
-                key={title}
-                className="flex items-center gap-3 px-5 py-5 sm:py-6"
-              >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                  <Icon size={21} />
-                </div>
-
-                <div>
-                  <p className="text-sm font-bold">
-                    {title}
-                  </p>
-
-                  <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
-                    {text}
-                  </p>
-                </div>
+          {trustItems.map(({ icon: Icon, title, text }) => (
+            <div
+              key={title}
+              className="flex items-center gap-3 px-5 py-5 sm:py-6"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                <Icon size={21} />
               </div>
-            ),
-          )}
 
+              <div>
+                <p className="text-sm font-bold">{title}</p>
+
+                <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
+                  {text}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -725,9 +703,7 @@ export default function Home() {
 
       <section className="mx-auto max-w-7xl px-5 py-14 lg:px-8 lg:py-16">
         <div className="rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-white p-6 sm:p-8 lg:p-10">
-
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">
                 PhoneBhai marketplace
@@ -738,13 +714,11 @@ export default function Home() {
               </h2>
 
               <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-500">
-                Browse the live PhoneBhai inventory, compare
-                prices, conditions, ratings and warranty before
-                you buy.
+                Browse the live PhoneBhai inventory, compare prices, conditions,
+                ratings and warranty before you buy.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
-
                 <Link
                   href="/buy"
                   className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-600"
@@ -760,12 +734,10 @@ export default function Home() {
                   Sell your phone
                   <Wallet size={16} />
                 </Link>
-
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-
               {[
                 "Live inventory",
                 "Quality checked",
@@ -776,19 +748,12 @@ export default function Home() {
                   key={item}
                   className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
                 >
-                  <CircleCheck
-                    className="text-indigo-600"
-                    size={19}
-                  />
+                  <CircleCheck className="text-indigo-600" size={19} />
 
-                  <p className="mt-3 text-sm font-bold text-gray-900">
-                    {item}
-                  </p>
+                  <p className="mt-3 text-sm font-bold text-gray-900">{item}</p>
                 </div>
               ))}
-
             </div>
-
           </div>
         </div>
       </section>
@@ -801,7 +766,6 @@ export default function Home() {
         <section className="bg-white py-24">
           <div className="flex items-center justify-center">
             <div className="text-center">
-
               <RefreshCw
                 className="mx-auto animate-spin text-indigo-600"
                 size={30}
@@ -810,28 +774,20 @@ export default function Home() {
               <p className="mt-4 text-sm font-semibold text-gray-500">
                 Loading phones from PhoneBhai...
               </p>
-
             </div>
           </div>
         </section>
       ) : error ? (
         <section className="bg-white py-24">
           <div className="mx-auto max-w-xl px-5 text-center">
-
             <div className="rounded-3xl border border-red-100 bg-red-50 p-8">
-
-              <Smartphone
-                className="mx-auto text-red-400"
-                size={42}
-              />
+              <Smartphone className="mx-auto text-red-400" size={42} />
 
               <h2 className="mt-4 text-xl font-black">
                 We couldn't load the phones
               </h2>
 
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                {error}
-              </p>
+              <p className="mt-2 text-sm leading-6 text-gray-500">{error}</p>
 
               <Link
                 href="/buy"
@@ -840,14 +796,12 @@ export default function Home() {
                 Open phone shop
                 <ArrowRight size={16} />
               </Link>
-
             </div>
           </div>
         </section>
       ) : products.length === 0 ? (
         <section className="bg-white py-24">
           <div className="mx-auto max-w-xl px-5 text-center">
-
             <Smartphone
               className="mx-auto text-gray-300"
               size={52}
@@ -869,7 +823,6 @@ export default function Home() {
               Browse shop
               <ArrowRight size={16} />
             </Link>
-
           </div>
         </section>
       ) : (
@@ -907,11 +860,8 @@ export default function Home() {
 
       <section className="mx-auto max-w-7xl px-5 py-16 lg:px-8">
         <div className="overflow-hidden rounded-[2.5rem] bg-gray-950">
-
           <div className="grid lg:grid-cols-2">
-
             <div className="p-8 sm:p-12 lg:p-16">
-
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-black text-white/80">
                 <Smartphone size={14} />
                 SELL YOUR PHONE
@@ -922,9 +872,8 @@ export default function Home() {
               </h2>
 
               <p className="mt-5 max-w-xl text-sm leading-7 text-gray-400 sm:text-base">
-                Get a competitive estimate, choose a convenient
-                pickup and complete the selling process with
-                PhoneBhai.
+                Get a competitive estimate, choose a convenient pickup and
+                complete the selling process with PhoneBhai.
               </p>
 
               <Link
@@ -934,31 +883,24 @@ export default function Home() {
                 Get your phone price
                 <ArrowRight size={17} />
               </Link>
-
             </div>
 
             <div className="relative hidden min-h-[360px] items-center justify-center overflow-hidden lg:flex">
-
               <div className="absolute h-72 w-72 rounded-full bg-indigo-600/30 blur-3xl" />
 
               <div className="relative rounded-[2rem] border border-white/10 bg-white/5 p-9 text-white backdrop-blur-md">
-
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
                   Simple process
                 </p>
 
                 <div className="mt-6 space-y-4">
-
                   {[
                     "Choose your phone",
                     "Tell us its condition",
                     "Book doorstep pickup",
                     "Get paid after inspection",
                   ].map((item, index) => (
-                    <div
-                      key={item}
-                      className="flex items-center gap-3"
-                    >
+                    <div key={item} className="flex items-center gap-3">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-black">
                         {index + 1}
                       </span>
@@ -968,11 +910,9 @@ export default function Home() {
                       </span>
                     </div>
                   ))}
-
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </section>
@@ -983,9 +923,7 @@ export default function Home() {
 
       <section className="border-t border-gray-100 bg-white py-16">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
-
           <div className="grid gap-5 md:grid-cols-3">
-
             {[
               {
                 icon: ShieldCheck,
@@ -1008,26 +946,17 @@ export default function Home() {
                 className="rounded-3xl border border-gray-200 bg-[#f8f9fb] p-7"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
-                  <Icon
-                    className="text-indigo-600"
-                    size={22}
-                  />
+                  <Icon className="text-indigo-600" size={22} />
                 </div>
 
-                <h3 className="mt-5 text-lg font-black">
-                  {title}
-                </h3>
+                <h3 className="mt-5 text-lg font-black">{title}</h3>
 
-                <p className="mt-2 text-sm leading-6 text-gray-500">
-                  {text}
-                </p>
+                <p className="mt-2 text-sm leading-6 text-gray-500">{text}</p>
               </div>
             ))}
-
           </div>
         </div>
       </section>
-
     </main>
   );
 }

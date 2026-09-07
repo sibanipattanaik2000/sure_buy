@@ -530,114 +530,125 @@ const waitForRazorpay = async (): Promise<boolean> => {
    ONLINE PAYMENT — RAZORPAY
 ===================================================== */
 
-      if (backendPaymentMethod !== "COD") {
-        const paymentOrderResponse = await createPaymentOrder(order.id);
+if (backendPaymentMethod !== "COD") {
+  const paymentOrderResponse = await createPaymentOrder(order.id);
 
-        if (!paymentOrderResponse.success || !paymentOrderResponse.data) {
-          throw new Error(
-            paymentOrderResponse.message || "Unable to start online payment.",
+  if (!paymentOrderResponse.success || !paymentOrderResponse.data) {
+    throw new Error(
+      paymentOrderResponse.message || "Unable to start online payment.",
+    );
+  }
+
+  const paymentOrder = paymentOrderResponse.data;
+
+  const razorpayReady = await waitForRazorpay();
+
+  if (!razorpayReady || !window.Razorpay) {
+    throw new Error(
+      "Unable to load the payment gateway. Please refresh the page and try again.",
+    );
+  }
+
+  let paymentCancelled = false;
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+
+    const resolveOnce = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+
+    const rejectOnce = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+
+    const razorpay = new window.Razorpay({
+      key: paymentOrder.keyId,
+      amount: paymentOrder.amountInPaise,
+      currency: paymentOrder.currency,
+      name: "Phone Bhai",
+      description: `Payment for order ${order.orderNumber}`,
+
+      order_id: paymentOrder.razorpayOrderId,
+
+      prefill: {
+        name: fullName,
+        contact: phone,
+      },
+
+      notes: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+      },
+
+      theme: {
+        color: "#4f46e5",
+      },
+
+      handler: async (response) => {
+        try {
+          const verification = await verifyPayment(order.id, {
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpayOrderId: response.razorpay_order_id,
+            razorpaySignature: response.razorpay_signature,
+          });
+
+          if (!verification.success || !verification.data) {
+            throw new Error(
+              verification.message || "Payment verification failed.",
+            );
+          }
+
+          if (verification.data.status !== "PAID") {
+            throw new Error("Payment has not been confirmed yet.");
+          }
+
+          resolveOnce();
+        } catch (error) {
+          rejectOnce(
+            error instanceof Error
+              ? error
+              : new Error("Payment verification failed."),
           );
         }
+      },
 
-        const paymentOrder = paymentOrderResponse.data;
+      modal: {
+        ondismiss: () => {
+          if (settled) return;
 
-const razorpayReady = await waitForRazorpay();
+          paymentCancelled = true;
+          settled = true;
+          resolve();
+        },
+      },
+    });
 
-if (!razorpayReady || !window.Razorpay) {
-  throw new Error(
-    "Unable to load the payment gateway. Please refresh the page and try again.",
-  );
+    razorpay.on("payment.failed", (response) => {
+      const description = response?.error?.description;
+
+      rejectOnce(
+        new Error(description || "Payment failed. Please try again."),
+      );
+    });
+
+    razorpay.open();
+  });
+
+  // Payment was cancelled — STOP here.
+  if (paymentCancelled) {
+    setError("Payment was cancelled. Your order has not been confirmed.");
+    return;
+  }
 }
 
-        await new Promise<void>((resolve, reject) => {
-          let settled = false;
-
-          const resolveOnce = () => {
-            if (settled) return;
-            settled = true;
-            resolve();
-          };
-
-          const rejectOnce = (error: Error) => {
-            if (settled) return;
-            settled = true;
-            reject(error);
-          };
-
-          const razorpay = new window.Razorpay({
-            key: paymentOrder.keyId,
-            amount: paymentOrder.amountInPaise,
-            currency: paymentOrder.currency,
-            name: "Phone Bhai",
-            description: `Payment for order ${order.orderNumber}`,
-
-            order_id: paymentOrder.razorpayOrderId,
-
-            prefill: {
-              name: fullName,
-              contact: phone,
-            },
-
-            notes: {
-              orderId: order.id,
-              orderNumber: order.orderNumber,
-            },
-
-            theme: {
-              color: "#4f46e5",
-            },
-
-            handler: async (response) => {
-              try {
-                const verification = await verifyPayment(order.id, {
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpaySignature: response.razorpay_signature,
-                });
-
-                if (!verification.success || !verification.data) {
-                  throw new Error(
-                    verification.message || "Payment verification failed.",
-                  );
-                }
-
-                if (verification.data.status !== "PAID") {
-                  throw new Error("Payment has not been confirmed yet.");
-                }
-
-                resolveOnce();
-              } catch (error) {
-                rejectOnce(
-                  error instanceof Error
-                    ? error
-                    : new Error("Payment verification failed."),
-                );
-              }
-            },
-
-            modal: {
-              ondismiss: () => {
-                rejectOnce(
-                  new Error(
-                    "Payment was cancelled. Your order has not been confirmed.",
-                  ),
-                );
-              },
-            },
-          });
-
-          razorpay.on("payment.failed", (response) => {
-            const description = response?.error?.description;
-
-            rejectOnce(
-              new Error(description || "Payment failed. Please try again."),
-            );
-          });
-
-          razorpay.open();
-        });
-      }
-
+/* =====================================================
+   PAYMENT SUCCESS CONFIRMED
+   ===================================================== */
       /* =====================================================
        PAYMENT SUCCESS CONFIRMED
        ===================================================== */
@@ -882,13 +893,19 @@ if (!razorpayReady || !window.Razorpay) {
                       >
                         {/* IMAGE */}
 
-                        <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="h-full w-full object-contain"
-                          />
-                        </div>
+                      <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
+  {product.image ? (
+    <img
+      src={product.image}
+      alt={product.name}
+      className="h-full w-full object-contain"
+    />
+  ) : (
+    <div className="text-xs text-gray-400">
+      No image
+    </div>
+  )}
+</div>
 
                         {/* DETAILS */}
 
