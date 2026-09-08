@@ -168,7 +168,13 @@ function safeImages(images: ApiImage[] | null | undefined): ApiImage[] {
 function sortImages(images: ApiImage[]): ApiImage[] {
   return [...images].sort((a, b) => a.position - b.position);
 }
+function normalizeStorage(value: string | null | undefined): string {
+  return (value || "").trim().toLowerCase().replace(/\s+/g, "");
+}
 
+function normalizeColor(value: string | null | undefined): string {
+  return (value || "").trim().toLowerCase();
+}
 /* =====  ====================================================
    PAGE
 ========================================================= */
@@ -338,46 +344,84 @@ export default function ProductDetailsPage() {
       : 0;
 
   /* =======================================================
-     AVAILABLE OPTIONS
-  ======================================================= */
+   AVAILABLE OPTIONS
+======================================================= */
 
+  /*
+   * Storage is normalized so:
+   * "256GB"
+   * "256 GB"
+   * "256gb"
+   *
+   * are treated as the same storage.
+   */
   const storageOptions = Array.from(
-    new Set(product.variants.map((variant) => variant.storage).filter(Boolean)),
-  );
-
-  const colorOptions = Array.from(
-    new Set(product.variants.map((variant) => variant.color).filter(Boolean)),
+    new Map(
+      product.variants
+        .filter((variant) => variant.storage?.trim())
+        .map((variant) => [
+          normalizeStorage(variant.storage),
+          variant.storage.trim(),
+        ]),
+    ).values(),
   );
 
   /*
-   * Colors available for the currently selected storage.
+   * Colours remain unique by their actual normalized value.
+   */
+  const colorOptions = Array.from(
+    new Map(
+      product.variants
+        .filter((variant) => variant.color?.trim())
+        .map((variant) => [
+          normalizeColor(variant.color),
+          variant.color.trim(),
+        ]),
+    ).values(),
+  );
+
+  /*
+   * Colours available for the currently selected storage.
    */
   const availableColorsForStorage = new Set(
     product.variants
-      .filter((variant) => variant.storage === selectedStorage)
-      .map((variant) => variant.color),
+      .filter(
+        (variant) =>
+          normalizeStorage(variant.storage) ===
+          normalizeStorage(selectedStorage),
+      )
+      .map((variant) => normalizeColor(variant.color)),
   );
 
   /*
-   * Storage options available for the currently selected color.
+   * Storage options available for the currently selected colour.
    */
   const availableStorageForColor = new Set(
     product.variants
-      .filter((variant) => variant.color === selectedColor)
-      .map((variant) => variant.storage),
+      .filter(
+        (variant) =>
+          normalizeColor(variant.color) === normalizeColor(selectedColor),
+      )
+      .map((variant) => normalizeStorage(variant.storage)),
   );
-
   /* =======================================================
      ACTIVE VARIANT
   ======================================================= */
-
   const activeVariant =
     product.variants.find(
       (variant) =>
-        variant.storage === selectedStorage && variant.color === selectedColor,
+        normalizeStorage(variant.storage) ===
+          normalizeStorage(selectedStorage) &&
+        normalizeColor(variant.color) === normalizeColor(selectedColor),
     ) ||
-    product.variants.find((variant) => variant.storage === selectedStorage) ||
-    product.variants.find((variant) => variant.color === selectedColor) ||
+    product.variants.find(
+      (variant) =>
+        normalizeStorage(variant.storage) === normalizeStorage(selectedStorage),
+    ) ||
+    product.variants.find(
+      (variant) =>
+        normalizeColor(variant.color) === normalizeColor(selectedColor),
+    ) ||
     product.variants[0];
 
   /* =======================================================
@@ -516,8 +560,13 @@ export default function ProductDetailsPage() {
     const matchingVariant =
       product.variants.find(
         (variant) =>
-          variant.storage === storage && variant.color === selectedColor,
-      ) || product.variants.find((variant) => variant.storage === storage);
+          normalizeStorage(variant.storage) === normalizeStorage(storage) &&
+          normalizeColor(variant.color) === normalizeColor(selectedColor),
+      ) ||
+      product.variants.find(
+        (variant) =>
+          normalizeStorage(variant.storage) === normalizeStorage(storage),
+      );
 
     if (matchingVariant) {
       setSelectedColor(matchingVariant.color);
@@ -539,11 +588,24 @@ export default function ProductDetailsPage() {
     const matchingVariant =
       product.variants.find(
         (variant) =>
-          variant.color === color && variant.storage === selectedStorage,
-      ) || product.variants.find((variant) => variant.color === color);
+          normalizeColor(variant.color) === normalizeColor(color) &&
+          normalizeStorage(variant.storage) ===
+            normalizeStorage(selectedStorage),
+      ) ||
+      product.variants.find(
+        (variant) => normalizeColor(variant.color) === normalizeColor(color),
+      );
 
     if (matchingVariant) {
-      setSelectedStorage(matchingVariant.storage);
+      // Keep the selected storage as the canonical value
+      // already shown in the storage options.
+      const matchingStorageOption = storageOptions.find(
+        (storage) =>
+          normalizeStorage(storage) ===
+          normalizeStorage(matchingVariant.storage),
+      );
+
+      setSelectedStorage(matchingStorageOption || matchingVariant.storage);
 
       setQuantity((current) =>
         Math.min(Math.max(1, current), Math.max(1, matchingVariant.stock)),
@@ -925,13 +987,16 @@ export default function ProductDetailsPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {storageOptions.map((storage) => {
                     const isAvailable =
-                      !selectedColor || availableStorageForColor.has(storage);
+                      !selectedColor ||
+                      availableStorageForColor.has(normalizeStorage(storage));
 
-                    const isSelected = selectedStorage === storage;
+                    const isSelected =
+                      normalizeStorage(selectedStorage) ===
+                      normalizeStorage(storage);
 
                     return (
                       <button
-                        key={storage}
+                        key={normalizeStorage(storage)}
                         type="button"
                         disabled={!isAvailable}
                         onClick={() => handleStorageChange(storage)}
@@ -957,24 +1022,28 @@ export default function ProductDetailsPage() {
               {colorOptions.length > 0 && (
                 <div className="mt-6">
                   <p className="text-sm font-bold">Colour</p>
-
                   <div className="mt-3 flex flex-wrap gap-3">
                     {colorOptions.map((color) => {
                       const matchingVariant =
                         product.variants.find(
                           (variant) =>
-                            variant.color === color &&
-                            variant.storage === selectedStorage,
+                            normalizeColor(variant.color) ===
+                              normalizeColor(color) &&
+                            normalizeStorage(variant.storage) ===
+                              normalizeStorage(selectedStorage),
                         ) ||
                         product.variants.find(
-                          (variant) => variant.color === color,
+                          (variant) =>
+                            normalizeColor(variant.color) ===
+                            normalizeColor(color),
                         );
 
                       const isAvailable =
                         !selectedStorage ||
-                        availableColorsForStorage.has(color);
+                        availableColorsForStorage.has(normalizeColor(color));
 
-                      const isSelected = selectedColor === color;
+                      const isSelected =
+                        normalizeColor(selectedColor) === normalizeColor(color);
 
                       const colorHex = matchingVariant?.colorHex;
 
