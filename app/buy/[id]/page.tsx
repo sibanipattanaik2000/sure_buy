@@ -383,27 +383,21 @@ export default function ProductDetailsPage() {
   /*
    * Colours available for the currently selected storage.
    */
-  const availableColorsForStorage = new Set(
-    product.variants
-      .filter(
-        (variant) =>
-          normalizeStorage(variant.storage) ===
-          normalizeStorage(selectedStorage),
-      )
-      .map((variant) => normalizeColor(variant.color)),
-  );
 
   /*
    * Storage options available for the currently selected colour.
    */
-  const availableStorageForColor = new Set(
-    product.variants
-      .filter(
-        (variant) =>
-          normalizeColor(variant.color) === normalizeColor(selectedColor),
-      )
-      .map((variant) => normalizeStorage(variant.storage)),
-  );
+const availableColorsForStorage = new Set(
+  product.variants
+    .filter(
+      (variant) =>
+        normalizeStorage(variant.storage) ===
+        normalizeStorage(selectedStorage),
+    )
+    .map((variant) => normalizeColor(variant.color)),
+);
+
+
   /* =======================================================
      ACTIVE VARIANT
   ======================================================= */
@@ -986,9 +980,11 @@ export default function ProductDetailsPage() {
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   {storageOptions.map((storage) => {
-                    const isAvailable =
-                      !selectedColor ||
-                      availableStorageForColor.has(normalizeStorage(storage));
+                   const isAvailable = product.variants.some(
+  (variant) =>
+    normalizeStorage(variant.storage) === normalizeStorage(storage) &&
+    variant.stock > 0,
+);
 
                     const isSelected =
                       normalizeStorage(selectedStorage) ===
