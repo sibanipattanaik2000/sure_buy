@@ -304,7 +304,7 @@ const loadProducts =
                 );
               }}
               placeholder="Search products..."
-              className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 text-gray-900 placeholder:text-gray-400"
             />
           </div>
 

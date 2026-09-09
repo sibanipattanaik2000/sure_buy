@@ -210,14 +210,16 @@ const normalizeProduct = (product: ApiProduct): Product => {
   };
 };
 
-const categories = [
-  { name: "All", icon: null },
-  { name: "Smartphones", icon: Smartphone },
-  { name: "Tablets", icon: Tablet },
-  { name: "Smartwatches", icon: Watch },
+const brands = [
+  "Apple",
+  "Samsung",
+  "OnePlus",
+  "Vivo",
+  "Oppo",
+  "Realme",
+  "Motorola",
+  "Google",
 ];
-
-const brands = ["Apple", "Samsung", "OnePlus", "Vivo", "Oppo", "Realme", "Motorola","Google"];
 
 function ProductCard({
   product,
@@ -312,7 +314,9 @@ function ProductCard({
           </div>
         </div>
 
-        <h2 className="mt-1 text-sm font-bold sm:text-base line-clamp-2">{product.name}</h2>
+        <h2 className="mt-1 text-sm font-bold sm:text-base truncate">
+          {product.name}
+        </h2>
 
         <p className="mt-1 text-xs text-gray-500">
           {[product.storage, product.color].filter(Boolean).join(" • ")}
@@ -568,7 +572,7 @@ export default function BuyPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f7f8fa] text-[#111827]">
+    <main className="min-h-screen bg-white text-[#111827]">
       <section className="border-b border-gray-100 bg-white">
         <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
           <div className="max-w-3xl">
@@ -620,29 +624,66 @@ export default function BuyPage() {
         </div>
       </section>
 
-      <section className="border-b border-gray-100 bg-white">
-        <div className="mx-auto max-w-7xl overflow-x-auto px-5 lg:px-8">
-          <div className="flex min-w-max gap-3 py-4">
-            {categories.map((item) => {
-              const Icon = item.icon;
-              const active = category === item.name;
+      <section className="border-b border-gray-100 bg-white ">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8 ">
+          <div className="flex min-w-max items-center justify-between gap-8 overflow-x-auto py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                <ShieldCheck size={17} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-900">
+                  Quality Checked
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Multi-point inspection
+                </p>
+              </div>
+            </div>
 
-              return (
-                <button
-                  type="button"
-                  key={item.name}
-                  onClick={() => setCategory(item.name)}
-                  className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-                    active
-                      ? "bg-black text-white"
-                      : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  {Icon && <Icon size={16} />}
-                  {item.name}
-                </button>
-              );
-            })}
+            <div className="h-8 w-px bg-gray-200" />
+
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-50 text-green-600">
+                <BadgeCheck size={17} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-900">
+                  Warranty Backed
+                </p>
+                <p className="text-[10px] text-gray-500">Buy with confidence</p>
+              </div>
+            </div>
+
+            <div className="h-8 w-px bg-gray-200" />
+
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 text-orange-600">
+                <Truck size={17} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-900">Safe Delivery</p>
+                <p className="text-[10px] text-gray-500">
+                  Securely packed & tracked
+                </p>
+              </div>
+            </div>
+
+            <div className="h-8 w-px bg-gray-200" />
+
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-50 text-purple-600">
+                <Smartphone size={17} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-900">
+                  Verified Phones
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Genuine devices only
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
