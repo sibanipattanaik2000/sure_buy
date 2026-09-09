@@ -217,7 +217,7 @@ const categories = [
   { name: "Smartwatches", icon: Watch },
 ];
 
-const brands = ["Apple", "Samsung", "OnePlus", "Google", "Xiaomi", "Dell"];
+const brands = ["Apple", "Samsung", "OnePlus", "Vivo", "Oppo", "Realme", "Motorola","Google"];
 
 function ProductCard({
   product,
@@ -312,7 +312,7 @@ function ProductCard({
           </div>
         </div>
 
-        <h2 className="mt-1 text-sm font-bold sm:text-base">{product.name}</h2>
+        <h2 className="mt-1 text-sm font-bold sm:text-base line-clamp-2">{product.name}</h2>
 
         <p className="mt-1 text-xs text-gray-500">
           {[product.storage, product.color].filter(Boolean).join(" • ")}
@@ -380,7 +380,7 @@ function TrustCard({
 export default function BuyPage() {
   const [category, setCategory] = useState("All");
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [maxPrice, setMaxPrice] = useState(600000);
+  const [maxPrice, setMaxPrice] = useState(400000);
   const [sort, setSort] = useState("featured");
   const [search, setSearch] = useState("");
   const [mobileFilters, setMobileFilters] = useState(false);
@@ -563,7 +563,7 @@ export default function BuyPage() {
 
   const clearFilters = () => {
     setSelectedBrands([]);
-    setMaxPrice(600000);
+    setMaxPrice(400000);
     setCategory("All");
   };
 
@@ -664,7 +664,7 @@ export default function BuyPage() {
                 <h2 className="font-bold">Filters</h2>
 
                 {(selectedBrands.length > 0 ||
-                  maxPrice < 600000 ||
+                  maxPrice < 400000 ||
                   category !== "All") && (
                   <button
                     type="button"
@@ -716,7 +716,7 @@ export default function BuyPage() {
                 <input
                   type="range"
                   min="10000"
-                  max="600000"
+                  max="400000"
                   step="5000"
                   value={maxPrice}
                   onChange={(event) => setMaxPrice(Number(event.target.value))}
