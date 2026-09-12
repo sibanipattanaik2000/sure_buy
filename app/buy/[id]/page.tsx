@@ -57,6 +57,17 @@ type ApiVariant = {
   images: ApiImage[];
 };
 
+type ApiReviewMedia = {
+  id: string;
+  url: string;
+  key: string;
+  mimeType: string;
+  size: number;
+  type: "IMAGE" | "VIDEO";
+  position: number;
+  createdAt: string;
+};
+
 type ApiReview = {
   id: number;
   productId: number;
@@ -71,6 +82,7 @@ type ApiReview = {
     firstName: string;
     lastName: string;
   };
+  media?: ApiReviewMedia[];
 };
 
 type ApiProduct = {
@@ -175,6 +187,29 @@ function normalizeStorage(value: string | null | undefined): string {
 function normalizeColor(value: string | null | undefined): string {
   return (value || "").trim().toLowerCase();
 }
+function getRatingColor(rating: number): string {
+  if (rating >= 4) {
+    return "text-green-600";
+  }
+
+  if (rating >= 3) {
+    return "text-yellow-500";
+  }
+
+  return "text-red-500";
+}
+
+function getRatingBgColor(rating: number): string {
+  if (rating >= 4) {
+    return "bg-green-600";
+  }
+
+  if (rating >= 3) {
+    return "bg-yellow-500";
+  }
+
+  return "bg-red-500";
+}
 /* =====  ====================================================
    PAGE
 ========================================================= */
@@ -268,6 +303,131 @@ export default function ProductDetailsPage() {
       controller.abort();
     };
   }, [productIdentifier]);
+  /* =======================================================
+     FETCH PRODUCT + REVIEWS
+  ======================================================= */
+
+  useEffect(() => {
+    if (!productIdentifier) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchProductAndReviews = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const decodedIdentifier = decodeURIComponent(productIdentifier);
+
+        /* -----------------------------------------------
+           PRODUCT
+        ------------------------------------------------ */
+        const response = await getProduct<ApiProduct>(decodedIdentifier);
+
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Unable to load product");
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const productData = response.data;
+
+        /* -----------------------------------------------
+           REVIEWS
+        ------------------------------------------------ */
+        let reviews: ApiReview[] = [];
+
+        try {
+          const reviewsResponse = await fetch(
+            `${API_BASE_URL}/api/v1/products/${productData.id}/reviews?page=1&limit=50`,
+            {
+              method: "GET",
+              credentials: "include",
+              cache: "no-store",
+            },
+          );
+
+          const reviewsPayload = await reviewsResponse.json();
+
+          console.log("PHONE BHAI REVIEWS RESPONSE:", reviewsPayload);
+
+          if (reviewsResponse.ok) {
+            if (Array.isArray(reviewsPayload?.reviews)) {
+              reviews = reviewsPayload.reviews;
+            } else if (Array.isArray(reviewsPayload?.data?.reviews)) {
+              reviews = reviewsPayload.data.reviews;
+            } else if (Array.isArray(reviewsPayload?.data)) {
+              reviews = reviewsPayload.data;
+            }
+          }
+        } catch (reviewError) {
+          console.error("FAILED TO FETCH REVIEWS:", reviewError);
+        }
+
+        /* -----------------------------------------------
+           FALLBACK TO PRODUCT REVIEWS
+        ------------------------------------------------ */
+        if (reviews.length === 0) {
+          reviews = safeReviews(productData.reviews);
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        /* -----------------------------------------------
+           CALCULATE RATING FROM ACTUAL REVIEWS
+        ------------------------------------------------ */
+        const calculatedRating =
+          reviews.length > 0
+            ? reviews.reduce(
+                (sum, review) => sum + toNumber(review.rating),
+                0,
+              ) / reviews.length
+            : toNumber(productData.rating);
+
+        const roundedRating = Number(calculatedRating.toFixed(1));
+
+        /* -----------------------------------------------
+           UPDATE PRODUCT STATE
+        ------------------------------------------------ */
+        setProductData({
+          ...productData,
+
+          reviews,
+
+          rating: roundedRating,
+
+          reviewCount:
+            reviews.length > 0 ? reviews.length : productData.reviewCount,
+        });
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("FAILED TO FETCH PRODUCT:", error);
+
+        setError(
+          error instanceof Error ? error.message : "Failed to load product",
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchProductAndReviews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [productIdentifier]);
 
   /* =======================================================
      LOADING
@@ -325,7 +485,17 @@ export default function ProductDetailsPage() {
 
   const productOriginalPrice = toNumber(product.originalPrice);
 
-  const productRating = toNumber(product.rating);
+  const reviewRatings = safeReviews(product.reviews);
+
+  const calculatedReviewRating =
+    reviewRatings.length > 0
+      ? reviewRatings.reduce(
+          (total, review) => total + toNumber(review.rating),
+          0,
+        ) / reviewRatings.length
+      : toNumber(product.rating);
+
+  const productRating = calculatedReviewRating;
 
   const emiPrice =
     product.emiFrom !== null && product.emiFrom !== undefined
@@ -387,16 +557,15 @@ export default function ProductDetailsPage() {
   /*
    * Storage options available for the currently selected colour.
    */
-const availableColorsForStorage = new Set(
-  product.variants
-    .filter(
-      (variant) =>
-        normalizeStorage(variant.storage) ===
-        normalizeStorage(selectedStorage),
-    )
-    .map((variant) => normalizeColor(variant.color)),
-);
-
+  const availableColorsForStorage = new Set(
+    product.variants
+      .filter(
+        (variant) =>
+          normalizeStorage(variant.storage) ===
+          normalizeStorage(selectedStorage),
+      )
+      .map((variant) => normalizeColor(variant.color)),
+  );
 
   /* =======================================================
      ACTIVE VARIANT
@@ -913,9 +1082,12 @@ const availableColorsForStorage = new Set(
             {/* RATING */}
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1 rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-bold text-white">
+              <div
+                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white ${getRatingBgColor(
+                  productRating,
+                )}`}
+              >
                 {productRating.toFixed(1)}
-
                 <Star size={12} fill="currentColor" />
               </div>
 
@@ -980,11 +1152,11 @@ const availableColorsForStorage = new Set(
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   {storageOptions.map((storage) => {
-                   const isAvailable = product.variants.some(
-  (variant) =>
-    normalizeStorage(variant.storage) === normalizeStorage(storage) &&
-    variant.stock > 0,
-);
+                    const isAvailable = product.variants.some(
+                      (variant) =>
+                        normalizeStorage(variant.storage) ===
+                          normalizeStorage(storage) && variant.stock > 0,
+                    );
 
                     const isSelected =
                       normalizeStorage(selectedStorage) ===
@@ -1308,139 +1480,288 @@ const availableColorsForStorage = new Set(
         </section>
 
         {/* ===================================================
-            CUSTOMER REVIEWS
-        =================================================== */}
+    CUSTOMER REVIEWS
+=================================================== */}
 
         <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-2xl font-black">Customer reviews</h2>
+          {(() => {
+            const reviews = safeReviews(product.reviews);
 
-              <p className="mt-1 text-sm text-gray-500">
-                See what verified customers say about this product.
-              </p>
-            </div>
+            const ratingCounts = {
+              5: reviews.filter(
+                (review) => Math.round(toNumber(review.rating)) === 5,
+              ).length,
+              4: reviews.filter(
+                (review) => Math.round(toNumber(review.rating)) === 4,
+              ).length,
+              3: reviews.filter(
+                (review) => Math.round(toNumber(review.rating)) === 3,
+              ).length,
+              2: reviews.filter(
+                (review) => Math.round(toNumber(review.rating)) === 2,
+              ).length,
+              1: reviews.filter(
+                (review) => Math.round(toNumber(review.rating)) === 1,
+              ).length,
+            };
 
-            <div className="flex items-center gap-4 rounded-2xl bg-gray-50 px-5 py-4">
-              <div className="text-center">
-                <p className="text-3xl font-black">
-                  {productRating.toFixed(1)}
-                </p>
+            const totalRatings = reviews.length;
 
-                <div className="mt-1 flex items-center justify-center gap-1 text-yellow-500">
-                  {Array.from({
-                    length: 5,
-                  }).map((_, index) => (
-                    <Star
-                      key={index}
-                      size={15}
-                      fill={
-                        index < Math.round(productRating)
-                          ? "currentColor"
-                          : "none"
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
+            const getBarWidth = (count: number) => {
+              if (totalRatings === 0) {
+                return 0;
+              }
 
-              <div className="h-10 w-px bg-gray-200" />
+              return Math.round((count / totalRatings) * 100);
+            };
 
-              <div>
-                <p className="text-sm font-bold text-gray-900">
-                  {product.reviewCount} reviews
-                </p>
+            const ratingRows = [
+              {
+                rating: 5,
+                count: ratingCounts[5],
+                color: "bg-green-600",
+              },
+              {
+                rating: 4,
+                count: ratingCounts[4],
+                color: "bg-green-500",
+              },
+              {
+                rating: 3,
+                count: ratingCounts[3],
+                color: "bg-yellow-500",
+              },
+              {
+                rating: 2,
+                count: ratingCounts[2],
+                color: "bg-red-500",
+              },
+              {
+                rating: 1,
+                count: ratingCounts[1],
+                color: "bg-red-600",
+              },
+            ];
 
-                <p className="mt-1 text-xs text-gray-500">
-                  Overall customer rating
-                </p>
-              </div>
-            </div>
-          </div>
+            return (
+              <>
+                {/* REVIEW HEADER */}
 
-          <div className="mt-8">
-            {safeReviews(product.reviews).length > 0 ? (
-              <div className="space-y-4">
-                {safeReviews(product.reviews).map((review) => {
-                  const reviewerName = review.user
-                    ? `${review.user.firstName} ${review.user.lastName}`.trim()
-                    : "Verified customer";
+                <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
+                  <div className="min-w-[220px]">
+                    <h2 className="text-2xl font-black">Customer reviews</h2>
 
-                  const reviewRating = Math.min(
-                    5,
-                    Math.max(0, toNumber(review.rating)),
-                  );
+                    <p className="mt-1 text-sm text-gray-500">
+                      See what verified customers say about this product.
+                    </p>
 
-                  const reviewDate = new Date(review.createdAt);
+                    <div className="mt-6 flex items-center gap-4">
+                      <div className="text-center">
+                        <p
+                          className={`text-4xl font-black ${getRatingColor(
+                            productRating,
+                          )}`}
+                        >
+                          {productRating.toFixed(1)}
+                        </p>
 
-                  const validReviewDate = !Number.isNaN(reviewDate.getTime());
-
-                  return (
-                    <div
-                      key={review.id}
-                      className="rounded-2xl border border-gray-200 p-5"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-bold">{reviewerName}</p>
-
-                          {review.verifiedPurchase && (
-                            <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-green-600">
-                              <BadgeCheck size={14} />
-                              Verified purchase
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1 text-yellow-500">
-                          {Array.from({
-                            length: 5,
-                          }).map((_, index) => (
+                        <div className="mt-1 flex items-center justify-center gap-1">
+                          {Array.from({ length: 5 }).map((_, index) => (
                             <Star
                               key={index}
-                              size={14}
+                              size={16}
+                              className={getRatingColor(productRating)}
                               fill={
-                                index < Math.round(reviewRating)
+                                index < Math.round(productRating)
                                   ? "currentColor"
                                   : "none"
                               }
                             />
                           ))}
                         </div>
-                      </div>
 
-                      <p className="mt-4 text-sm leading-6 text-gray-600">
-                        {review.comment}
-                      </p>
-
-                      {validReviewDate && (
-                        <p className="mt-3 text-xs text-gray-400">
-                          {reviewDate.toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                        <p className="mt-2 text-xs font-semibold text-gray-400">
+                          {product.reviewCount}{" "}
+                          {product.reviewCount === 1 ? "rating" : "ratings"}
                         </p>
-                      )}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center">
-                <Star size={28} className="mx-auto text-gray-300" />
+                  </div>
 
-                <h3 className="mt-3 text-sm font-black text-gray-900">
-                  No reviews yet
-                </h3>
+                  {/* RATING BREAKDOWN */}
 
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
-                  Verified customer reviews will appear here after customers
-                  review this product.
-                </p>
-              </div>
-            )}
-          </div>
+                  <div className="w-full max-w-xl flex-1 rounded-2xl bg-gray-50 p-5">
+                    <div className="space-y-3">
+                      {ratingRows.map((row) => (
+                        <div
+                          key={row.rating}
+                          className="flex items-center gap-3"
+                        >
+                          {/* STAR NUMBER */}
+
+                          <div className="flex w-8 shrink-0 items-center justify-end gap-1">
+                            <span className="text-sm font-bold text-gray-700">
+                              {row.rating}
+                            </span>
+
+                            <Star
+                              size={13}
+                              className={getRatingColor(row.rating)}
+                              fill="currentColor"
+                            />
+                          </div>
+
+                          {/* BAR */}
+
+                          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-200">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${row.color}`}
+                              style={{
+                                width: `${getBarWidth(row.count)}%`,
+                              }}
+                            />
+                          </div>
+
+                          {/* COUNT */}
+
+                          <span className="w-8 text-right text-xs font-bold text-gray-500">
+                            {row.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* REVIEWS */}
+
+                <div className="mt-8 border-t border-gray-100 pt-8">
+                  {reviews.length > 0 ? (
+                    <div className="space-y-4">
+                      {reviews.map((review) => {
+                        const reviewerName = review.user
+                          ? `${review.user.firstName} ${review.user.lastName}`.trim()
+                          : "Verified customer";
+
+                        const reviewRating = Math.min(
+                          5,
+                          Math.max(0, toNumber(review.rating)),
+                        );
+
+                        const reviewDate = new Date(review.createdAt);
+
+                        const validReviewDate = !Number.isNaN(
+                          reviewDate.getTime(),
+                        );
+
+                        return (
+                          <div
+                            key={review.id}
+                            className="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
+                          >
+                            {/* CUSTOMER + RATING */}
+
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                              <div>
+                                <p className="text-sm font-bold text-gray-900">
+                                  {reviewerName}
+                                </p>
+
+                                {review.verifiedPurchase && (
+                                  <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-green-600">
+                                    <BadgeCheck size={14} />
+                                    Verified purchase
+                                  </div>
+                                )}
+                              </div>
+
+                              <div
+                                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white ${getRatingBgColor(
+                                  reviewRating,
+                                )}`}
+                              >
+                                {reviewRating.toFixed(0)}
+
+                                <Star size={12} fill="currentColor" />
+                              </div>
+                            </div>
+
+                            {/* COMMENT */}
+
+                            <p className="mt-4 text-sm leading-6 text-gray-600">
+                              {review.comment}
+                            </p>
+
+                            {/* MEDIA */}
+
+                            {review.media && review.media.length > 0 && (
+                              <div className="mt-4 flex flex-wrap gap-3">
+                                {review.media.map((media) =>
+                                  media.type === "VIDEO" ? (
+                                    <div
+                                      key={media.id}
+                                      className="overflow-hidden rounded-xl border border-gray-200 bg-black shadow-sm"
+                                    >
+                                      <video
+                                        src={media.url}
+                                        controls
+                                        preload="metadata"
+                                        className="h-32 w-32 object-cover sm:h-36 sm:w-36"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <a
+                                      key={media.id}
+                                      href={media.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="group block overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm"
+                                    >
+                                      <img
+                                        src={media.url}
+                                        alt="Customer review"
+                                        loading="lazy"
+                                        className="h-32 w-32 object-cover transition duration-300 group-hover:scale-105 sm:h-36 sm:w-36"
+                                      />
+                                    </a>
+                                  ),
+                                )}
+                              </div>
+                            )}
+
+                            {/* DATE */}
+
+                            {validReviewDate && (
+                              <p className="mt-4 text-xs text-gray-400">
+                                {reviewDate.toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center">
+                      <Star size={28} className="mx-auto text-gray-300" />
+
+                      <h3 className="mt-3 text-sm font-black text-gray-900">
+                        No reviews yet
+                      </h3>
+
+                      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
+                        Verified customer reviews will appear here after
+                        customers review this product.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </section>
 
         {/* ===================================================

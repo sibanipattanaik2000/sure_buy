@@ -56,7 +56,7 @@ const heroBanners = [
     image: "https://media.phonebhai.com/banners/banners/KPq9l.jpg",
     alt: "PhoneBhai premium phones",
     title: "Premium Phones. Better Prices.",
-    description: "Verified smartphones at prices you'll love.",
+    description: "Verified smartphones at prices you'll love",
     buttonText: "Shop Phones",
     buttonLink: "/buy",
   },
@@ -65,25 +65,25 @@ const heroBanners = [
     image: "https://media.phonebhai.com/banners/banners/dK67F.jpg",
     alt: "PhoneBhai affordable smartphones",
     title: "Upgrade Without Overspending.",
-    description: "Find quality phones that fit your budget.",
+    description: "Find quality phones that fit your budget",
     buttonText: "Explore Phones",
     buttonLink: "/buy",
   },
   {
     id: 3,
     image: "https://media.phonebhai.com/banners/banners/ksBX4.jpg",
-    alt: "Sell your phone with PhoneBhai",
-    title: "Turn Your Old Phone Into Cash.",
-    description: "Sell your phone with a simple doorstep process.",
-    buttonText: "Sell Your Phone",
-    buttonLink: "/sell",
+      alt: "PhoneBhai quality checked smartphones",
+    title: "Quality Checked. Ready to Go.",
+    description: "Shop verified phones with confidence",
+    buttonText: "Shop Verified Phones",
+    buttonLink: "/buy",
   },
   {
     id: 4,
     image: "https://media.phonebhai.com/banners/banners/tam8S.jpg",
     alt: "PhoneBhai verified smartphones",
     title: "Your Next Phone Is Waiting.",
-    description: "Browse verified devices and choose with confidence.",
+    description: "Browse verified devices and choose with confidence",
     buttonText: "Browse Phones",
     buttonLink: "/buy",
   },
@@ -235,7 +235,7 @@ function ProductCard({
                 preload="metadata"
                 className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-110 sm:p-6"
               >
-                Your browser does not support video playback.
+                Your browser does not support video playback
               </video>
             ) : (
               <img
@@ -702,69 +702,7 @@ export default function Home() {
           ))}
         </div>
       </section>
-      {/* ===================================================
-          INTRO
-      =================================================== */}
-      <section className="mx-auto max-w-7xl px-5 py-12 lg:px-8 lg:py-16">
-        {" "}
-        <div className="relative overflow-hidden rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 shadow-[0_20px_60px_rgba(79,70,229,0.08)] sm:p-8 lg:p-10">
-          {" "}
-          <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-indigo-300/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-violet-300/20 blur-3xl" />
-          <div className="relative z-10 grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-            {" "}
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">
-                PhoneBhai marketplace
-              </p>
 
-              <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
-                Find a phone that fits your budget.
-              </h2>
-
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-500">
-                Browse the live PhoneBhai inventory, compare prices, conditions,
-                ratings and warranty before you buy.
-              </p>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/buy"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gray-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-600"
-                >
-                  Browse all phones
-                  <ArrowRight size={16} />
-                </Link>
-
-                <Link
-                  href="/sell"
-                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-800 transition hover:border-indigo-200 hover:text-indigo-600"
-                >
-                  Sell your phone
-                  <Wallet size={16} />
-                </Link>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                "Live inventory",
-                "Quality checked",
-                "Secure checkout",
-                "Warranty support",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
-                >
-                  <CircleCheck className="text-indigo-600" size={19} />
-
-                  <p className="mt-3 text-sm font-bold text-gray-900">{item}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
       {/* ===================================================
           PRODUCTS
       =================================================== */}
@@ -819,7 +757,7 @@ export default function Home() {
             </h2>
 
             <p className="mt-2 text-sm text-gray-500">
-              Check the shop again soon for new inventory.
+              Check the shop again soon for new inventory
             </p>
 
             <Link
@@ -961,8 +899,8 @@ export default function Home() {
                   </h2>
 
                   <p className="mt-6 max-w-md text-sm leading-7 text-white/55 sm:text-base">
-                    We believe a good smartphone deserves more than one owner.
-                    PhoneBhai gives pre-owned phones a smarter second life.
+                    We believe a good smartphone deserves more than one owner
+                    PhoneBhai gives pre-owned phones a smarter second life
                   </p>
 
                   {/* Mini stats */}
@@ -1220,16 +1158,16 @@ export default function Home() {
             </div>
 
             <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-gray-950 sm:text-4xl lg:text-5xl">
-              Refurbished phones.
+              Refurbished phones
               <span className="block bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-                Better value.
+                Better value
               </span>
             </h2>
 
             <p className="mt-4 text-sm leading-7 text-gray-600 sm:text-base">
               We give pre-owned smartphones a second life by putting them
               through a quality-focused process before they reach their next
-              owner.
+              owner
             </p>
           </div>
 
@@ -1246,7 +1184,7 @@ export default function Home() {
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
                 Devices are checked for functionality and overall condition
-                before being listed.
+                before being listed
               </p>
             </div>
 
@@ -1261,7 +1199,7 @@ export default function Home() {
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
                 See the device condition, rating, warranty and important details
-                before buying.
+                before buying
               </p>
             </div>
 
@@ -1276,7 +1214,7 @@ export default function Home() {
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
                 Get access to premium smartphones at prices that make upgrading
-                easier.
+                easier
               </p>
             </div>
 
@@ -1291,7 +1229,7 @@ export default function Home() {
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
                 Your old smartphone can become someone else's next great phone
-                instead of sitting unused.
+                instead of sitting unused
               </p>
             </div>
           </div>
@@ -1314,14 +1252,14 @@ export default function Home() {
                 <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-gray-950 sm:text-4xl">
                   From your old phone
                   <span className="block text-indigo-600">
-                    to someone's next phone.
+                    to someone's next phone
                   </span>
                 </h2>
 
                 <p className="mt-4 max-w-xl text-sm leading-7 text-gray-600 sm:text-base">
                   We believe good smartphones deserve a second chance. PhoneBhai
                   connects sellers and buyers through a smarter
-                  refurbished-phone ecosystem.
+                  refurbished-phone ecosystem
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2">
@@ -1358,7 +1296,7 @@ export default function Home() {
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-gray-500">
                     Extend the useful life of smartphones instead of letting
-                    perfectly usable devices go to waste.
+                    perfectly usable devices go to waste
                   </p>
                 </div>
 
@@ -1369,7 +1307,7 @@ export default function Home() {
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-gray-500">
                     Sellers unlock value from their old phones while buyers get
-                    better devices at better prices.
+                    better devices at better prices
                   </p>
                 </div>
 
@@ -1381,11 +1319,11 @@ export default function Home() {
 
                     <div>
                       <h3 className="text-base font-black text-gray-950">
-                        Smartphones, and only smartphones.
+                        Smartphones, and only smartphones
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">
                         No laptops. No tablets. No unrelated categories. Just
-                        phones — bought, checked, refurbished and resold.
+                        phones — bought, checked, refurbished and resold
                       </p>
                     </div>
                   </div>

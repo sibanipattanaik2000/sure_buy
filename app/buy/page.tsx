@@ -243,11 +243,12 @@ function ProductCard({
   return (
     <Link
       href={`/buy/${product.id}`}
-      className="group block overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+      className="group relative overflow-hidden rounded-[1.75rem] border border-gray-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-all duration-500 hover:-translate-y-2 hover:border-indigo-200 hover:shadow-[0_25px_60px_rgba(79,70,229,0.15)]"
     >
       <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#f4f5f7] sm:h-64">
         {discount > 0 && (
-          <span className="absolute left-3 top-3 z-10 rounded-full bg-green-500 px-2.5 py-1 text-[10px] font-bold text-white">
+          <span className="absolute left-3 top-3 z-10 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-2.5 py-1 text-[10px] font-bold text-white  shadow-indigo-500/20">
+
             {discount}% OFF
           </span>
         )}
@@ -392,108 +393,162 @@ export default function BuyPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+const [page, setPage] = useState(1);
+const [hasMore, setHasMore] = useState(true);
+const [loadingMore, setLoadingMore] = useState(false);
   const { wishlist, toggleWishlist } = useWishlist();
 
-  useEffect(() => {
-    const controller = new AbortController();
+useEffect(() => {
+  const controller = new AbortController();
 
-    const loadProducts = async () => {
-      try {
+  const loadProducts = async () => {
+    try {
+      const isFirstPage = page === 1;
+
+      if (isFirstPage) {
         setLoading(true);
         setError("");
-
-        const params = new URLSearchParams({
-          page: "1",
-          limit: "100",
-        });
-
-        const trimmedSearch = search.trim();
-
-        if (trimmedSearch) {
-          params.set("search", trimmedSearch);
-        }
-
-        const url = `${API_BASE_URL}/products?${params.toString()}`;
-
-        console.log("Fetching products from:", url);
-
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          let message = `Unable to load products (${response.status})`;
-
-          try {
-            const errorData = await response.json();
-
-            if (errorData?.message) {
-              message = errorData.message;
-            }
-          } catch {
-            // Ignore invalid error JSON
-          }
-
-          throw new Error(message);
-        }
-
-        const data = await response.json();
-
-        if (!data?.success) {
-          throw new Error(
-            data?.message || "Backend returned an unsuccessful response.",
-          );
-        }
-
-        const apiProducts: ApiProduct[] = Array.isArray(data.data)
-          ? data.data
-          : Array.isArray(data.products)
-            ? data.products
-            : [];
-
-        const normalizedProducts = apiProducts
-          .filter((product) => product.active !== false)
-          .map(normalizeProduct);
-
-        setProducts(normalizedProducts);
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") {
-          return;
-        }
-
-        console.error("BUY PRODUCTS FETCH ERROR:", err);
-
-        setProducts([]);
-
-        if (err instanceof TypeError && err.message === "Failed to fetch") {
-          setError(
-            `Cannot connect to the backend API. Please make sure the backend is running and CORS/API URL are configured correctly.`,
-          );
-        } else {
-          setError(
-            err instanceof Error ? err.message : "Unable to load products.",
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+      } else {
+        setLoadingMore(true);
       }
-    };
 
-    loadProducts();
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "15",
+      });
 
-    return () => {
-      controller.abort();
-    };
-  }, [search]);
+      const trimmedSearch = search.trim();
 
+      if (trimmedSearch) {
+        params.set("search", trimmedSearch);
+      }
+
+      const url = `${API_BASE_URL}/products?${params.toString()}`;
+
+      console.log("Fetching products from:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        let message = `Unable to load products (${response.status})`;
+
+        try {
+          const errorData = await response.json();
+
+          if (errorData?.message) {
+            message = errorData.message;
+          }
+        } catch {
+          // Ignore invalid error JSON
+        }
+
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+
+      if (!data?.success) {
+        throw new Error(
+          data?.message || "Backend returned an unsuccessful response.",
+        );
+      }
+
+      const apiProducts: ApiProduct[] = Array.isArray(data.data)
+        ? data.data
+        : Array.isArray(data.products)
+          ? data.products
+          : [];
+
+      const normalizedProducts = apiProducts
+        .filter((product) => product.active !== false)
+        .map(normalizeProduct);
+
+      if (isFirstPage) {
+        setProducts(normalizedProducts);
+      } else {
+        setProducts((current) => {
+          const existingIds = new Set(current.map((item) => item.id));
+
+          const newProducts = normalizedProducts.filter(
+            (item) => !existingIds.has(item.id),
+          );
+
+          return [...current, ...newProducts];
+        });
+      }
+
+      // If fewer than 15 products came back,
+      // there are no more products to load.
+      setHasMore(normalizedProducts.length === 15);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+
+      console.error("BUY PRODUCTS FETCH ERROR:", err);
+
+      if (page === 1) {
+        setProducts([]);
+      }
+
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        setError(
+          "Cannot connect to the backend API. Please make sure the backend is running and CORS/API URL are configured correctly.",
+        );
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Unable to load products.",
+        );
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  };
+
+  loadProducts();
+
+  return () => {
+    controller.abort();
+  };
+}, [page, search]);
+useEffect(() => {
+  if (!hasMore || loading || loadingMore) {
+    return;
+  }
+
+  const handleScroll = () => {
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const documentHeight = document.documentElement.scrollHeight;
+
+    // Start loading slightly before the actual bottom
+    // so the next products appear smoothly.
+    if (scrollPosition >= documentHeight - 700) {
+      setPage((current) => current + 1);
+    }
+  };
+
+  window.addEventListener("scroll", handleScroll, {
+    passive: true,
+  });
+
+  return () => {
+    window.removeEventListener("scroll", handleScroll);
+  };
+}, [hasMore, loading, loadingMore]);
+useEffect(() => {
+  setPage(1);
+  setHasMore(true);
+}, [search]);
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
@@ -580,8 +635,8 @@ export default function BuyPage() {
               PhoneBhai Marketplace
             </p>
 
-            <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
-              Find tech you'll love.
+            <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-5xl">
+              Find tech you'll love
             </h1>
 
             <p className="mt-4 max-w-2xl text-gray-500">
@@ -592,22 +647,28 @@ export default function BuyPage() {
 
           <form
             onSubmit={(event) => event.preventDefault()}
-            className="mt-8 flex max-w-3xl items-center rounded-2xl border border-gray-200 bg-white p-2 shadow-[0_10px_40px_rgba(0,0,0,0.06)]"
+            className="mt-8 flex max-w-3xl items-center rounded-2xl border border-indigo-200 bg-white p-2 shadow-[0_10px_40px_rgba(0,0,0,0.06)]"
           >
             <Search className="ml-3 shrink-0 text-gray-400" size={20} />
 
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search iPhone, Samsung, Pixel..."
+onChange={(event) => {
+  setSearch(event.target.value);
+  setPage(1);
+  setHasMore(true);
+}}              placeholder="Search iPhone, Samsung, Pixel..."
               className="h-12 min-w-0 flex-1 bg-transparent px-4 text-sm outline-none"
             />
 
             {search && (
               <button
                 type="button"
-                onClick={() => setSearch("")}
-                aria-label="Clear search"
+onClick={() => {
+  setSearch("");
+  setPage(1);
+  setHasMore(true);
+}}                aria-label="Clear search"
                 className="mr-2 text-gray-400 hover:text-black"
               >
                 <X size={17} />
@@ -911,6 +972,25 @@ export default function BuyPage() {
                 ))}
               </div>
             )}
+            {loadingMore && (
+  <div className="mt-8 flex items-center justify-center">
+    <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-5 py-3 shadow-sm">
+      <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-indigo-600" />
+
+      <span className="text-xs font-bold text-gray-500">
+        Loading more devices...
+      </span>
+    </div>
+  </div>
+)}
+
+{!loadingMore && !hasMore && products.length > 0 && (
+  <div className="mt-10 flex items-center justify-center">
+    <div className="rounded-full border border-gray-200 bg-gray-50 px-5 py-2.5 text-xs font-semibold text-gray-400">
+      You&apos;ve reached the end
+    </div>
+  </div>
+)}
           </div>
         </div>
       </section>

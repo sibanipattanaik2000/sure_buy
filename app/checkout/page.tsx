@@ -529,121 +529,135 @@ const waitForRazorpay = async (): Promise<boolean> => {
       /* =====================================================
    ONLINE PAYMENT — RAZORPAY
 ===================================================== */
+/* =====================================================
+   PAYMENT — RAZORPAY
+   COD = ₹500 ADVANCE
+   UPI / CARD / EMI = FULL AMOUNT
+===================================================== */
 
-if (backendPaymentMethod !== "COD") {
-  const paymentOrderResponse = await createPaymentOrder(order.id);
+const paymentOrderResponse = await createPaymentOrder(order.id);
 
-  if (!paymentOrderResponse.success || !paymentOrderResponse.data) {
-    throw new Error(
-      paymentOrderResponse.message || "Unable to start online payment.",
-    );
-  }
+if (!paymentOrderResponse.success || !paymentOrderResponse.data) {
+  throw new Error(
+    paymentOrderResponse.message || "Unable to start online payment.",
+  );
+}
 
-  const paymentOrder = paymentOrderResponse.data;
+const paymentOrder = paymentOrderResponse.data;
 
-  const razorpayReady = await waitForRazorpay();
+const razorpayReady = await waitForRazorpay();
 
-  if (!razorpayReady || !window.Razorpay) {
-    throw new Error(
-      "Unable to load the payment gateway. Please refresh the page and try again.",
-    );
-  }
+if (!razorpayReady || !window.Razorpay) {
+  throw new Error(
+    "Unable to load the payment gateway. Please refresh the page and try again.",
+  );
+}
 
-  let paymentCancelled = false;
+let paymentCancelled = false;
 
-  await new Promise<void>((resolve, reject) => {
-    let settled = false;
+await new Promise<void>((resolve, reject) => {
+  let settled = false;
 
-    const resolveOnce = () => {
-      if (settled) return;
-      settled = true;
-      resolve();
-    };
+  const resolveOnce = () => {
+    if (settled) return;
+    settled = true;
+    resolve();
+  };
 
-    const rejectOnce = (error: Error) => {
-      if (settled) return;
-      settled = true;
-      reject(error);
-    };
+  const rejectOnce = (error: Error) => {
+    if (settled) return;
+    settled = true;
+    reject(error);
+  };
 
-    const razorpay = new window.Razorpay({
-      key: paymentOrder.keyId,
-      amount: paymentOrder.amountInPaise,
-      currency: paymentOrder.currency,
-      name: "Phone Bhai",
-      description: `Payment for order ${order.orderNumber}`,
+  const razorpay = new window.Razorpay({
+    key: paymentOrder.keyId,
 
-      order_id: paymentOrder.razorpayOrderId,
+    // Backend decides the amount:
+    // COD      -> ₹500
+    // UPI/CARD -> Full order amount
+    amount: paymentOrder.amountInPaise,
 
-      prefill: {
-        name: fullName,
-        contact: phone,
-      },
+    currency: paymentOrder.currency,
 
-      notes: {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-      },
+    name: "Phone Bhai",
 
-      theme: {
-        color: "#4f46e5",
-      },
+    description:
+      backendPaymentMethod === "COD"
+        ? `₹500 advance for COD order ${order.orderNumber}`
+        : `Payment for order ${order.orderNumber}`,
 
-      handler: async (response) => {
-        try {
-          const verification = await verifyPayment(order.id, {
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpayOrderId: response.razorpay_order_id,
-            razorpaySignature: response.razorpay_signature,
-          });
+    order_id: paymentOrder.razorpayOrderId,
 
-          if (!verification.success || !verification.data) {
-            throw new Error(
-              verification.message || "Payment verification failed.",
-            );
-          }
+    prefill: {
+      name: fullName,
+      contact: phone,
+    },
 
-          if (verification.data.status !== "PAID") {
-            throw new Error("Payment has not been confirmed yet.");
-          }
+    notes: {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      paymentMethod: backendPaymentMethod,
+    },
 
-          resolveOnce();
-        } catch (error) {
-          rejectOnce(
-            error instanceof Error
-              ? error
-              : new Error("Payment verification failed."),
+    theme: {
+      color: "#4f46e5",
+    },
+
+    handler: async (response) => {
+      try {
+        const verification = await verifyPayment(order.id, {
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpayOrderId: response.razorpay_order_id,
+          razorpaySignature: response.razorpay_signature,
+        });
+
+        if (!verification.success || !verification.data) {
+          throw new Error(
+            verification.message || "Payment verification failed.",
           );
         }
+
+        if (verification.data.status !== "PAID") {
+          throw new Error("Payment has not been confirmed yet.");
+        }
+
+        resolveOnce();
+      } catch (error) {
+        rejectOnce(
+          error instanceof Error
+            ? error
+            : new Error("Payment verification failed."),
+        );
+      }
+    },
+
+    modal: {
+      ondismiss: () => {
+        if (settled) return;
+
+        paymentCancelled = true;
+        settled = true;
+        resolve();
       },
-
-      modal: {
-        ondismiss: () => {
-          if (settled) return;
-
-          paymentCancelled = true;
-          settled = true;
-          resolve();
-        },
-      },
-    });
-
-    razorpay.on("payment.failed", (response) => {
-      const description = response?.error?.description;
-
-      rejectOnce(
-        new Error(description || "Payment failed. Please try again."),
-      );
-    });
-
-    razorpay.open();
+    },
   });
 
-  // Payment was cancelled — STOP here.
-  if (paymentCancelled) {
-    setError("Payment was cancelled. Your order has not been confirmed.");
-    return;
-  }
+  razorpay.on("payment.failed", (response) => {
+    const description = response?.error?.description;
+
+    rejectOnce(
+      new Error(description || "Payment failed. Please try again."),
+    );
+  });
+
+  razorpay.open();
+});
+
+// Payment was cancelled — STOP here.
+if (paymentCancelled) {
+  setError("Payment was cancelled. Your order has not been confirmed.");
+  return;
 }
 
 /* =====================================================

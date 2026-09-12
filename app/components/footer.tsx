@@ -2,14 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-
 import { ArrowUpRight, Mail, MapPin, Phone, Zap } from "lucide-react";
-
-import { FaFacebook, FaInstagram } from "react-icons/fa";
-
-import { FaXTwitter } from "react-icons/fa6";
-
+import { FaFacebook, FaInstagram, FaWhatsapp } from "react-icons/fa";
 import { subscribeNewsletter } from "@/app/lib/newsletter";
+import { BsYoutube } from "react-icons/bs";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -19,7 +15,6 @@ export default function Footer() {
 
   async function handleSubscribe(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
@@ -57,30 +52,30 @@ export default function Footer() {
       setSubmitting(false);
     }
   }
+
   return (
     <footer className="bg-[#0b0f19] text-white">
-      {/* NEWSLETTER / CTA */}
-
+      {/* NEWSLETTER */}{" "}
       <div className="border-b border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-0 px-0 py-10 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        {" "}
+        <div className="mx-auto flex max-w-7xl flex-col gap-7 px-5 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          {" "}
           <div>
+            {" "}
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-400">
-              Stay updated
+              Stay updated{" "}
             </p>
-
             <h2 className="mt-2 text-2xl font-black tracking-tight">
               Get the latest tech deals.
             </h2>
-
             <p className="mt-2 text-sm text-gray-400">
               New arrivals, offers and useful device tips.
             </p>
           </div>
-
           <div className="w-full max-w-md">
             <form
               onSubmit={handleSubscribe}
-              className="flex w-full rounded-2xl border border-white/10 bg-white/[0.04] p-1.5"
+              className="flex w-full rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 transition focus-within:border-indigo-400/40"
             >
               <input
                 type="email"
@@ -127,16 +122,13 @@ export default function Footer() {
           </div>
         </div>
       </div>
-
       {/* MAIN FOOTER */}
-
-      <div className="mx-auto max-w-7xl px-5 py-14 lg:px-8">
-        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+      <div className="mx-auto max-w-7xl px-5 py-14 sm:px-6 lg:px-8">
+        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
           {/* BRAND */}
-
           <div>
             <Link href="/" className="group inline-flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black transition group-hover:scale-105">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black transition duration-200 group-hover:scale-105">
                 <Zap size={18} />
               </div>
 
@@ -146,15 +138,16 @@ export default function Footer() {
             </Link>
 
             <p className="mt-5 max-w-sm text-sm leading-7 text-gray-400">
-              A smarter way to buy, sell and repair technology. Transparent
-              pricing, quality checked devices and a simple digital experience.
+              A smarter way to buy quality smartphones. Transparent pricing,
+              quality checked devices and a simple digital experience.
             </p>
 
             {/* CONTACT */}
-
             <div className="mt-6 space-y-3">
               <a
-                href="mailto:support@PhoneBhai.com"
+                href="https://mail.google.com/mail/?view=cm&fs=1&to=support@phonebhai.com"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-3 text-xs text-gray-400 transition hover:text-white"
               >
                 <Mail size={15} className="text-indigo-400" />
@@ -171,50 +164,45 @@ export default function Footer() {
 
               <div className="flex items-center gap-3 text-xs text-gray-400">
                 <MapPin size={15} className="text-indigo-400" />
-                India
+                Odisha, India
               </div>
             </div>
           </div>
 
           {/* COMPANY */}
-
           <FooterColumn
             title="Company"
             links={[
               ["About PhoneBhai", "/about"],
               ["How it works", "/how-it-works"],
               ["Buy devices", "/buy"],
-              ["Sell your device", "/sell"],
             ]}
           />
 
-          {/* SERVICES */}
-
+          {/* SHOP */}
           <FooterColumn
-            title="Services"
+            title="Shop"
             links={[
-              ["Buy a device", "/buy"],
-              ["Sell your device", "/sell"],
+              ["Browse phones", "/buy"],
               ["Track order", "/orders"],
-              ["Inspection & pricing", "/inspection-policy"],
             ]}
           />
 
           {/* SUPPORT */}
-
           <FooterColumn
-            title="Support"
+            title="Support & Policies"
             links={[
-              ["Track order", "/orders"],
-              ["Cancellation policy", "/cancellation-policy"],
-              ["Device handover", "/device-handover-policy"],
-              ["How it works", "/how-it-works"],
+              ["Privacy Policy", "/privacy-policy"],
+              ["Cancellation Policy", "/cancellation-policy"],
+              ["Inspection Policy", "/inspection-policy"],
+              ["Device Handover Policy", "/device-handover-policy"],
+              ["Cookie Policy", "/cookie-policy"],
+              ["Terms & Conditions", "/terms-and-conditions"],
             ]}
           />
         </div>
 
         {/* TRUST */}
-
         <div className="mt-14 grid gap-4 border-t border-white/10 pt-8 md:grid-cols-3">
           <TrustItem
             title="Secure payments"
@@ -232,47 +220,60 @@ export default function Footer() {
           />
         </div>
 
-        {/* SOCIAL + LEGAL */}
-
-        {/* SOCIAL + LEGAL */}
-
+        {/* SOCIAL */}
         <div className="mt-10 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
-          {/* SOCIAL */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+              Follow PhoneBhai
+            </p>
 
-          <div className="flex items-center gap-2">
-            <a
-              href="https://www.facebook.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Facebook"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
-            >
-              <FaFacebook size={15} />
-            </a>
+            <div className="mt-3 flex items-center gap-2">
+              {/* INSTAGRAM */}
+              <a
+                href="https://www.instagram.com/surebuystore_?stkn=NHVlM2s0NTR2ejg3"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                <FaInstagram size={16} />
+              </a>
 
-            <a
-              href="https://www.instagram.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Instagram"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
-            >
-              <FaInstagram size={15} />
-            </a>
+              {/* FACEBOOK */}
+              <a
+                href="https://www.facebook.com/share/1BmWF5KqYP/?mibextid=wwXIfr"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                <FaFacebook size={16} />
+              </a>
 
-            <a
-              href="https://x.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="X"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
-            >
-              <FaXTwitter size={15} />
-            </a>
+              {/* YOUTUBE */}
+              <a
+                href="https://youtube.com/@surebuystore?si=2yYLldp6qgrbiWxA"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="YouTube"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                <BsYoutube size={17} />
+              </a>
+              {/*Whatsapp */}
+              <a
+                href="https://wa.me/7853976501"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
+              >
+                <FaWhatsapp size={16} />
+              </a>
+            </div>
           </div>
 
-          {/* LEGAL */}
-
+          {/* LEGAL LINKS */}
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
             <Link
               href="/privacy-policy"
@@ -292,40 +293,24 @@ export default function Footer() {
               href="/cancellation-policy"
               className="transition hover:text-white"
             >
-              Cancellation Policy
-            </Link>
-
-            <Link
-              href="/inspection-policy"
-              className="transition hover:text-white"
-            >
-              Inspection & Pricing
+              Cancellation
             </Link>
 
             <Link href="/cookie-policy" className="transition hover:text-white">
               Cookies
             </Link>
-
-            <Link
-              href="/device-handover-policy"
-              className="transition hover:text-white"
-            >
-              Device Handover
-            </Link>
           </div>
         </div>
       </div>
-
       {/* COPYRIGHT */}
-
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-xs text-gray-600 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-xs text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>
             © {new Date().getFullYear()} PhoneBhai Technologies. All rights
             reserved.
           </p>
 
-          <p>Built for a smarter way to buy and sell tech.</p>
+          <p>Built for a smarter way to buy tech.</p>
         </div>
       </div>
     </footer>
@@ -343,8 +328,8 @@ function FooterColumn({
 }) {
   return (
     <div>
+      {" "}
       <h3 className="text-sm font-bold text-white">{title}</h3>
-
       <ul className="mt-5 space-y-3.5">
         {links.map(([label, href]) => (
           <li key={href}>
@@ -366,44 +351,14 @@ function FooterColumn({
   );
 }
 
-/* CONTACT */
-
-function ContactItem({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <div className="flex items-center gap-3 text-xs text-gray-400">
-      <span className="text-indigo-400">{icon}</span>
-      {text}
-    </div>
-  );
-}
-
 /* TRUST */
 
 function TrustItem({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-2xl border border-white/5 bg-white/[0.025] p-5">
+    <div className="rounded-2xl border border-white/5 bg-white/[0.025] p-5 transition duration-200 hover:border-white/10 hover:bg-white/[0.04]">
+      {" "}
       <p className="text-sm font-bold">{title}</p>
-
       <p className="mt-1 text-xs leading-5 text-gray-500">{text}</p>
     </div>
-  );
-}
-
-/* SOCIAL */
-
-function SocialButton({
-  label,
-  icon,
-}: {
-  label: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <button
-      aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-gray-500 transition duration-200 hover:border-white/20 hover:bg-white hover:text-black"
-    >
-      {icon}
-    </button>
   );
 }
