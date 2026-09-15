@@ -415,15 +415,19 @@ useEffect(() => {
       }
 
       const params = new URLSearchParams({
-        page: String(page),
-        limit: "15",
-      });
+  page: String(page),
+  limit: "15",
+});
 
-      const trimmedSearch = search.trim();
+const trimmedSearch = search.trim();
 
-      if (trimmedSearch) {
-        params.set("search", trimmedSearch);
-      }
+if (trimmedSearch) {
+  params.set("search", trimmedSearch);
+}
+
+if (selectedBrands.length > 0) {
+  params.set("brand", selectedBrands.join(","));
+}
 
       const url = `${API_BASE_URL}/products?${params.toString()}`;
 
@@ -522,7 +526,8 @@ useEffect(() => {
   return () => {
     controller.abort();
   };
-}, [page, search]);
+}, [page, search,selectedBrands]);
+
 useEffect(() => {
   if (!hasMore || loading || loadingMore) {
     return;
@@ -547,10 +552,12 @@ useEffect(() => {
     window.removeEventListener("scroll", handleScroll);
   };
 }, [hasMore, loading, loadingMore]);
+
 useEffect(() => {
   setPage(1);
   setHasMore(true);
-}, [search]);
+}, [search, selectedBrands]);
+
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
@@ -591,11 +598,11 @@ useEffect(() => {
       });
     }
 
-    if (selectedBrands.length > 0) {
-      result = result.filter((product) =>
-        selectedBrands.includes(product.brand),
-      );
-    }
+    // if (selectedBrands.length > 0) {
+    //   result = result.filter((product) =>
+    //     selectedBrands.includes(product.brand),
+    //   );
+    // }
 
     result = result.filter((product) => product.price <= maxPrice);
 
@@ -614,13 +621,16 @@ useEffect(() => {
     return result;
   }, [products, category, selectedBrands, maxPrice, sort]);
 
-  const toggleBrand = (brand: string) => {
-    setSelectedBrands((current) =>
-      current.includes(brand)
-        ? current.filter((item) => item !== brand)
-        : [...current, brand],
-    );
-  };
+const toggleBrand = (brand: string) => {
+  setSelectedBrands((current) =>
+    current.includes(brand)
+      ? current.filter((item) => item !== brand)
+      : [...current, brand],
+  );
+
+  setPage(1);
+  setHasMore(true);
+};
 
   const clearFilters = () => {
     setSelectedBrands([]);
