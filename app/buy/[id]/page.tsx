@@ -23,6 +23,7 @@ import { useWishlist } from "../../context/WishlistContext";
 import { useCheckout } from "@/app/context/CheckoutContext";
 import { useCart } from "../../context/CartContext";
 import { getProduct } from "@/app/lib/api";
+import Image from "next/image";
 /* =========================================================
    API CONFIG
 ========================================================= */
@@ -261,48 +262,6 @@ export default function ProductDetailsPage() {
     setSelectedImage(0);
     setQuantity(1);
   }, [product]);
-  /* =======================================================
-     FETCH PRODUCT
-  ======================================================= */
-
-  useEffect(() => {
-    if (!productIdentifier) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const fetchProduct = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await getProduct<ApiProduct>(
-          decodeURIComponent(productIdentifier),
-        );
-
-        if (!response.success || !response.data) {
-          throw new Error(response.message || "Unable to load product");
-        }
-
-        setProductData(response.data);
-      } catch (error) {
-        console.error("Failed to fetch product:", error);
-
-        setError(
-          error instanceof Error ? error.message : "Failed to load product",
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProduct();
-
-    return () => {
-      controller.abort();
-    };
-  }, [productIdentifier]);
   /* =======================================================
      FETCH PRODUCT + REVIEWS
   ======================================================= */
@@ -956,15 +915,17 @@ export default function ProductDetailsPage() {
                       Your browser does not support video playback.
                     </video>
                   ) : (
-                    <img
+                    <Image
                       key={`image-${activeMedia.id}-${activeMedia.url}`}
                       src={activeMedia.url}
                       alt={
                         activeMedia.altText ||
-                        `${product.name}${
-                          activeVariant ? ` ${activeVariant.color}` : ""
-                        }`
+                        `${product.name}${activeVariant ? ` ${activeVariant.color}` : ""}`
                       }
+                      width={700}
+                      height={700}
+                      priority
+                      sizes="(max-width: 1024px) 90vw, 700px"
                       className="max-h-[420px] max-w-[85%] object-contain transition duration-500 hover:scale-105"
                     />
                   )
@@ -1002,12 +963,15 @@ export default function ProductDetailsPage() {
                     >
                       {/* IMAGE THUMBNAIL */}
                       {media.type === "IMAGE" ? (
-                        <img
+                        <Image
                           src={media.url}
                           alt={
                             media.altText ||
                             `${product.name} thumbnail ${index + 1}`
                           }
+                          width={160}
+                          height={96}
+                          sizes="160px"
                           className="h-full w-full object-contain"
                         />
                       ) : (
@@ -1720,7 +1684,6 @@ export default function ProductDetailsPage() {
                                       <img
                                         src={media.url}
                                         alt="Customer review"
-                                        loading="lazy"
                                         className="h-32 w-32 object-cover transition duration-300 group-hover:scale-105 sm:h-36 sm:w-36"
                                       />
                                     </a>

@@ -2,14 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Loader2,
-  Search,
-  X,
-} from "lucide-react";
+import { ArrowRight, Loader2, Search, X } from "lucide-react";
 
 import { getProducts, type Product } from "@/app/lib/api";
+import Image from "next/image";
 
 type SearchProduct = Product & {
   image?: string;
@@ -67,21 +63,13 @@ export default function ProductSearch() {
         });
 
         if (!controller.signal.aborted) {
-          setResults(
-            ((response.data ?? []) as SearchProduct[]).slice(
-              0,
-              5,
-            ),
-          );
+          setResults(((response.data ?? []) as SearchProduct[]).slice(0, 5));
 
           setSearched(true);
         }
       } catch (error) {
         if (!controller.signal.aborted) {
-          console.error(
-            "HEADER PRODUCT SEARCH ERROR:",
-            error,
-          );
+          console.error("HEADER PRODUCT SEARCH ERROR:", error);
 
           setResults([]);
           setSearched(true);
@@ -109,10 +97,7 @@ export default function ProductSearch() {
   return (
     <div className="relative w-[280px]">
       <div className="flex h-10 items-center rounded-full border border-gray-200 bg-white px-3 transition focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-50">
-        <Search
-          size={17}
-          className="shrink-0 text-gray-400"
-        />
+        <Search size={17} className="shrink-0 text-gray-400" />
 
         <input
           type="search"
@@ -160,10 +145,7 @@ export default function ProductSearch() {
           <div className="absolute right-0 top-12 z-50 w-[380px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
             {loading && (
               <div className="flex items-center justify-center gap-2 px-5 py-8 text-sm text-gray-500">
-                <Loader2
-                  size={18}
-                  className="animate-spin"
-                />
+                <Loader2 size={18} className="animate-spin" />
                 Searching products...
               </div>
             )}
@@ -186,16 +168,17 @@ export default function ProductSearch() {
                     >
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-100 p-2">
                         {image ? (
-                          <img
+                          <Image
                             src={image}
                             alt={product.name}
+                            width={48}
+                            height={48}
+                            sizes="48px"
+                            loading="lazy"
                             className="h-full w-full object-contain"
                           />
                         ) : (
-                          <Search
-                            size={18}
-                            className="text-gray-300"
-                          />
+                          <Search size={18} className="text-gray-300" />
                         )}
                       </div>
 
@@ -206,16 +189,11 @@ export default function ProductSearch() {
 
                         <p className="mt-1 truncate text-[11px] text-gray-400">
                           {product.brand ?? "Device"}
-                          {product.category
-                            ? ` • ${product.category}`
-                            : ""}
+                          {product.category ? ` • ${product.category}` : ""}
                         </p>
 
                         <p className="mt-1 text-xs font-black text-indigo-600">
-                          ₹
-                          {Number(
-                            product.price,
-                          ).toLocaleString("en-IN")}
+                          ₹{Number(product.price).toLocaleString("en-IN")}
                         </p>
                       </div>
 
@@ -228,9 +206,7 @@ export default function ProductSearch() {
                 })}
 
                 <Link
-                  href={`/buy?search=${encodeURIComponent(
-                    query,
-                  )}`}
+                  href={`/buy?search=${encodeURIComponent(query)}`}
                   onClick={() => setFocused(false)}
                   className="mt-1 flex items-center justify-center gap-2 border-t border-gray-100 px-3 py-3 text-xs font-bold text-indigo-600 transition hover:bg-gray-50"
                 >
@@ -240,24 +216,19 @@ export default function ProductSearch() {
               </div>
             )}
 
-            {!loading &&
-              searched &&
-              results.length === 0 && (
-                <div className="px-5 py-8 text-center">
-                  <Search
-                    size={25}
-                    className="mx-auto text-gray-300"
-                  />
+            {!loading && searched && results.length === 0 && (
+              <div className="px-5 py-8 text-center">
+                <Search size={25} className="mx-auto text-gray-300" />
 
-                  <p className="mt-3 text-sm font-bold text-gray-800">
-                    No products found
-                  </p>
+                <p className="mt-3 text-sm font-bold text-gray-800">
+                  No products found
+                </p>
 
-                  <p className="mt-1 text-xs text-gray-400">
-                    Try another product or brand.
-                  </p>
-                </div>
-              )}
+                <p className="mt-1 text-xs text-gray-400">
+                  Try another product or brand.
+                </p>
+              </div>
+            )}
           </div>
         </>
       )}

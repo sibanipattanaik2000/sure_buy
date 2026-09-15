@@ -3,30 +3,23 @@
 import Link from "next/link";
 import { Heart, ShoppingBag, Check } from "lucide-react";
 
-import {
-  useWishlist,
-  WishlistPhone,
-} from "../context/WishlistContext";
+import { useWishlist, WishlistPhone } from "../context/WishlistContext";
+import Image from "next/image";
 
 type PhoneCardProps = {
   phone: WishlistPhone;
 };
 
 export default function PhoneCard({ phone }: PhoneCardProps) {
-  const {
-    toggleWishlist,
-    isWishlisted,
-  } = useWishlist();
+  const { toggleWishlist, isWishlisted } = useWishlist();
 
   const saved = isWishlisted(phone.id);
 
   return (
     <article className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
-
       {/* IMAGE SECTION */}
 
       <div className="relative flex h-72 items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 via-white to-indigo-50 p-8">
-
         {/* Wishlist Button */}
 
         <button
@@ -65,9 +58,13 @@ export default function PhoneCard({ phone }: PhoneCardProps) {
           href={`/buy/${phone.id}`}
           className="flex h-full w-full items-center justify-center"
         >
-          <img
+          <Image
             src={phone.image}
             alt={phone.name}
+            width={320}
+            height={320}
+            sizes="(max-width: 640px) 80vw, 320px"
+            loading="lazy"
             className="h-full max-w-[80%] object-contain transition duration-500 ease-out group-hover:scale-105"
           />
         </Link>
@@ -76,7 +73,6 @@ export default function PhoneCard({ phone }: PhoneCardProps) {
       {/* DETAILS */}
 
       <div className="p-5">
-
         {/* BRAND */}
 
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-400">
@@ -94,15 +90,12 @@ export default function PhoneCard({ phone }: PhoneCardProps) {
         {/* STORAGE */}
 
         {phone.storage && (
-          <p className="mt-1 text-sm text-gray-500">
-            {phone.storage}
-          </p>
+          <p className="mt-1 text-sm text-gray-500">{phone.storage}</p>
         )}
 
         {/* PRICE + BUY */}
 
         <div className="mt-5 flex items-end justify-between gap-3">
-
           <div>
             <p className="text-[11px] font-medium text-gray-400">
               Starting from
@@ -120,9 +113,7 @@ export default function PhoneCard({ phone }: PhoneCardProps) {
             <ShoppingBag size={15} />
             View
           </Link>
-
         </div>
-
       </div>
     </article>
   );

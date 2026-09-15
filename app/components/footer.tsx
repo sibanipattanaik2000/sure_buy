@@ -54,7 +54,12 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-[#0b0f19] text-white">
+    <footer className="bg-[#0b0f19] text-white overflow-hidden backdrop-blur" >
+            {/* Background accents */}
+      <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-200/30 blur-3xl" />
+        <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-violet-200/25 blur-3xl" />
+      </div>
       {/* NEWSLETTER */}{" "}
       <div className="border-b border-white/10">
         {" "}

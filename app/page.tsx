@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getProducts, type Product } from "./lib/api";
+import Image from "next/image";
 
 type HomeImage = {
   id?: number;
@@ -72,7 +73,7 @@ const heroBanners = [
   {
     id: 3,
     image: "https://media.phonebhai.com/banners/banners/ksBX4.jpg",
-      alt: "PhoneBhai quality checked smartphones",
+    alt: "PhoneBhai quality checked smartphones",
     title: "Quality Checked. Ready to Go.",
     description: "Shop verified phones with confidence",
     buttonText: "Shop Verified Phones",
@@ -238,13 +239,17 @@ function ProductCard({
                 Your browser does not support video playback
               </video>
             ) : (
-              <img
-                key={`image-${media.id}-${media.url}`}
-                src={media.url}
-                alt={product.name}
-                loading={index < 4 ? "eager" : "lazy"}
-                className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-110 sm:p-6"
-              />
+  <Image
+  key={`image-${media.id}-${media.url}`}
+  src={media.url}
+  alt={product.name}
+  width={500}
+  height={500}
+  priority={index < 4}
+  unoptimized
+  sizes="(max-width: 640px) 92vw, (max-width: 1024px) 45vw, 280px"
+  className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-110 sm:p-6"
+/>
             )
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -339,72 +344,74 @@ function ProductSection({
   title,
   description,
   products,
+  priorityImages = false,
 }: {
   eyebrow: string;
   title: string;
   description: string;
   products: HomeProduct[];
+  priorityImages?: boolean;
 }) {
-  if (!products.length) {
-    return null;
-  }
-
-  // Show only the first 4 products on homepage
   const visibleProducts = products.slice(0, 4);
 
   return (
-    <section className="bg-gradient-to-b from-white to-[#f7f8fc] px-5 py-14 lg:px-8 lg:py-16">
-      {" "}
+    <section className="px-5 py-14 sm:py-16 lg:px-8 lg:py-20">
       <div className="mx-auto max-w-7xl">
         {/* SECTION HEADER */}
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <div>
+        <div className="mb-8 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">
               {eyebrow}
             </p>
 
-            <h2 className="mt-2 text-3xl font-black tracking-[-0.03em] text-gray-950 sm:text-4xl lg:text-5xl">
-              {" "}
+            <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-gray-950 sm:text-4xl">
               {title}
             </h2>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+            <p className="mt-3 text-sm leading-6 text-gray-500 sm:text-base">
               {description}
             </p>
           </div>
 
-          {/* VIEW MORE */}
           <Link
             href="/buy"
-            className="hidden shrink-0 items-center gap-2 rounded-xl border border-indigo-100 bg-white px-5 py-3 text-sm font-black text-gray-800 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 hover:shadow-md sm:inline-flex"
+            className="group inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black text-gray-800 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
           >
-            View More
-            <ArrowRight size={15} />
+            View all
+            <ArrowRight
+              size={15}
+              className="transition-transform duration-300 group-hover:translate-x-1"
+            />
           </Link>
         </div>
 
         {/* PRODUCTS */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {visibleProducts.map((product, index) => (
-            <ProductCard key={product.id} product={product} index={index} />
-          ))}
-        </div>
+        {visibleProducts.length > 0 ? (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {visibleProducts.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+index={index}              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-gray-200 bg-gray-50 px-6 py-12 text-center">
+            <Smartphone
+              className="mx-auto text-gray-300"
+              size={42}
+              strokeWidth={1.2}
+            />
 
-        {/* MOBILE VIEW MORE */}
-        <div className="mt-6 flex justify-center sm:hidden">
-          <Link
-            href="/buy"
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-800 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
-          >
-            View More
-            <ArrowRight size={15} />
-          </Link>
-        </div>
+            <p className="mt-4 text-sm font-semibold text-gray-500">
+              No phones available in this section right now.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
 }
-
 /* =========================================================
    HOME
 ========================================================= */
@@ -576,10 +583,15 @@ export default function Home() {
               >
                 {/* IMAGE */}
 
-                <img
+                <Image
                   src={banner.image}
                   alt={banner.alt}
-                  className="absolute inset-0 h-full w-full object-cover"
+                  fill
+                  priority={index === 0}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  sizes="100vw"
+                  quality={82}
+                  className="object-cover"
                 />
 
                 {/* DARK OVERLAY */}
@@ -702,7 +714,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-
       {/* ===================================================
           PRODUCTS
       =================================================== */}

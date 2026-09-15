@@ -265,11 +265,7 @@ const sections = [
 export default function PrivacyPolicyPage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#f6f7fb] text-gray-900">
-      {/* Background accents */}
-      <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-200/30 blur-3xl" />
-        <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-violet-200/25 blur-3xl" />
-      </div>
+
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
 
