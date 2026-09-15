@@ -86,7 +86,9 @@ type Product = {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
-  "http://localhost:5000/api/v1";
+  (typeof window !== "undefined" && window.location.hostname !== "localhost"
+    ? "https://sure-buy-backend.vercel.app/api/v1"
+    : "http://localhost:5000/api/v1");
 
 const FALLBACK_IMAGE = "https://media.phonebhai.com/products/placeholder.png";
 const normalizeCondition = (condition?: string | null) => {

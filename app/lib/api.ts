@@ -1,5 +1,8 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== "undefined" && window.location.hostname !== "localhost"
+    ? "https://sure-buy-backend.vercel.app/api/v1"
+    : "http://localhost:5000/api/v1");
 
 export type ApiResponse<T> = {
   success: boolean;
