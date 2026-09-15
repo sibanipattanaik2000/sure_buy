@@ -51,11 +51,11 @@ export type Review = {
   createdAt: string;
   verifiedPurchase: boolean;
 };
-
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000/api/v1"
-).replace(/\/$/, "");
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== "undefined" && window.location.hostname !== "localhost"
+    ? "https://sure-buy-backend.vercel.app/api/v1"
+    : "http://localhost:5000/api/v1");
 
 async function apiRequest<T>(
   endpoint: string,
@@ -214,8 +214,5 @@ export function getProductImage(product: Product) {
 }
 
 export function getVariantImage(variant: ProductVariant) {
-  return (
-    variant.images?.[0]?.url ||
-    "/images/iphone-15.png"
-  );
+  return variant.images?.[0]?.url || "/images/iphone-15.png";
 }
