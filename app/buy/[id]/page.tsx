@@ -24,6 +24,7 @@ import { useCheckout } from "@/app/context/CheckoutContext";
 import { useCart } from "../../context/CartContext";
 import { getProduct } from "@/app/lib/api";
 import Image from "next/image";
+import { getOptimizedImageUrl } from "@/app/lib/image";
 /* =========================================================
    API CONFIG
 ========================================================= */
@@ -266,127 +267,132 @@ export default function ProductDetailsPage() {
      FETCH PRODUCT + REVIEWS
   ======================================================= */
 
-  useEffect(() => {
-    if (!productIdentifier) {
-      return;
-    }
 
-    let cancelled = false;
+useEffect(() => {
+  if (!productIdentifier) {
+    return;
+  }
 
-    const fetchProductAndReviews = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  let cancelled = false;
 
-        const decodedIdentifier = decodeURIComponent(productIdentifier);
+  const fetchProductAndReviews = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        /* -----------------------------------------------
-           PRODUCT
-        ------------------------------------------------ */
-        const response = await getProduct<ApiProduct>(decodedIdentifier);
+      const decodedIdentifier = decodeURIComponent(productIdentifier);
 
-        if (!response.success || !response.data) {
-          throw new Error(response.message || "Unable to load product");
-        }
+      /* -----------------------------------------------
+         PRODUCT
+         ----------------------------------------------- */
+      const response = await getProduct<ApiProduct>(decodedIdentifier);
 
-        if (cancelled) {
-          return;
-        }
-
-        const productData = response.data;
-
-        /* -----------------------------------------------
-           REVIEWS
-        ------------------------------------------------ */
-        let reviews: ApiReview[] = [];
-
-        try {
-          const reviewsResponse = await fetch(
-            `${API_BASE_URL}/api/v1/products/${productData.id}/reviews?page=1&limit=50`,
-            {
-              method: "GET",
-              credentials: "include",
-              cache: "no-store",
-            },
-          );
-
-          const reviewsPayload = await reviewsResponse.json();
-
-          console.log("PHONE BHAI REVIEWS RESPONSE:", reviewsPayload);
-
-          if (reviewsResponse.ok) {
-            if (Array.isArray(reviewsPayload?.reviews)) {
-              reviews = reviewsPayload.reviews;
-            } else if (Array.isArray(reviewsPayload?.data?.reviews)) {
-              reviews = reviewsPayload.data.reviews;
-            } else if (Array.isArray(reviewsPayload?.data)) {
-              reviews = reviewsPayload.data;
-            }
-          }
-        } catch (reviewError) {
-          console.error("FAILED TO FETCH REVIEWS:", reviewError);
-        }
-
-        /* -----------------------------------------------
-           FALLBACK TO PRODUCT REVIEWS
-        ------------------------------------------------ */
-        if (reviews.length === 0) {
-          reviews = safeReviews(productData.reviews);
-        }
-
-        if (cancelled) {
-          return;
-        }
-
-        /* -----------------------------------------------
-           CALCULATE RATING FROM ACTUAL REVIEWS
-        ------------------------------------------------ */
-        const calculatedRating =
-          reviews.length > 0
-            ? reviews.reduce(
-                (sum, review) => sum + toNumber(review.rating),
-                0,
-              ) / reviews.length
-            : toNumber(productData.rating);
-
-        const roundedRating = Number(calculatedRating.toFixed(1));
-
-        /* -----------------------------------------------
-           UPDATE PRODUCT STATE
-        ------------------------------------------------ */
-        setProductData({
-          ...productData,
-
-          reviews,
-
-          rating: roundedRating,
-
-          reviewCount:
-            reviews.length > 0 ? reviews.length : productData.reviewCount,
-        });
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        console.error("FAILED TO FETCH PRODUCT:", error);
-
-        setError(
-          error instanceof Error ? error.message : "Failed to load product",
-        );
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Unable to load product");
       }
-    };
 
-    fetchProductAndReviews();
+      if (cancelled) {
+        return;
+      }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [productIdentifier]);
+      const productData = response.data;
+
+      /*
+       * Render the product immediately.
+       * Do NOT wait for the reviews API.
+       */
+      setProductData({
+        ...productData,
+        reviews: safeReviews(productData.reviews),
+        rating: toNumber(productData.rating),
+      });
+
+      setLoading(false);
+
+      /* -----------------------------------------------
+         REVIEWS
+         Load separately in the background.
+         ----------------------------------------------- */
+      try {
+        const reviewsResponse = await fetch(
+          `${API_BASE_URL}/api/v1/products/${productData.id}/reviews?page=1&limit=10`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            cache: "no-store",
+          },
+        );
+
+        if (!reviewsResponse.ok || cancelled) {
+          return;
+        }
+
+        const reviewsPayload = await reviewsResponse.json();
+
+        const reviews: ApiReview[] =
+          Array.isArray(reviewsPayload?.reviews)
+            ? reviewsPayload.reviews
+            : Array.isArray(reviewsPayload?.data?.reviews)
+              ? reviewsPayload.data.reviews
+              : Array.isArray(reviewsPayload?.data)
+                ? reviewsPayload.data
+                : [];
+
+        if (cancelled || reviews.length === 0) {
+          return;
+        }
+
+        const calculatedRating =
+          reviews.reduce(
+            (sum: number, review: ApiReview) =>
+              sum + toNumber(review.rating),
+            0,
+          ) / reviews.length;
+
+        setProductData((current) =>
+          current
+            ? {
+                ...current,
+                reviews,
+                rating: Number(calculatedRating.toFixed(1)),
+                reviewCount: reviews.length,
+              }
+            : current,
+        );
+      } catch (reviewError) {
+        /*
+         * Reviews are non-blocking.
+         * The product page should remain usable even
+         * when the reviews request fails.
+         */
+        console.error("FAILED TO FETCH REVIEWS:", reviewError);
+      }
+    } catch (error) {
+      if (cancelled) {
+        return;
+      }
+
+      console.error("FAILED TO FETCH PRODUCT:", error);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load product",
+      );
+
+      setLoading(false);
+    }
+  };
+
+  fetchProductAndReviews();
+
+  return () => {
+    cancelled = true;
+  };
+}, [productIdentifier]);
+
 
   /* =======================================================
      LOADING
@@ -906,7 +912,7 @@ export default function ProductDetailsPage() {
                   activeMedia.type === "VIDEO" ? (
                     <video
                       key={`video-${activeMedia.id}-${activeMedia.url}`}
-                      src={activeMedia.url}
+src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
                       controls
                       playsInline
                       preload="metadata"
@@ -916,18 +922,18 @@ export default function ProductDetailsPage() {
                     </video>
                   ) : (
                     <Image
-                      key={`image-${activeMedia.id}-${activeMedia.url}`}
-                      src={activeMedia.url}
-                      alt={
-                        activeMedia.altText ||
-                        `${product.name}${activeVariant ? ` ${activeVariant.color}` : ""}`
-                      }
-                      width={700}
-                      height={700}
-                      priority
-                      sizes="(max-width: 1024px) 90vw, 700px"
-                      className="max-h-[420px] max-w-[85%] object-contain transition duration-500 hover:scale-105"
-                    />
+  key={`image-${activeMedia.id}-${activeMedia.url}`}
+  src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
+  alt={
+    activeMedia.altText ||
+    `${product.name}${activeVariant ? ` ${activeVariant.color}` : ""}`
+  }
+  width={700}
+  height={700}
+  priority
+  sizes="(max-width: 1024px) 90vw, 700px"
+  className="max-h-[420px] max-w-[85%] object-contain transition duration-500 hover:scale-105"
+/>
                   )
                 ) : (
                   <div className="flex h-[380px] items-center justify-center text-gray-300">
@@ -964,8 +970,7 @@ export default function ProductDetailsPage() {
                       {/* IMAGE THUMBNAIL */}
                       {media.type === "IMAGE" ? (
                         <Image
-                          src={media.url}
-                          alt={
+src={getOptimizedImageUrl(media.url, 240, 72)}                          alt={
                             media.altText ||
                             `${product.name} thumbnail ${index + 1}`
                           }

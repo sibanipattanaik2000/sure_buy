@@ -88,9 +88,7 @@ type Product = {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
-  (typeof window !== "undefined" && window.location.hostname !== "localhost"
-    ? "https://sure-buy-backend.vercel.app/api/v1"
-    : "http://localhost:5000/api/v1");
+  "https://api.phonebhai.com/api/v1";
 
 const FALLBACK_IMAGE = "https://media.phonebhai.com/products/placeholder.png";
 const normalizeCondition = (condition?: string | null) => {
@@ -124,61 +122,6 @@ const normalizeProduct = (product: ApiProduct): Product => {
     .find((media) => Boolean(media?.url));
 
   const selectedMedia = variantMedia || productMedia;
-
-  [
-    {
-      resource: "/d:/Surebuy/sure_buy/app/buy/page.tsx",
-      owner: "typescript",
-      code: "2304",
-      severity: 8,
-      message: "Cannot find name 'variantImage'.",
-      source: "ts",
-      startLineNumber: 143,
-      startColumn: 5,
-      endLineNumber: 143,
-      endColumn: 17,
-      modelVersionId: 57,
-      origin: "extHost1",
-    },
-    {
-      resource: "/d:/Surebuy/sure_buy/app/buy/page.tsx",
-      owner: "typescript",
-      code: "2552",
-      severity: 8,
-      message: "Cannot find name 'productImage'. Did you mean 'productImages'?",
-      source: "ts",
-      startLineNumber: 144,
-      startColumn: 5,
-      endLineNumber: 144,
-      endColumn: 17,
-      relatedInformation: [
-        {
-          startLineNumber: 109,
-          startColumn: 9,
-          endLineNumber: 109,
-          endColumn: 22,
-          message: "'productImages' is declared here.",
-          resource: "/d:/Surebuy/sure_buy/app/buy/page.tsx",
-        },
-      ],
-      modelVersionId: 57,
-      origin: "extHost1",
-    },
-    {
-      resource: "/d:/Surebuy/sure_buy/app/buy/page.tsx",
-      owner: "typescript",
-      code: "2339",
-      severity: 8,
-      message: "Property 'image' does not exist on type 'Product'.",
-      source: "ts",
-      startLineNumber: 848,
-      startColumn: 40,
-      endLineNumber: 848,
-      endColumn: 45,
-      modelVersionId: 57,
-      origin: "extHost1",
-    },
-  ];
 
   const price = Number(firstVariant?.price ?? product.price ?? 0);
 
@@ -426,44 +369,45 @@ export default function BuyPage() {
           params.set("search", trimmedSearch);
         }
 
+        if (category !== "All") {
+          params.set("category", category);
+        }
+
         if (selectedBrands.length > 0) {
           params.set("brand", selectedBrands.join(","));
         }
 
-        const url = `${API_BASE_URL}/products?${params.toString()}`;
-
-        console.log("Fetching products from:", url);
-
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          let message = `Unable to load products (${response.status})`;
-
-          try {
-            const errorData = await response.json();
-
-            if (errorData?.message) {
-              message = errorData.message;
-            }
-          } catch {
-            // Ignore invalid error JSON
-          }
-
-          throw new Error(message);
+        if (maxPrice < 400000) {
+          params.set("maxPrice", String(maxPrice));
         }
 
-        const data = await response.json();
+        const sortMap: Record<string, string> = {
+          featured: "newest",
+          low: "price_asc",
+          high: "price_desc",
+          rating: "rating",
+        };
 
-        if (!data?.success) {
+        params.set("sort", sortMap[sort] || "newest");
+
+        const response = await fetch(
+          `${API_BASE_URL}/products?${params.toString()}`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            credentials: "include",
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success) {
           throw new Error(
-            data?.message || "Backend returned an unsuccessful response.",
+            data?.message || `Unable to load products (${response.status})`,
           );
         }
 
@@ -472,7 +416,7 @@ export default function BuyPage() {
           : Array.isArray(data.products)
             ? data.products
             : [];
-
+        const pagination = data.pagination;
         const normalizedProducts = apiProducts
           .filter((product) => product.active !== false)
           .map(normalizeProduct);
@@ -490,10 +434,11 @@ export default function BuyPage() {
             return [...current, ...newProducts];
           });
         }
-
-        // If fewer than 15 products came back,
-        // there are no more products to load.
-        setHasMore(normalizedProducts.length === 15);
+        setHasMore(
+          typeof pagination?.hasNextPage === "boolean"
+            ? pagination.hasNextPage
+            : normalizedProducts.length === 15,
+        );
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") {
           return;
@@ -505,15 +450,9 @@ export default function BuyPage() {
           setProducts([]);
         }
 
-        if (err instanceof TypeError && err.message === "Failed to fetch") {
-          setError(
-            "Cannot connect to the backend API. Please make sure the backend is running and CORS/API URL are configured correctly.",
-          );
-        } else {
-          setError(
-            err instanceof Error ? err.message : "Unable to load products.",
-          );
-        }
+        setError(
+          err instanceof Error ? err.message : "Unable to load products.",
+        );
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
@@ -527,8 +466,7 @@ export default function BuyPage() {
     return () => {
       controller.abort();
     };
-  }, [page, search, selectedBrands]);
-
+  }, [page, search, selectedBrands, category, maxPrice, sort]);
   useEffect(() => {
     if (!hasMore || loading || loadingMore) {
       return;
@@ -557,7 +495,7 @@ export default function BuyPage() {
   useEffect(() => {
     setPage(1);
     setHasMore(true);
-  }, [search, selectedBrands]);
+  }, [search, selectedBrands, category, maxPrice, sort]);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -599,12 +537,15 @@ export default function BuyPage() {
       });
     }
 
-    // if (selectedBrands.length > 0) {
-    //   result = result.filter((product) =>
-    //     selectedBrands.includes(product.brand),
-    //   );
-    // }
+    if (selectedBrands.length > 0) {
+      result = result.filter((product) =>
+        selectedBrands.some(
+          (brand) => product.brand.toLowerCase() === brand.toLowerCase(),
+        ),
+      );
+    }
 
+    result = result.filter((product) => product.price <= maxPrice);
     result = result.filter((product) => product.price <= maxPrice);
 
     if (sort === "low") {
@@ -628,9 +569,6 @@ export default function BuyPage() {
         ? current.filter((item) => item !== brand)
         : [...current, brand],
     );
-
-    setPage(1);
-    setHasMore(true);
   };
 
   const clearFilters = () => {
@@ -668,8 +606,6 @@ export default function BuyPage() {
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value);
-                setPage(1);
-                setHasMore(true);
               }}
               placeholder="Search iPhone, Samsung, Pixel..."
               className="h-12 min-w-0 flex-1 bg-transparent px-4 text-sm outline-none"
@@ -680,8 +616,6 @@ export default function BuyPage() {
                 type="button"
                 onClick={() => {
                   setSearch("");
-                  setPage(1);
-                  setHasMore(true);
                 }}
                 aria-label="Clear search"
                 className="mr-2 text-gray-400 hover:text-black"
