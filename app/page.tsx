@@ -20,6 +20,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { getProducts, type Product } from "./lib/api";
 import Image from "next/image";
+import { getOptimizedImageUrl } from "./lib/image";
 
 type HomeImage = {
   id?: number;
@@ -239,17 +240,16 @@ function ProductCard({
                 Your browser does not support video playback
               </video>
             ) : (
-  <Image
-  key={`image-${media.id}-${media.url}`}
-  src={media.url}
-  alt={product.name}
-  width={500}
-  height={500}
-  priority={index < 4}
-  unoptimized
-  sizes="(max-width: 640px) 92vw, (max-width: 1024px) 45vw, 280px"
-  className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-110 sm:p-6"
-/>
+              <Image
+                key={`image-${media.id}-${media.url}`}
+                src={getOptimizedImageUrl(media.url, 640, 78)}
+                alt={product.name}
+                width={640}
+                height={640}
+                priority={index < 2}
+                sizes="(max-width: 640px) 92vw, (max-width: 1024px) 45vw, 280px"
+                className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-110 sm:p-6"
+              />
             )
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -389,10 +389,7 @@ function ProductSection({
         {visibleProducts.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {visibleProducts.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-index={index}              />
+              <ProductCard key={product.id} product={product} index={index} />
             ))}
           </div>
         ) : (

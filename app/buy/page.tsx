@@ -18,6 +18,8 @@ import {
   X,
 } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
+import Image from "next/image";
+import { getOptimizedImageUrl } from "../lib/image";
 
 type ProductImage = {
   id: number | string;
@@ -250,7 +252,6 @@ function ProductCard({
       <div className="relative flex h-56 items-center justify-center overflow-hidden bg-[#f4f5f7] sm:h-64">
         {discount > 0 && (
           <span className="absolute left-3 top-3 z-10 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-2.5 py-1 text-[10px] font-bold text-white  shadow-indigo-500/20">
-
             {discount}% OFF
           </span>
         )}
@@ -288,14 +289,14 @@ function ProductCard({
               Your browser does not support video playback.
             </video>
           ) : (
-            <img
-              src={product.media.url}
+            <Image
+              src={getOptimizedImageUrl(product.media.url, 640, 78)}
               alt={product.media.altText || product.name}
+              width={640}
+              height={640}
               loading="lazy"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
               className="h-full w-full object-contain"
-              onError={(event) => {
-                event.currentTarget.src = FALLBACK_IMAGE;
-              }}
             />
           )}
         </div>
@@ -395,168 +396,168 @@ export default function BuyPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-const [page, setPage] = useState(1);
-const [hasMore, setHasMore] = useState(true);
-const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const { wishlist, toggleWishlist } = useWishlist();
 
-useEffect(() => {
-  const controller = new AbortController();
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const loadProducts = async () => {
-    try {
-      const isFirstPage = page === 1;
+    const loadProducts = async () => {
+      try {
+        const isFirstPage = page === 1;
 
-      if (isFirstPage) {
-        setLoading(true);
-        setError("");
-      } else {
-        setLoadingMore(true);
-      }
-
-      const params = new URLSearchParams({
-  page: String(page),
-  limit: "15",
-});
-
-const trimmedSearch = search.trim();
-
-if (trimmedSearch) {
-  params.set("search", trimmedSearch);
-}
-
-if (selectedBrands.length > 0) {
-  params.set("brand", selectedBrands.join(","));
-}
-
-      const url = `${API_BASE_URL}/products?${params.toString()}`;
-
-      console.log("Fetching products from:", url);
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-        cache: "no-store",
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        let message = `Unable to load products (${response.status})`;
-
-        try {
-          const errorData = await response.json();
-
-          if (errorData?.message) {
-            message = errorData.message;
-          }
-        } catch {
-          // Ignore invalid error JSON
+        if (isFirstPage) {
+          setLoading(true);
+          setError("");
+        } else {
+          setLoadingMore(true);
         }
 
-        throw new Error(message);
-      }
-
-      const data = await response.json();
-
-      if (!data?.success) {
-        throw new Error(
-          data?.message || "Backend returned an unsuccessful response.",
-        );
-      }
-
-      const apiProducts: ApiProduct[] = Array.isArray(data.data)
-        ? data.data
-        : Array.isArray(data.products)
-          ? data.products
-          : [];
-
-      const normalizedProducts = apiProducts
-        .filter((product) => product.active !== false)
-        .map(normalizeProduct);
-
-      if (isFirstPage) {
-        setProducts(normalizedProducts);
-      } else {
-        setProducts((current) => {
-          const existingIds = new Set(current.map((item) => item.id));
-
-          const newProducts = normalizedProducts.filter(
-            (item) => !existingIds.has(item.id),
-          );
-
-          return [...current, ...newProducts];
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: "15",
         });
-      }
 
-      // If fewer than 15 products came back,
-      // there are no more products to load.
-      setHasMore(normalizedProducts.length === 15);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        return;
-      }
+        const trimmedSearch = search.trim();
 
-      console.error("BUY PRODUCTS FETCH ERROR:", err);
+        if (trimmedSearch) {
+          params.set("search", trimmedSearch);
+        }
 
-      if (page === 1) {
-        setProducts([]);
-      }
+        if (selectedBrands.length > 0) {
+          params.set("brand", selectedBrands.join(","));
+        }
 
-      if (err instanceof TypeError && err.message === "Failed to fetch") {
-        setError(
-          "Cannot connect to the backend API. Please make sure the backend is running and CORS/API URL are configured correctly.",
-        );
-      } else {
-        setError(
-          err instanceof Error ? err.message : "Unable to load products.",
-        );
+        const url = `${API_BASE_URL}/products?${params.toString()}`;
+
+        console.log("Fetching products from:", url);
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          let message = `Unable to load products (${response.status})`;
+
+          try {
+            const errorData = await response.json();
+
+            if (errorData?.message) {
+              message = errorData.message;
+            }
+          } catch {
+            // Ignore invalid error JSON
+          }
+
+          throw new Error(message);
+        }
+
+        const data = await response.json();
+
+        if (!data?.success) {
+          throw new Error(
+            data?.message || "Backend returned an unsuccessful response.",
+          );
+        }
+
+        const apiProducts: ApiProduct[] = Array.isArray(data.data)
+          ? data.data
+          : Array.isArray(data.products)
+            ? data.products
+            : [];
+
+        const normalizedProducts = apiProducts
+          .filter((product) => product.active !== false)
+          .map(normalizeProduct);
+
+        if (isFirstPage) {
+          setProducts(normalizedProducts);
+        } else {
+          setProducts((current) => {
+            const existingIds = new Set(current.map((item) => item.id));
+
+            const newProducts = normalizedProducts.filter(
+              (item) => !existingIds.has(item.id),
+            );
+
+            return [...current, ...newProducts];
+          });
+        }
+
+        // If fewer than 15 products came back,
+        // there are no more products to load.
+        setHasMore(normalizedProducts.length === 15);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
+
+        console.error("BUY PRODUCTS FETCH ERROR:", err);
+
+        if (page === 1) {
+          setProducts([]);
+        }
+
+        if (err instanceof TypeError && err.message === "Failed to fetch") {
+          setError(
+            "Cannot connect to the backend API. Please make sure the backend is running and CORS/API URL are configured correctly.",
+          );
+        } else {
+          setError(
+            err instanceof Error ? err.message : "Unable to load products.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
-    } finally {
-      if (!controller.signal.aborted) {
-        setLoading(false);
-        setLoadingMore(false);
-      }
+    };
+
+    loadProducts();
+
+    return () => {
+      controller.abort();
+    };
+  }, [page, search, selectedBrands]);
+
+  useEffect(() => {
+    if (!hasMore || loading || loadingMore) {
+      return;
     }
-  };
 
-  loadProducts();
+    const handleScroll = () => {
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const documentHeight = document.documentElement.scrollHeight;
 
-  return () => {
-    controller.abort();
-  };
-}, [page, search,selectedBrands]);
+      // Start loading slightly before the actual bottom
+      // so the next products appear smoothly.
+      if (scrollPosition >= documentHeight - 700) {
+        setPage((current) => current + 1);
+      }
+    };
 
-useEffect(() => {
-  if (!hasMore || loading || loadingMore) {
-    return;
-  }
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
 
-  const handleScroll = () => {
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const documentHeight = document.documentElement.scrollHeight;
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [hasMore, loading, loadingMore]);
 
-    // Start loading slightly before the actual bottom
-    // so the next products appear smoothly.
-    if (scrollPosition >= documentHeight - 700) {
-      setPage((current) => current + 1);
-    }
-  };
-
-  window.addEventListener("scroll", handleScroll, {
-    passive: true,
-  });
-
-  return () => {
-    window.removeEventListener("scroll", handleScroll);
-  };
-}, [hasMore, loading, loadingMore]);
-
-useEffect(() => {
-  setPage(1);
-  setHasMore(true);
-}, [search, selectedBrands]);
+  useEffect(() => {
+    setPage(1);
+    setHasMore(true);
+  }, [search, selectedBrands]);
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -621,16 +622,16 @@ useEffect(() => {
     return result;
   }, [products, category, selectedBrands, maxPrice, sort]);
 
-const toggleBrand = (brand: string) => {
-  setSelectedBrands((current) =>
-    current.includes(brand)
-      ? current.filter((item) => item !== brand)
-      : [...current, brand],
-  );
+  const toggleBrand = (brand: string) => {
+    setSelectedBrands((current) =>
+      current.includes(brand)
+        ? current.filter((item) => item !== brand)
+        : [...current, brand],
+    );
 
-  setPage(1);
-  setHasMore(true);
-};
+    setPage(1);
+    setHasMore(true);
+  };
 
   const clearFilters = () => {
     setSelectedBrands([]);
@@ -665,22 +666,24 @@ const toggleBrand = (brand: string) => {
 
             <input
               value={search}
-onChange={(event) => {
-  setSearch(event.target.value);
-  setPage(1);
-  setHasMore(true);
-}}              placeholder="Search iPhone, Samsung, Pixel..."
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+                setHasMore(true);
+              }}
+              placeholder="Search iPhone, Samsung, Pixel..."
               className="h-12 min-w-0 flex-1 bg-transparent px-4 text-sm outline-none"
             />
 
             {search && (
               <button
                 type="button"
-onClick={() => {
-  setSearch("");
-  setPage(1);
-  setHasMore(true);
-}}                aria-label="Clear search"
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                  setHasMore(true);
+                }}
+                aria-label="Clear search"
                 className="mr-2 text-gray-400 hover:text-black"
               >
                 <X size={17} />
@@ -985,24 +988,24 @@ onClick={() => {
               </div>
             )}
             {loadingMore && (
-  <div className="mt-8 flex items-center justify-center">
-    <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-5 py-3 shadow-sm">
-      <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-indigo-600" />
+              <div className="mt-8 flex items-center justify-center">
+                <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-5 py-3 shadow-sm">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-indigo-600" />
 
-      <span className="text-xs font-bold text-gray-500">
-        Loading more devices...
-      </span>
-    </div>
-  </div>
-)}
+                  <span className="text-xs font-bold text-gray-500">
+                    Loading more devices...
+                  </span>
+                </div>
+              </div>
+            )}
 
-{!loadingMore && !hasMore && products.length > 0 && (
-  <div className="mt-10 flex items-center justify-center">
-    <div className="rounded-full border border-gray-200 bg-gray-50 px-5 py-2.5 text-xs font-semibold text-gray-400">
-      You&apos;ve reached the end
-    </div>
-  </div>
-)}
+            {!loadingMore && !hasMore && products.length > 0 && (
+              <div className="mt-10 flex items-center justify-center">
+                <div className="rounded-full border border-gray-200 bg-gray-50 px-5 py-2.5 text-xs font-semibold text-gray-400">
+                  You&apos;ve reached the end
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
