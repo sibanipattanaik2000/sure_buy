@@ -30,7 +30,7 @@ import { getOptimizedImageUrl } from "@/app/lib/image";
 ========================================================= */
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.phonebhai.com/api/v1";
 
 /* =========================================================
    TYPES
@@ -315,7 +315,7 @@ useEffect(() => {
          ----------------------------------------------- */
       try {
         const reviewsResponse = await fetch(
-          `${API_BASE_URL}/api/v1/products/${productData.id}/reviews?page=1&limit=10`,
+          `${API_BASE_URL}/products/${productData.id}/reviews?page=1&limit=10`,
           {
             method: "GET",
             headers: {

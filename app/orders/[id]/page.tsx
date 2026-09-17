@@ -626,10 +626,10 @@ export default function OrderDetailsPage() {
       }
 
       const apiBaseUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+        process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.phonebhai.com/api/v1";
 
       const response = await fetch(
-        `${apiBaseUrl}/api/v1/products/${order.product.id}/reviews`,
+        `${apiBaseUrl}/products/${order.product.id}/reviews`,
         {
           method: "POST",
           credentials: "include",
