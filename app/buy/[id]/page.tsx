@@ -25,12 +25,6 @@ import { useCart } from "../../context/CartContext";
 import { getProduct } from "@/app/lib/api";
 import Image from "next/image";
 import { getOptimizedImageUrl } from "@/app/lib/image";
-/* =========================================================
-   API CONFIG
-========================================================= */
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.phonebhai.com/api/v1";
 
 /* =========================================================
    TYPES
@@ -313,62 +307,65 @@ useEffect(() => {
          REVIEWS
          Load separately in the background.
          ----------------------------------------------- */
-      try {
-        const reviewsResponse = await fetch(
-          `${API_BASE_URL}/products/${productData.id}/reviews?page=1&limit=10`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-            cache: "no-store",
-          },
-        );
+try {
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://api.phonebhai.com/api/v1";
 
-        if (!reviewsResponse.ok || cancelled) {
-          return;
+  const reviewsResponse = await fetch(
+    `${API_URL}/products/${productData.id}/reviews?page=1&limit=10`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!reviewsResponse.ok || cancelled) {
+    return;
+  }
+
+  const reviewsPayload = await reviewsResponse.json();
+
+  const reviews: ApiReview[] = Array.isArray(reviewsPayload?.reviews)
+    ? reviewsPayload.reviews
+    : Array.isArray(reviewsPayload?.data?.reviews)
+      ? reviewsPayload.data.reviews
+      : Array.isArray(reviewsPayload?.data)
+        ? reviewsPayload.data
+        : [];
+
+  if (cancelled || reviews.length === 0) {
+    return;
+  }
+
+  const calculatedRating =
+    reviews.reduce(
+      (sum: number, review: ApiReview) =>
+        sum + toNumber(review.rating),
+      0,
+    ) / reviews.length;
+
+  setProductData((current) =>
+    current
+      ? {
+          ...current,
+          reviews,
+          rating: Number(calculatedRating.toFixed(1)),
+          reviewCount: reviews.length,
         }
-
-        const reviewsPayload = await reviewsResponse.json();
-
-        const reviews: ApiReview[] =
-          Array.isArray(reviewsPayload?.reviews)
-            ? reviewsPayload.reviews
-            : Array.isArray(reviewsPayload?.data?.reviews)
-              ? reviewsPayload.data.reviews
-              : Array.isArray(reviewsPayload?.data)
-                ? reviewsPayload.data
-                : [];
-
-        if (cancelled || reviews.length === 0) {
-          return;
-        }
-
-        const calculatedRating =
-          reviews.reduce(
-            (sum: number, review: ApiReview) =>
-              sum + toNumber(review.rating),
-            0,
-          ) / reviews.length;
-
-        setProductData((current) =>
-          current
-            ? {
-                ...current,
-                reviews,
-                rating: Number(calculatedRating.toFixed(1)),
-                reviewCount: reviews.length,
-              }
-            : current,
-        );
-      } catch (reviewError) {
-        /*
-         * Reviews are non-blocking.
-         * The product page should remain usable even
-         * when the reviews request fails.
-         */
-        console.error("FAILED TO FETCH REVIEWS:", reviewError);
-      }
+      : current,
+  );
+} catch (reviewError) {
+  /*
+   * Reviews are non-blocking.
+   * The product page should remain usable even
+   * when the reviews request fails.
+   */
+  console.error("FAILED TO FETCH REVIEWS:", reviewError);
+}
     } catch (error) {
       if (cancelled) {
         return;
