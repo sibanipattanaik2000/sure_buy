@@ -261,135 +261,130 @@ export default function ProductDetailsPage() {
      FETCH PRODUCT + REVIEWS
   ======================================================= */
 
+  useEffect(() => {
+    if (!productIdentifier) {
+      return;
+    }
 
-useEffect(() => {
-  if (!productIdentifier) {
-    return;
-  }
+    let cancelled = false;
 
-  let cancelled = false;
+    const fetchProductAndReviews = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const fetchProductAndReviews = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+        const decodedIdentifier = decodeURIComponent(productIdentifier);
 
-      const decodedIdentifier = decodeURIComponent(productIdentifier);
-
-      /* -----------------------------------------------
+        /* -----------------------------------------------
          PRODUCT
          ----------------------------------------------- */
-      const response = await getProduct<ApiProduct>(decodedIdentifier);
+        const response = await getProduct<ApiProduct>(decodedIdentifier);
 
-      if (!response.success || !response.data) {
-        throw new Error(response.message || "Unable to load product");
-      }
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Unable to load product");
+        }
 
-      if (cancelled) {
-        return;
-      }
+        if (cancelled) {
+          return;
+        }
 
-      const productData = response.data;
+        const productData = response.data;
 
-      /*
-       * Render the product immediately.
-       * Do NOT wait for the reviews API.
-       */
-      setProductData({
-        ...productData,
-        reviews: safeReviews(productData.reviews),
-        rating: toNumber(productData.rating),
-      });
+        /*
+         * Render the product immediately.
+         * Do NOT wait for the reviews API.
+         */
+        setProductData({
+          ...productData,
+          reviews: safeReviews(productData.reviews),
+          rating: toNumber(productData.rating),
+        });
 
-      setLoading(false);
+        setLoading(false);
 
-      /* -----------------------------------------------
+        /* -----------------------------------------------
          REVIEWS
          Load separately in the background.
          ----------------------------------------------- */
-try {
-  const API_URL =
-    process.env.NEXT_PUBLIC_API_URL ||
-    "https://api.phonebhai.com/api/v1";
+        try {
+          const API_URL =
+            process.env.NEXT_PUBLIC_API_URL ||
+            "https://api.phonebhai.com/api/v1";
 
-  const reviewsResponse = await fetch(
-    `${API_URL}/products/${productData.id}/reviews?page=1&limit=10`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    },
-  );
+          const reviewsResponse = await fetch(
+            `${API_URL}/products/${productData.id}/reviews?page=1&limit=10`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+              cache: "no-store",
+            },
+          );
 
-  if (!reviewsResponse.ok || cancelled) {
-    return;
-  }
+          if (!reviewsResponse.ok || cancelled) {
+            return;
+          }
 
-  const reviewsPayload = await reviewsResponse.json();
+          const reviewsPayload = await reviewsResponse.json();
 
-  const reviews: ApiReview[] = Array.isArray(reviewsPayload?.reviews)
-    ? reviewsPayload.reviews
-    : Array.isArray(reviewsPayload?.data?.reviews)
-      ? reviewsPayload.data.reviews
-      : Array.isArray(reviewsPayload?.data)
-        ? reviewsPayload.data
-        : [];
+          const reviews: ApiReview[] = Array.isArray(reviewsPayload?.reviews)
+            ? reviewsPayload.reviews
+            : Array.isArray(reviewsPayload?.data?.reviews)
+              ? reviewsPayload.data.reviews
+              : Array.isArray(reviewsPayload?.data)
+                ? reviewsPayload.data
+                : [];
 
-  if (cancelled || reviews.length === 0) {
-    return;
-  }
+          if (cancelled || reviews.length === 0) {
+            return;
+          }
 
-  const calculatedRating =
-    reviews.reduce(
-      (sum: number, review: ApiReview) =>
-        sum + toNumber(review.rating),
-      0,
-    ) / reviews.length;
+          const calculatedRating =
+            reviews.reduce(
+              (sum: number, review: ApiReview) => sum + toNumber(review.rating),
+              0,
+            ) / reviews.length;
 
-  setProductData((current) =>
-    current
-      ? {
-          ...current,
-          reviews,
-          rating: Number(calculatedRating.toFixed(1)),
-          reviewCount: reviews.length,
+          setProductData((current) =>
+            current
+              ? {
+                  ...current,
+                  reviews,
+                  rating: Number(calculatedRating.toFixed(1)),
+                  reviewCount: reviews.length,
+                }
+              : current,
+          );
+        } catch (reviewError) {
+          /*
+           * Reviews are non-blocking.
+           * The product page should remain usable even
+           * when the reviews request fails.
+           */
+          console.error("FAILED TO FETCH REVIEWS:", reviewError);
         }
-      : current,
-  );
-} catch (reviewError) {
-  /*
-   * Reviews are non-blocking.
-   * The product page should remain usable even
-   * when the reviews request fails.
-   */
-  console.error("FAILED TO FETCH REVIEWS:", reviewError);
-}
-    } catch (error) {
-      if (cancelled) {
-        return;
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("FAILED TO FETCH PRODUCT:", error);
+
+        setError(
+          error instanceof Error ? error.message : "Failed to load product",
+        );
+
+        setLoading(false);
       }
+    };
 
-      console.error("FAILED TO FETCH PRODUCT:", error);
+    fetchProductAndReviews();
 
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load product",
-      );
-
-      setLoading(false);
-    }
-  };
-
-  fetchProductAndReviews();
-
-  return () => {
-    cancelled = true;
-  };
-}, [productIdentifier]);
-
+    return () => {
+      cancelled = true;
+    };
+  }, [productIdentifier]);
 
   /* =======================================================
      LOADING
@@ -457,8 +452,7 @@ try {
         ) / reviewRatings.length
       : toNumber(product.rating);
 
-  const productRating = calculatedReviewRating;
-
+  const productRating = calculatedReviewRating > 0 ? calculatedReviewRating : 5;
   const emiPrice =
     product.emiFrom !== null && product.emiFrom !== undefined
       ? toNumber(product.emiFrom)
@@ -909,7 +903,7 @@ try {
                   activeMedia.type === "VIDEO" ? (
                     <video
                       key={`video-${activeMedia.id}-${activeMedia.url}`}
-src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
+                      src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
                       controls
                       playsInline
                       preload="metadata"
@@ -919,18 +913,18 @@ src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
                     </video>
                   ) : (
                     <Image
-  key={`image-${activeMedia.id}-${activeMedia.url}`}
-  src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
-  alt={
-    activeMedia.altText ||
-    `${product.name}${activeVariant ? ` ${activeVariant.color}` : ""}`
-  }
-  width={700}
-  height={700}
-  priority
-  sizes="(max-width: 1024px) 90vw, 700px"
-  className="max-h-[420px] max-w-[85%] object-contain transition duration-500 hover:scale-105"
-/>
+                      key={`image-${activeMedia.id}-${activeMedia.url}`}
+                      src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
+                      alt={
+                        activeMedia.altText ||
+                        `${product.name}${activeVariant ? ` ${activeVariant.color}` : ""}`
+                      }
+                      width={700}
+                      height={700}
+                      priority
+                      sizes="(max-width: 1024px) 90vw, 700px"
+                      className="max-h-[420px] max-w-[85%] object-contain transition duration-500 hover:scale-105"
+                    />
                   )
                 ) : (
                   <div className="flex h-[380px] items-center justify-center text-gray-300">
@@ -967,7 +961,8 @@ src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
                       {/* IMAGE THUMBNAIL */}
                       {media.type === "IMAGE" ? (
                         <Image
-src={getOptimizedImageUrl(media.url, 240, 72)}                          alt={
+                          src={getOptimizedImageUrl(media.url, 240, 72)}
+                          alt={
                             media.altText ||
                             `${product.name} thumbnail ${index + 1}`
                           }
