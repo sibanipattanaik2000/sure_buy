@@ -46,19 +46,13 @@ export async function apiRequest<T>(
     result = null;
   }
 
-if (!response.ok) {
-  const validationErrors = result?.errors
-    ? Object.values(result.errors).flat().join(", ")
-    : "";
-
-  throw new ApiError(
-    validationErrors ||
-      result?.message ||
-      "Something went wrong",
-    response.status,
-    result,
-  );
-}
+  if (!response.ok) {
+    throw new ApiError(
+      result?.message || "Something went wrong",
+      response.status,
+      result,
+    );
+  }
 
   return (
     result || {
