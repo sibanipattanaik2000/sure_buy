@@ -257,7 +257,7 @@ function ProductCard({
 
           <div className="flex items-center gap-1 text-[10px] font-bold">
             <Star size={12} fill="currentColor" className="text-yellow-500" />
-            {product.rating > 0 ? product.rating.toFixed(1) : "New"}
+            {product.rating > 0 ? product.rating.toFixed(1) : "5.0"}
           </div>
         </div>
 
