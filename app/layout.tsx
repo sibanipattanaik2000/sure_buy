@@ -9,23 +9,64 @@ import { CheckoutProvider } from "./context/CheckoutContext";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
 
+const SITE_URL = "https://phonebhai.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+
   title: {
-    default: "PhoneBhai | Buy, Sell & Repair Devices",
+    default: "PhoneBhai – Buy Refurbished & Used Phones Online",
     template: "%s | PhoneBhai",
   },
 
   description:
-    "Buy quality-checked devices, sell your old phone or laptop, and get reliable device repair with PhoneBhai.",
+    "Buy quality-checked refurbished, used and new smartphones from Apple, Samsung, OnePlus, Vivo, Oppo, Realme, Motorola and Google at PhoneBhai.",
 
   keywords: [
-    "buy used phones",
-    "sell old phone",
-    "refurbished phones",
-    "used laptops",
-    "phone repair",
     "PhoneBhai",
+    "refurbished phones",
+    "used phones",
+    "buy refurbished phones",
+    "used smartphones",
+    "refurbished smartphones",
+    "second hand phones",
+    "quality checked phones",
+    "Apple refurbished phones",
+    "Samsung refurbished phones",
+    "OnePlus refurbished phones",
   ],
+
+  alternates: {
+    canonical: SITE_URL,
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "PhoneBhai",
+    title: "PhoneBhai – Buy Refurbished & Used Phones Online",
+    description:
+      "Shop quality-checked refurbished, used and new smartphones at PhoneBhai.",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "PhoneBhai – Buy Refurbished & Used Phones Online",
+    description:
+      "Shop quality-checked refurbished, used and new smartphones at PhoneBhai.",
+  },
 };
 
 export default function RootLayout({

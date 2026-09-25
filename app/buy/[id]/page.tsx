@@ -454,6 +454,7 @@ export default function ProductDetailsPage() {
       : toNumber(product.rating);
 
   const productRating = calculatedReviewRating > 0 ? calculatedReviewRating : 5;
+
   const emiPrice =
     product.emiFrom !== null && product.emiFrom !== undefined
       ? toNumber(product.emiFrom)
@@ -565,7 +566,103 @@ export default function ProductDetailsPage() {
           ),
         )
       : discount;
+  /* =========================================================
+   PRODUCT SEO STRUCTURED DATA
+========================================================= */
 
+  const seoImage =
+    product.images?.find(
+      (image) =>
+        image.type === "IMAGE" &&
+        typeof image.url === "string" &&
+        image.url.length > 0,
+    )?.url ||
+    activeVariant?.images?.find(
+      (image) =>
+        image.type === "IMAGE" &&
+        typeof image.url === "string" &&
+        image.url.length > 0,
+    )?.url;
+
+  const productOffers = product.variants
+    .map((variant) => {
+      const price = toNumber(variant.price);
+
+      if (price <= 0) {
+        return null;
+      }
+
+      return {
+        "@type": "Offer",
+
+        url: `https://phonebhai.com/buy/${product.id}`,
+
+        priceCurrency: "INR",
+
+        price: price.toFixed(2),
+
+        availability:
+          Number(variant.stock || 0) > 0
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+
+        itemCondition:
+          product.condition === "LIKE_NEW"
+            ? "https://schema.org/RefurbishedCondition"
+            : "https://schema.org/UsedCondition",
+
+        seller: {
+          "@type": "Organization",
+          name: "PhoneBhai",
+          url: "https://phonebhai.com",
+        },
+      };
+    })
+    .filter((offer): offer is NonNullable<typeof offer> => offer !== null);
+
+  const productStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+
+    name: `${product.brand} ${product.name}`.trim(),
+
+    description:
+      product.description ||
+      `Buy ${product.brand} ${product.name} at PhoneBhai.`,
+
+    sku: String(product.id),
+
+    brand: {
+      "@type": "Brand",
+      name: product.brand,
+    },
+
+    category: product.category,
+
+    ...(seoImage
+      ? {
+          image: [seoImage],
+        }
+      : {}),
+
+    ...(productOffers.length > 0
+      ? {
+          offers: productOffers.length === 1 ? productOffers[0] : productOffers,
+        }
+      : {}),
+
+    ...(productRating > 0 && product.reviewCount > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: productRating.toFixed(1),
+            reviewCount: String(product.reviewCount),
+            bestRating: "5",
+            worstRating: "1",
+          },
+        }
+      : {}),
+  };
   /* =======================================================
      GALLERY
      
@@ -880,900 +977,919 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   return (
-    <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
-      <section className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-          {/* =================================================
+    <>
+     <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(productStructuredData).replace(
+          /</g,
+          "\\u003c",
+        ),
+      }}
+    />
+      <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
+        <section className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
+          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+            {/* =================================================
               LEFT IMAGE SECTION
           ================================================= */}
 
-          <div>
-            {/* MAIN IMAGE / VIDEO */}
+            <div>
+              {/* MAIN IMAGE / VIDEO */}
 
-            <div className="relative flex min-h-[520px] items-center justify-center rounded-[2rem] border border-gray-200 bg-white p-8 shadow-sm">
-              {activeDiscount > 0 && (
-                <span className="absolute left-5 top-5 z-20 rounded-full bg-green-500 px-3 py-1.5 text-xs font-bold text-white">
-                  {activeDiscount}% OFF
-                </span>
-              )}
+              <div className="relative flex min-h-[520px] items-center justify-center rounded-[2rem] border border-gray-200 bg-white p-8 shadow-sm">
+                {activeDiscount > 0 && (
+                  <span className="absolute left-5 top-5 z-20 rounded-full bg-green-500 px-3 py-1.5 text-xs font-bold text-white">
+                    {activeDiscount}% OFF
+                  </span>
+                )}
 
-              {/* WISHLIST */}
+                {/* WISHLIST */}
 
-              <button
-                type="button"
-                onClick={() => toggleWishlist(wishlistProduct)}
-                aria-label={liked ? "Remove from wishlist" : "Add to wishlist"}
-                className={`absolute right-5 top-5 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition ${
-                  liked ? "text-red-500" : "text-gray-500 hover:text-red-500"
-                }`}
-              >
-                <Heart size={20} fill={liked ? "currentColor" : "none"} />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => toggleWishlist(wishlistProduct)}
+                  aria-label={
+                    liked ? "Remove from wishlist" : "Add to wishlist"
+                  }
+                  className={`absolute right-5 top-5 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition ${
+                    liked ? "text-red-500" : "text-gray-500 hover:text-red-500"
+                  }`}
+                >
+                  <Heart size={20} fill={liked ? "currentColor" : "none"} />
+                </button>
 
-              {/* PRODUCT MEDIA */}
+                {/* PRODUCT MEDIA */}
 
-              {/* =========================================================
+                {/* =========================================================
     ACTIVE PRODUCT MEDIA
 ========================================================= */}
 
-              <div className="flex h-full w-full items-center justify-center">
-                {activeMedia?.url ? (
-                  activeMedia.type === "VIDEO" ? (
-                    <video
-                      key={`video-${activeMedia.id}-${activeMedia.url}`}
-                      src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      className="max-h-[420px] max-w-[85%] rounded-2xl object-contain"
-                    >
-                      Your browser does not support video playback.
-                    </video>
+                <div className="flex h-full w-full items-center justify-center">
+                  {activeMedia?.url ? (
+                    activeMedia.type === "VIDEO" ? (
+                      <video
+                        key={`video-${activeMedia.id}-${activeMedia.url}`}
+                        src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="max-h-[420px] max-w-[85%] rounded-2xl object-contain"
+                      >
+                        Your browser does not support video playback.
+                      </video>
+                    ) : (
+                      <Image
+                        key={`image-${activeMedia.id}-${activeMedia.url}`}
+                        src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
+                        alt={
+                          activeMedia.altText ||
+                          `${product.name}${activeVariant ? ` ${activeVariant.color}` : ""}`
+                        }
+                        width={700}
+                        height={700}
+                        priority
+                        sizes="(max-width: 1024px) 90vw, 700px"
+                        className="max-h-[420px] max-w-[85%] object-contain transition duration-500 hover:scale-105"
+                      />
+                    )
                   ) : (
-                    <Image
-                      key={`image-${activeMedia.id}-${activeMedia.url}`}
-                      src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
-                      alt={
-                        activeMedia.altText ||
-                        `${product.name}${activeVariant ? ` ${activeVariant.color}` : ""}`
-                      }
-                      width={700}
-                      height={700}
-                      priority
-                      sizes="(max-width: 1024px) 90vw, 700px"
-                      className="max-h-[420px] max-w-[85%] object-contain transition duration-500 hover:scale-105"
-                    />
-                  )
-                ) : (
-                  <div className="flex h-[380px] items-center justify-center text-gray-300">
-                    <Smartphone size={80} />
-                  </div>
-                )}
+                    <div className="flex h-[380px] items-center justify-center text-gray-300">
+                      <Smartphone size={80} />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* =========================================================
+              {/* =========================================================
     IMAGE / VIDEO THUMBNAILS
 ========================================================= */}
 
-            {gallery.length > 0 && (
-              <div className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5">
-                {gallery.map((media, index) => {
-                  const isActive = safeImageIndex === index;
-
-                  return (
-                    <button
-                      key={`${media.id}-${media.url}-${index}`}
-                      type="button"
-                      onClick={() => handleMediaSelect(index)}
-                      aria-label={`View ${
-                        media.type === "VIDEO" ? "video" : "image"
-                      } ${index + 1}`}
-                      aria-pressed={isActive}
-                      className={`relative flex h-24 items-center justify-center overflow-hidden rounded-2xl border bg-white p-2 transition-all duration-200 ${
-                        isActive
-                          ? "border-2 border-indigo-600 ring-2 ring-indigo-100"
-                          : "border-gray-200 hover:border-indigo-400"
-                      }`}
-                    >
-                      {/* IMAGE THUMBNAIL */}
-                      {media.type === "IMAGE" ? (
-                        <Image
-                          src={getOptimizedImageUrl(media.url, 240, 72)}
-                          alt={
-                            media.altText ||
-                            `${product.name} thumbnail ${index + 1}`
-                          }
-                          width={160}
-                          height={96}
-                          sizes="160px"
-                          className="h-full w-full object-contain"
-                        />
-                      ) : (
-                        /* VIDEO THUMBNAIL */
-                        <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-gray-100">
-                          <video
-                            key={`thumbnail-video-${media.id}`}
-                            src={media.url}
-                            muted
-                            playsInline
-                            preload="metadata"
-                            className="h-full w-full object-cover"
-                          />
-
-                          {/* DARK OVERLAY */}
-                          <div className="absolute inset-0 bg-black/20" />
-
-                          {/* PLAY BUTTON */}
-                          <span className="absolute flex h-9 w-9 items-center justify-center rounded-full bg-white text-indigo-600 shadow-md">
-                            <span className="ml-0.5 text-sm">▶</span>
-                          </span>
-
-                          {/* VIDEO LABEL */}
-                          <span className="absolute left-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                            VIDEO
-                          </span>
-                        </div>
-                      )}
-
-                      {/* ACTIVE CHECK */}
-                      {isActive && (
-                        <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white shadow">
-                          <Check size={12} strokeWidth={3} />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* TRUST */}
-
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              <InfoBox
-                icon={<ShieldCheck size={19} />}
-                title="Quality checked"
-              />
-
-              <InfoBox
-                icon={<BadgeCheck size={19} />}
-                title={product.warranty || "Warranty backed"}
-              />
-
-              <InfoBox icon={<Truck size={19} />} title="Fast delivery" />
-            </div>
-          </div>
-
-          {/* =================================================
-              RIGHT PRODUCT DETAILS
-          ================================================= */}
-
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
-              {product.brand}
-            </p>
-
-            <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
-              {product.name}
-            </h1>
-
-            {/* RATING */}
-
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <div
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white ${getRatingBgColor(
-                  productRating,
-                )}`}
-              >
-                {productRating.toFixed(1)}
-                <Star size={12} fill="currentColor" />
-              </div>
-
-              <span className="text-sm text-gray-500">
-                {product.reviewCount} reviews
-              </span>
-
-              <span className="text-gray-300">•</span>
-
-              <span className="text-sm font-semibold text-gray-500">
-                {formatCondition(product.condition)} condition
-              </span>
-            </div>
-
-            {/* DESCRIPTION */}
-
-            <p className="mt-6 text-sm leading-7 text-gray-500">
-              {product.description}
-            </p>
-
-            {/* PRICE */}
-
-            <div className="mt-7 rounded-2xl border border-gray-200 bg-white p-5">
-              <div className="flex flex-wrap items-end gap-3">
-                <span className="text-3xl font-black">
-                  ₹{formatPrice(activePrice * quantity)}
-                </span>
-
-                {activeOriginalPrice > activePrice && (
-                  <>
-                    <span className="mb-1 text-sm text-gray-400 line-through">
-                      ₹{formatPrice(activeOriginalPrice * quantity)}
-                    </span>
-
-                    <span className="mb-1 text-sm font-bold text-green-600">
-                      Save ₹
-                      {formatPrice(
-                        (activeOriginalPrice - activePrice) * quantity,
-                      )}
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* QUANTITY TOTAL */}
-
-              <div className="mt-4 flex items-center gap-2 rounded-xl bg-indigo-50 px-4 py-3">
-                <CreditCard size={18} className="text-indigo-600" />
-
-                <p className="text-xs font-semibold text-indigo-700">
-                  EMI available from ₹{formatPrice(emiPrice)}
-                  /month for 12 months
-                </p>
-              </div>
-            </div>
-
-            {/* STORAGE */}
-
-            {storageOptions.length > 0 && (
-              <div className="mt-6">
-                <p className="text-sm font-bold">Storage</p>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {storageOptions.map((storage) => {
-                    const isAvailable = product.variants.some(
-                      (variant) =>
-                        normalizeStorage(variant.storage) ===
-                          normalizeStorage(storage) && variant.stock > 0,
-                    );
-
-                    const isSelected =
-                      normalizeStorage(selectedStorage) ===
-                      normalizeStorage(storage);
+              {gallery.length > 0 && (
+                <div className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5">
+                  {gallery.map((media, index) => {
+                    const isActive = safeImageIndex === index;
 
                     return (
                       <button
-                        key={normalizeStorage(storage)}
+                        key={`${media.id}-${media.url}-${index}`}
                         type="button"
-                        disabled={!isAvailable}
-                        onClick={() => handleStorageChange(storage)}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-                          isSelected
-                            ? "border-indigo-600 bg-indigo-50 text-indigo-600"
-                            : isAvailable
-                              ? "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
-                              : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
+                        onClick={() => handleMediaSelect(index)}
+                        aria-label={`View ${
+                          media.type === "VIDEO" ? "video" : "image"
+                        } ${index + 1}`}
+                        aria-pressed={isActive}
+                        className={`relative flex h-24 items-center justify-center overflow-hidden rounded-2xl border bg-white p-2 transition-all duration-200 ${
+                          isActive
+                            ? "border-2 border-indigo-600 ring-2 ring-indigo-100"
+                            : "border-gray-200 hover:border-indigo-400"
                         }`}
                       >
-                        {storage}
+                        {/* IMAGE THUMBNAIL */}
+                        {media.type === "IMAGE" ? (
+                          <Image
+                            src={getOptimizedImageUrl(media.url, 240, 72)}
+                            alt={
+                              media.altText ||
+                              `${product.name} thumbnail ${index + 1}`
+                            }
+                            width={160}
+                            height={96}
+                            sizes="160px"
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          /* VIDEO THUMBNAIL */
+                          <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-gray-100">
+                            <video
+                              key={`thumbnail-video-${media.id}`}
+                              src={media.url}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              className="h-full w-full object-cover"
+                            />
+
+                            {/* DARK OVERLAY */}
+                            <div className="absolute inset-0 bg-black/20" />
+
+                            {/* PLAY BUTTON */}
+                            <span className="absolute flex h-9 w-9 items-center justify-center rounded-full bg-white text-indigo-600 shadow-md">
+                              <span className="ml-0.5 text-sm">▶</span>
+                            </span>
+
+                            {/* VIDEO LABEL */}
+                            <span className="absolute left-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                              VIDEO
+                            </span>
+                          </div>
+                        )}
+
+                        {/* ACTIVE CHECK */}
+                        {isActive && (
+                          <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white shadow">
+                            <Check size={12} strokeWidth={3} />
+                          </span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
+              )}
+
+              {/* TRUST */}
+
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                <InfoBox
+                  icon={<ShieldCheck size={19} />}
+                  title="Quality checked"
+                />
+
+                <InfoBox
+                  icon={<BadgeCheck size={19} />}
+                  title={product.warranty || "Warranty backed"}
+                />
+
+                <InfoBox icon={<Truck size={19} />} title="Fast delivery" />
               </div>
-            )}
+            </div>
 
-            {/* COLOR */}
-            <div className="mt-2">
-              {/* COLOR */}
-              {colorOptions.length > 0 && (
+            {/* =================================================
+              RIGHT PRODUCT DETAILS
+          ================================================= */}
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+                {product.brand}
+              </p>
+
+              <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                {product.name}
+              </h1>
+
+              {/* RATING */}
+
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <div
+                  className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white ${getRatingBgColor(
+                    productRating,
+                  )}`}
+                >
+                  {productRating.toFixed(1)}
+                  <Star size={12} fill="currentColor" />
+                </div>
+
+                <span className="text-sm text-gray-500">
+                  {product.reviewCount} reviews
+                </span>
+
+                <span className="text-gray-300">•</span>
+
+                <span className="text-sm font-semibold text-gray-500">
+                  {formatCondition(product.condition)} condition
+                </span>
+              </div>
+
+              {/* DESCRIPTION */}
+
+              <p className="mt-6 text-sm leading-7 text-gray-500">
+                {product.description}
+              </p>
+
+              {/* PRICE */}
+
+              <div className="mt-7 rounded-2xl border border-gray-200 bg-white p-5">
+                <div className="flex flex-wrap items-end gap-3">
+                  <span className="text-3xl font-black">
+                    ₹{formatPrice(activePrice * quantity)}
+                  </span>
+
+                  {activeOriginalPrice > activePrice && (
+                    <>
+                      <span className="mb-1 text-sm text-gray-400 line-through">
+                        ₹{formatPrice(activeOriginalPrice * quantity)}
+                      </span>
+
+                      <span className="mb-1 text-sm font-bold text-green-600">
+                        Save ₹
+                        {formatPrice(
+                          (activeOriginalPrice - activePrice) * quantity,
+                        )}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* QUANTITY TOTAL */}
+
+                <div className="mt-4 flex items-center gap-2 rounded-xl bg-indigo-50 px-4 py-3">
+                  <CreditCard size={18} className="text-indigo-600" />
+
+                  <p className="text-xs font-semibold text-indigo-700">
+                    EMI available from ₹{formatPrice(emiPrice)}
+                    /month for 12 months
+                  </p>
+                </div>
+              </div>
+
+              {/* STORAGE */}
+
+              {storageOptions.length > 0 && (
                 <div className="mt-6">
-                  <p className="text-sm font-bold">Colour</p>
-                  <div className="mt-3 flex flex-wrap gap-3">
-                    {colorOptions.map((color) => {
-                      const matchingVariant =
-                        product.variants.find(
-                          (variant) =>
-                            normalizeColor(variant.color) ===
-                              normalizeColor(color) &&
-                            normalizeStorage(variant.storage) ===
-                              normalizeStorage(selectedStorage),
-                        ) ||
-                        product.variants.find(
-                          (variant) =>
-                            normalizeColor(variant.color) ===
-                            normalizeColor(color),
-                        );
+                  <p className="text-sm font-bold">Storage</p>
 
-                      const isAvailable =
-                        !selectedStorage ||
-                        availableColorsForStorage.has(normalizeColor(color));
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {storageOptions.map((storage) => {
+                      const isAvailable = product.variants.some(
+                        (variant) =>
+                          normalizeStorage(variant.storage) ===
+                            normalizeStorage(storage) && variant.stock > 0,
+                      );
 
                       const isSelected =
-                        normalizeColor(selectedColor) === normalizeColor(color);
-
-                      const colorHex = matchingVariant?.colorHex;
+                        normalizeStorage(selectedStorage) ===
+                        normalizeStorage(storage);
 
                       return (
                         <button
-                          key={color}
+                          key={normalizeStorage(storage)}
                           type="button"
                           disabled={!isAvailable}
-                          onClick={() => handleColorChange(color)}
-                          aria-label={`Select ${color}`}
-                          aria-pressed={isSelected}
-                          className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                          onClick={() => handleStorageChange(storage)}
+                          className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
                             isSelected
-                              ? "border-indigo-600 bg-indigo-50 text-gray-900"
+                              ? "border-indigo-600 bg-indigo-50 text-indigo-600"
                               : isAvailable
-                                ? "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                                ? "border-gray-200 bg-white text-gray-600 hover:border-gray-400"
                                 : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
                           }`}
                         >
-                          <span
-                            className={`h-5 w-5 shrink-0 rounded-full border border-gray-300 ${
-                              !isAvailable ? "opacity-40" : ""
-                            }`}
-                            style={{
-                              backgroundColor: colorHex || "#E5E7EB",
-                            }}
-                          />
-
-                          <span>{color}</span>
-
-                          {isSelected && (
-                            <Check size={15} className="text-indigo-600" />
-                          )}
+                          {storage}
                         </button>
                       );
                     })}
                   </div>
                 </div>
               )}
-            </div>
-            {/* STOCK */}
 
-            <div className="mt-5">
-              {isOutOfStock ? (
-                <p className="text-sm font-bold text-red-600">Out of stock</p>
-              ) : (
-                <p className="text-sm font-semibold text-green-600">
-                  {stock} {stock === 1 ? "unit" : "units"} available
-                </p>
-              )}
+              {/* COLOR */}
+              <div className="mt-2">
+                {/* COLOR */}
+                {colorOptions.length > 0 && (
+                  <div className="mt-6">
+                    <p className="text-sm font-bold">Colour</p>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {colorOptions.map((color) => {
+                        const matchingVariant =
+                          product.variants.find(
+                            (variant) =>
+                              normalizeColor(variant.color) ===
+                                normalizeColor(color) &&
+                              normalizeStorage(variant.storage) ===
+                                normalizeStorage(selectedStorage),
+                          ) ||
+                          product.variants.find(
+                            (variant) =>
+                              normalizeColor(variant.color) ===
+                              normalizeColor(color),
+                          );
 
-              {existingCartQuantity > 0 && !isOutOfStock && (
-                <p className="mt-1 text-xs font-medium text-gray-500">
-                  {existingCartQuantity} already in your cart
-                </p>
-              )}
-            </div>
+                        const isAvailable =
+                          !selectedStorage ||
+                          availableColorsForStorage.has(normalizeColor(color));
 
-            {/* QUANTITY */}
+                        const isSelected =
+                          normalizeColor(selectedColor) ===
+                          normalizeColor(color);
 
-            <div className="mt-6">
-              <p className="text-sm font-bold">Quantity</p>
+                        const colorHex = matchingVariant?.colorHex;
 
-              <div className="mt-3 inline-flex h-11 items-center overflow-hidden rounded-xl border border-gray-200 bg-white">
-                <button
-                  type="button"
-                  disabled={quantity <= 1}
-                  onClick={handleDecreaseQuantity}
-                  aria-label="Decrease quantity"
-                  className="flex h-full w-11 items-center justify-center text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <span className="text-lg">−</span>
-                </button>
+                        return (
+                          <button
+                            key={color}
+                            type="button"
+                            disabled={!isAvailable}
+                            onClick={() => handleColorChange(color)}
+                            aria-label={`Select ${color}`}
+                            aria-pressed={isSelected}
+                            className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                              isSelected
+                                ? "border-indigo-600 bg-indigo-50 text-gray-900"
+                                : isAvailable
+                                  ? "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                                  : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
+                            }`}
+                          >
+                            <span
+                              className={`h-5 w-5 shrink-0 rounded-full border border-gray-300 ${
+                                !isAvailable ? "opacity-40" : ""
+                              }`}
+                              style={{
+                                backgroundColor: colorHex || "#E5E7EB",
+                              }}
+                            />
 
-                <span className="flex h-full min-w-12 items-center justify-center border-x border-gray-200 px-3 text-sm font-bold">
-                  {quantity}
-                </span>
+                            <span>{color}</span>
 
-                <button
-                  type="button"
-                  disabled={isOutOfStock || quantity >= stock}
-                  onClick={handleIncreaseQuantity}
-                  aria-label="Increase quantity"
-                  className="flex h-full w-11 items-center justify-center text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <span className="text-lg">+</span>
-                </button>
+                            {isSelected && (
+                              <Check size={15} className="text-indigo-600" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+              {/* STOCK */}
 
-            {/* DELIVERY */}
-
-            <div className="mt-7 rounded-2xl border border-gray-200 bg-white p-5">
-              <div className="flex items-center gap-3">
-                <MapPin size={19} className="text-indigo-600" />
-
-                <div>
-                  <p className="text-sm font-bold">Check delivery</p>
-
-                  <p className="mt-1 text-xs text-gray-500">
-                    Enter your PIN code at checkout
+              <div className="mt-5">
+                {isOutOfStock ? (
+                  <p className="text-sm font-bold text-red-600">Out of stock</p>
+                ) : (
+                  <p className="text-sm font-semibold text-green-600">
+                    {stock} {stock === 1 ? "unit" : "units"} available
                   </p>
+                )}
+
+                {existingCartQuantity > 0 && !isOutOfStock && (
+                  <p className="mt-1 text-xs font-medium text-gray-500">
+                    {existingCartQuantity} already in your cart
+                  </p>
+                )}
+              </div>
+
+              {/* QUANTITY */}
+
+              <div className="mt-6">
+                <p className="text-sm font-bold">Quantity</p>
+
+                <div className="mt-3 inline-flex h-11 items-center overflow-hidden rounded-xl border border-gray-200 bg-white">
+                  <button
+                    type="button"
+                    disabled={quantity <= 1}
+                    onClick={handleDecreaseQuantity}
+                    aria-label="Decrease quantity"
+                    className="flex h-full w-11 items-center justify-center text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <span className="text-lg">−</span>
+                  </button>
+
+                  <span className="flex h-full min-w-12 items-center justify-center border-x border-gray-200 px-3 text-sm font-bold">
+                    {quantity}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={isOutOfStock || quantity >= stock}
+                    onClick={handleIncreaseQuantity}
+                    aria-label="Increase quantity"
+                    className="flex h-full w-11 items-center justify-center text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <span className="text-lg">+</span>
+                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* PAYMENT */}
+              {/* DELIVERY */}
 
-            <div className="mt-7">
-              <h2 className="text-lg font-black">Choose payment method</h2>
+              <div className="mt-7 rounded-2xl border border-gray-200 bg-white p-5">
+                <div className="flex items-center gap-3">
+                  <MapPin size={19} className="text-indigo-600" />
 
-              <div className="mt-4 grid gap-3">
-                <PaymentOption
-                  active={paymentMethod === "upi"}
-                  onClick={() => handlePaymentMethodChange("upi")}
-                  icon={<Wallet size={19} />}
-                  title="UPI"
-                  description="Google Pay, PhonePe, Paytm and more"
-                />
+                  <div>
+                    <p className="text-sm font-bold">Check delivery</p>
 
-                <PaymentOption
-                  active={paymentMethod === "card"}
-                  onClick={() => handlePaymentMethodChange("card")}
-                  icon={<CreditCard size={19} />}
-                  title="Credit / Debit Card"
-                  description="Secure card payment"
-                />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Enter your PIN code at checkout
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-                <PaymentOption
-                  active={paymentMethod === "emi"}
-                  onClick={() => handlePaymentMethodChange("emi")}
-                  icon={<CreditCard size={19} />}
-                  title="EMI"
-                  description="Pay monthly with eligible cards"
-                />
+              {/* PAYMENT */}
 
-                <PaymentOption
-                  active={paymentMethod === "cod"}
-                  onClick={() => handlePaymentMethodChange("cod")}
-                  icon={<Truck size={19} />}
-                  title="Cash on Delivery"
-                  description="Pay when your phone arrives"
-                />
+              <div className="mt-7">
+                <h2 className="text-lg font-black">Choose payment method</h2>
+
+                <div className="mt-4 grid gap-3">
+                  <PaymentOption
+                    active={paymentMethod === "upi"}
+                    onClick={() => handlePaymentMethodChange("upi")}
+                    icon={<Wallet size={19} />}
+                    title="UPI"
+                    description="Google Pay, PhonePe, Paytm and more"
+                  />
+
+                  <PaymentOption
+                    active={paymentMethod === "card"}
+                    onClick={() => handlePaymentMethodChange("card")}
+                    icon={<CreditCard size={19} />}
+                    title="Credit / Debit Card"
+                    description="Secure card payment"
+                  />
+
+                  <PaymentOption
+                    active={paymentMethod === "emi"}
+                    onClick={() => handlePaymentMethodChange("emi")}
+                    icon={<CreditCard size={19} />}
+                    title="EMI"
+                    description="Pay monthly with eligible cards"
+                  />
+
+                  <PaymentOption
+                    active={paymentMethod === "cod"}
+                    onClick={() => handlePaymentMethodChange("cod")}
+                    icon={<Truck size={19} />}
+                    title="Cash on Delivery"
+                    description="Pay when your phone arrives"
+                  />
+                </div>
+              </div>
+
+              {/* CART + BUY */}
+
+              <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  disabled={isOutOfStock || cannotAddMore}
+                  onClick={handleAddToCart}
+                  className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-black transition ${
+                    isOutOfStock || cannotAddMore
+                      ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                      : currentVariantInCart
+                        ? "border-green-200 bg-green-50 text-green-700"
+                        : "border-indigo-200 bg-white text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50"
+                  }`}
+                >
+                  {isOutOfStock ? (
+                    "Out of stock"
+                  ) : remainingStock <= 0 ? (
+                    <>
+                      <Check size={18} />
+                      Maximum in cart
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart size={18} />
+                      {currentVariantInCart
+                        ? "Add more to cart"
+                        : "Add to cart"}
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isOutOfStock}
+                  onClick={handleBuyNow}
+                  className={`group flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white shadow-lg transition ${
+                    isOutOfStock
+                      ? "cursor-not-allowed bg-gray-400 shadow-none"
+                      : "bg-indigo-600 shadow-indigo-600/20 hover:-translate-y-0.5 hover:bg-indigo-700"
+                  }`}
+                >
+                  Buy now
+                  {!isOutOfStock && (
+                    <ArrowRight
+                      size={18}
+                      className="transition-transform group-hover:translate-x-1"
+                    />
+                  )}
+                </button>
+              </div>
+
+              {/* VIEW CART */}
+
+              {currentVariantInCart && (
+                <Link
+                  href="/cart"
+                  className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gray-100 text-sm font-bold text-gray-700 transition hover:bg-gray-200"
+                >
+                  <ShoppingCart size={16} />
+                  View cart
+                </Link>
+              )}
+
+              <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-gray-500">
+                <ShieldCheck size={15} className="text-green-600" />
+                Secure payment • Warranty backed • Quality checked
               </div>
             </div>
-
-            {/* CART + BUY */}
-
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                disabled={isOutOfStock || cannotAddMore}
-                onClick={handleAddToCart}
-                className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-black transition ${
-                  isOutOfStock || cannotAddMore
-                    ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                    : currentVariantInCart
-                      ? "border-green-200 bg-green-50 text-green-700"
-                      : "border-indigo-200 bg-white text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50"
-                }`}
-              >
-                {isOutOfStock ? (
-                  "Out of stock"
-                ) : remainingStock <= 0 ? (
-                  <>
-                    <Check size={18} />
-                    Maximum in cart
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart size={18} />
-                    {currentVariantInCart ? "Add more to cart" : "Add to cart"}
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                disabled={isOutOfStock}
-                onClick={handleBuyNow}
-                className={`group flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white shadow-lg transition ${
-                  isOutOfStock
-                    ? "cursor-not-allowed bg-gray-400 shadow-none"
-                    : "bg-indigo-600 shadow-indigo-600/20 hover:-translate-y-0.5 hover:bg-indigo-700"
-                }`}
-              >
-                Buy now
-                {!isOutOfStock && (
-                  <ArrowRight
-                    size={18}
-                    className="transition-transform group-hover:translate-x-1"
-                  />
-                )}
-              </button>
-            </div>
-
-            {/* VIEW CART */}
-
-            {currentVariantInCart && (
-              <Link
-                href="/cart"
-                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gray-100 text-sm font-bold text-gray-700 transition hover:bg-gray-200"
-              >
-                <ShoppingCart size={16} />
-                View cart
-              </Link>
-            )}
-
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-gray-500">
-              <ShieldCheck size={15} className="text-green-600" />
-              Secure payment • Warranty backed • Quality checked
-            </div>
           </div>
-        </div>
 
-        {/* ===================================================
+          {/* ===================================================
             PRODUCT INFORMATION
         =================================================== */}
 
-        <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
-          <h2 className="text-2xl font-black">Product details</h2>
+          <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
+            <h2 className="text-2xl font-black">Product details</h2>
 
-          {product.highlights.length > 0 && (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {product.highlights.map((highlight) => (
-                <div
-                  key={highlight.id}
-                  className="flex items-start gap-3 rounded-2xl bg-gray-50 p-4"
-                >
-                  <Check size={18} className="mt-0.5 shrink-0 text-green-600" />
+            {product.highlights.length > 0 && (
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {product.highlights.map((highlight) => (
+                  <div
+                    key={highlight.id}
+                    className="flex items-start gap-3 rounded-2xl bg-gray-50 p-4"
+                  >
+                    <Check
+                      size={18}
+                      className="mt-0.5 shrink-0 text-green-600"
+                    />
 
-                  <p className="text-sm font-semibold text-gray-700">
-                    {highlight.text}
-                  </p>
-                </div>
-              ))}
+                    <p className="text-sm font-semibold text-gray-700">
+                      {highlight.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Detail title="Brand" value={product.brand} />
+
+              <Detail title="Model" value={product.name} />
+
+              <Detail
+                title="Storage"
+                value={activeVariant?.storage || selectedStorage || "—"}
+              />
+
+              <Detail
+                title="Colour"
+                value={activeVariant?.color || selectedColor || "—"}
+              />
+
+              <Detail
+                title="Condition"
+                value={formatCondition(product.condition)}
+              />
+
+              <Detail title="Warranty" value={product.warranty || "—"} />
+
+              <Detail title="Rating" value={`${productRating.toFixed(1)}/5`} />
+
+              <Detail title="Category" value={product.category || "—"} />
             </div>
-          )}
+          </section>
 
-          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Detail title="Brand" value={product.brand} />
-
-            <Detail title="Model" value={product.name} />
-
-            <Detail
-              title="Storage"
-              value={activeVariant?.storage || selectedStorage || "—"}
-            />
-
-            <Detail
-              title="Colour"
-              value={activeVariant?.color || selectedColor || "—"}
-            />
-
-            <Detail
-              title="Condition"
-              value={formatCondition(product.condition)}
-            />
-
-            <Detail title="Warranty" value={product.warranty || "—"} />
-
-            <Detail title="Rating" value={`${productRating.toFixed(1)}/5`} />
-
-            <Detail title="Category" value={product.category || "—"} />
-          </div>
-        </section>
-
-        {/* ===================================================
+          {/* ===================================================
     CUSTOMER REVIEWS
 =================================================== */}
 
-        <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
-          {(() => {
-            const reviews = safeReviews(product.reviews);
+          <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
+            {(() => {
+              const reviews = safeReviews(product.reviews);
 
-            const ratingCounts = {
-              5: reviews.filter(
-                (review) => Math.round(toNumber(review.rating)) === 5,
-              ).length,
-              4: reviews.filter(
-                (review) => Math.round(toNumber(review.rating)) === 4,
-              ).length,
-              3: reviews.filter(
-                (review) => Math.round(toNumber(review.rating)) === 3,
-              ).length,
-              2: reviews.filter(
-                (review) => Math.round(toNumber(review.rating)) === 2,
-              ).length,
-              1: reviews.filter(
-                (review) => Math.round(toNumber(review.rating)) === 1,
-              ).length,
-            };
+              const ratingCounts = {
+                5: reviews.filter(
+                  (review) => Math.round(toNumber(review.rating)) === 5,
+                ).length,
+                4: reviews.filter(
+                  (review) => Math.round(toNumber(review.rating)) === 4,
+                ).length,
+                3: reviews.filter(
+                  (review) => Math.round(toNumber(review.rating)) === 3,
+                ).length,
+                2: reviews.filter(
+                  (review) => Math.round(toNumber(review.rating)) === 2,
+                ).length,
+                1: reviews.filter(
+                  (review) => Math.round(toNumber(review.rating)) === 1,
+                ).length,
+              };
 
-            const totalRatings = reviews.length;
+              const totalRatings = reviews.length;
 
-            const getBarWidth = (count: number) => {
-              if (totalRatings === 0) {
-                return 0;
-              }
+              const getBarWidth = (count: number) => {
+                if (totalRatings === 0) {
+                  return 0;
+                }
 
-              return Math.round((count / totalRatings) * 100);
-            };
+                return Math.round((count / totalRatings) * 100);
+              };
 
-            const ratingRows = [
-              {
-                rating: 5,
-                count: ratingCounts[5],
-                color: "bg-green-600",
-              },
-              {
-                rating: 4,
-                count: ratingCounts[4],
-                color: "bg-green-500",
-              },
-              {
-                rating: 3,
-                count: ratingCounts[3],
-                color: "bg-yellow-500",
-              },
-              {
-                rating: 2,
-                count: ratingCounts[2],
-                color: "bg-red-500",
-              },
-              {
-                rating: 1,
-                count: ratingCounts[1],
-                color: "bg-red-600",
-              },
-            ];
+              const ratingRows = [
+                {
+                  rating: 5,
+                  count: ratingCounts[5],
+                  color: "bg-green-600",
+                },
+                {
+                  rating: 4,
+                  count: ratingCounts[4],
+                  color: "bg-green-500",
+                },
+                {
+                  rating: 3,
+                  count: ratingCounts[3],
+                  color: "bg-yellow-500",
+                },
+                {
+                  rating: 2,
+                  count: ratingCounts[2],
+                  color: "bg-red-500",
+                },
+                {
+                  rating: 1,
+                  count: ratingCounts[1],
+                  color: "bg-red-600",
+                },
+              ];
 
-            return (
-              <>
-                {/* REVIEW HEADER */}
+              return (
+                <>
+                  {/* REVIEW HEADER */}
 
-                <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
-                  <div className="min-w-[220px]">
-                    <h2 className="text-2xl font-black">Customer reviews</h2>
+                  <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
+                    <div className="min-w-[220px]">
+                      <h2 className="text-2xl font-black">Customer reviews</h2>
 
-                    <p className="mt-1 text-sm text-gray-500">
-                      See what verified customers say about this product.
-                    </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        See what verified customers say about this product.
+                      </p>
 
-                    <div className="mt-6 flex items-center gap-4">
-                      <div className="text-center">
-                        <p
-                          className={`text-4xl font-black ${getRatingColor(
-                            productRating,
-                          )}`}
-                        >
-                          {productRating.toFixed(1)}
-                        </p>
+                      <div className="mt-6 flex items-center gap-4">
+                        <div className="text-center">
+                          <p
+                            className={`text-4xl font-black ${getRatingColor(
+                              productRating,
+                            )}`}
+                          >
+                            {productRating.toFixed(1)}
+                          </p>
 
-                        <div className="mt-1 flex items-center justify-center gap-1">
-                          {Array.from({ length: 5 }).map((_, index) => (
-                            <Star
-                              key={index}
-                              size={16}
-                              className={getRatingColor(productRating)}
-                              fill={
-                                index < Math.round(productRating)
-                                  ? "currentColor"
-                                  : "none"
-                              }
-                            />
-                          ))}
+                          <div className="mt-1 flex items-center justify-center gap-1">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                              <Star
+                                key={index}
+                                size={16}
+                                className={getRatingColor(productRating)}
+                                fill={
+                                  index < Math.round(productRating)
+                                    ? "currentColor"
+                                    : "none"
+                                }
+                              />
+                            ))}
+                          </div>
+
+                          <p className="mt-2 text-xs font-semibold text-gray-400">
+                            {product.reviewCount}{" "}
+                            {product.reviewCount === 1 ? "rating" : "ratings"}
+                          </p>
                         </div>
+                      </div>
+                    </div>
 
-                        <p className="mt-2 text-xs font-semibold text-gray-400">
-                          {product.reviewCount}{" "}
-                          {product.reviewCount === 1 ? "rating" : "ratings"}
-                        </p>
+                    {/* RATING BREAKDOWN */}
+
+                    <div className="w-full max-w-xl flex-1 rounded-2xl bg-gray-50 p-5">
+                      <div className="space-y-3">
+                        {ratingRows.map((row) => (
+                          <div
+                            key={row.rating}
+                            className="flex items-center gap-3"
+                          >
+                            {/* STAR NUMBER */}
+
+                            <div className="flex w-8 shrink-0 items-center justify-end gap-1">
+                              <span className="text-sm font-bold text-gray-700">
+                                {row.rating}
+                              </span>
+
+                              <Star
+                                size={13}
+                                className={getRatingColor(row.rating)}
+                                fill="currentColor"
+                              />
+                            </div>
+
+                            {/* BAR */}
+
+                            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-200">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${row.color}`}
+                                style={{
+                                  width: `${getBarWidth(row.count)}%`,
+                                }}
+                              />
+                            </div>
+
+                            {/* COUNT */}
+
+                            <span className="w-8 text-right text-xs font-bold text-gray-500">
+                              {row.count}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
 
-                  {/* RATING BREAKDOWN */}
+                  {/* REVIEWS */}
 
-                  <div className="w-full max-w-xl flex-1 rounded-2xl bg-gray-50 p-5">
-                    <div className="space-y-3">
-                      {ratingRows.map((row) => (
-                        <div
-                          key={row.rating}
-                          className="flex items-center gap-3"
-                        >
-                          {/* STAR NUMBER */}
+                  <div className="mt-8 border-t border-gray-100 pt-8">
+                    {reviews.length > 0 ? (
+                      <div className="space-y-4">
+                        {reviews.map((review) => {
+                          const reviewerName = review.user
+                            ? `${review.user.firstName} ${review.user.lastName}`.trim()
+                            : "Verified customer";
 
-                          <div className="flex w-8 shrink-0 items-center justify-end gap-1">
-                            <span className="text-sm font-bold text-gray-700">
-                              {row.rating}
-                            </span>
+                          const reviewRating = Math.min(
+                            5,
+                            Math.max(0, toNumber(review.rating)),
+                          );
 
-                            <Star
-                              size={13}
-                              className={getRatingColor(row.rating)}
-                              fill="currentColor"
-                            />
-                          </div>
+                          const reviewDate = new Date(review.createdAt);
 
-                          {/* BAR */}
+                          const validReviewDate = !Number.isNaN(
+                            reviewDate.getTime(),
+                          );
 
-                          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-200">
+                          return (
                             <div
-                              className={`h-full rounded-full transition-all duration-500 ${row.color}`}
-                              style={{
-                                width: `${getBarWidth(row.count)}%`,
-                              }}
-                            />
-                          </div>
+                              key={review.id}
+                              className="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
+                            >
+                              {/* CUSTOMER + RATING */}
 
-                          {/* COUNT */}
+                              <div className="flex flex-wrap items-start justify-between gap-4">
+                                <div>
+                                  <p className="text-sm font-bold text-gray-900">
+                                    {reviewerName}
+                                  </p>
 
-                          <span className="w-8 text-right text-xs font-bold text-gray-500">
-                            {row.count}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* REVIEWS */}
-
-                <div className="mt-8 border-t border-gray-100 pt-8">
-                  {reviews.length > 0 ? (
-                    <div className="space-y-4">
-                      {reviews.map((review) => {
-                        const reviewerName = review.user
-                          ? `${review.user.firstName} ${review.user.lastName}`.trim()
-                          : "Verified customer";
-
-                        const reviewRating = Math.min(
-                          5,
-                          Math.max(0, toNumber(review.rating)),
-                        );
-
-                        const reviewDate = new Date(review.createdAt);
-
-                        const validReviewDate = !Number.isNaN(
-                          reviewDate.getTime(),
-                        );
-
-                        return (
-                          <div
-                            key={review.id}
-                            className="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
-                          >
-                            {/* CUSTOMER + RATING */}
-
-                            <div className="flex flex-wrap items-start justify-between gap-4">
-                              <div>
-                                <p className="text-sm font-bold text-gray-900">
-                                  {reviewerName}
-                                </p>
-
-                                {review.verifiedPurchase && (
-                                  <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-green-600">
-                                    <BadgeCheck size={14} />
-                                    Verified purchase
-                                  </div>
-                                )}
-                              </div>
-
-                              <div
-                                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white ${getRatingBgColor(
-                                  reviewRating,
-                                )}`}
-                              >
-                                {reviewRating.toFixed(0)}
-
-                                <Star size={12} fill="currentColor" />
-                              </div>
-                            </div>
-
-                            {/* COMMENT */}
-
-                            <p className="mt-4 text-sm leading-6 text-gray-600">
-                              {review.comment}
-                            </p>
-
-                            {/* MEDIA */}
-
-                            {review.media && review.media.length > 0 && (
-                              <div className="mt-4 flex flex-wrap gap-3">
-                                {review.media.map((media) =>
-                                  media.type === "VIDEO" ? (
-                                    <div
-                                      key={media.id}
-                                      className="overflow-hidden rounded-xl border border-gray-200 bg-black shadow-sm"
-                                    >
-                                      <video
-                                        src={media.url}
-                                        controls
-                                        preload="metadata"
-                                        className="h-32 w-32 object-cover sm:h-36 sm:w-36"
-                                      />
+                                  {review.verifiedPurchase && (
+                                    <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-green-600">
+                                      <BadgeCheck size={14} />
+                                      Verified purchase
                                     </div>
-                                  ) : (
-                                    <a
-                                      key={media.id}
-                                      href={media.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="group block overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm"
-                                    >
-                                      <img
-                                        src={media.url}
-                                        alt="Customer review"
-                                        className="h-32 w-32 object-cover transition duration-300 group-hover:scale-105 sm:h-36 sm:w-36"
-                                      />
-                                    </a>
-                                  ),
-                                )}
+                                  )}
+                                </div>
+
+                                <div
+                                  className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white ${getRatingBgColor(
+                                    reviewRating,
+                                  )}`}
+                                >
+                                  {reviewRating.toFixed(0)}
+
+                                  <Star size={12} fill="currentColor" />
+                                </div>
                               </div>
-                            )}
 
-                            {/* DATE */}
+                              {/* COMMENT */}
 
-                            {validReviewDate && (
-                              <p className="mt-4 text-xs text-gray-400">
-                                {reviewDate.toLocaleDateString("en-IN", {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                })}
+                              <p className="mt-4 text-sm leading-6 text-gray-600">
+                                {review.comment}
                               </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center">
-                      <Star size={28} className="mx-auto text-gray-300" />
 
-                      <h3 className="mt-3 text-sm font-black text-gray-900">
-                        No reviews yet
-                      </h3>
+                              {/* MEDIA */}
 
-                      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
-                        Verified customer reviews will appear here after
-                        customers review this product.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </>
-            );
-          })()}
-        </section>
+                              {review.media && review.media.length > 0 && (
+                                <div className="mt-4 flex flex-wrap gap-3">
+                                  {review.media.map((media) =>
+                                    media.type === "VIDEO" ? (
+                                      <div
+                                        key={media.id}
+                                        className="overflow-hidden rounded-xl border border-gray-200 bg-black shadow-sm"
+                                      >
+                                        <video
+                                          src={media.url}
+                                          controls
+                                          preload="metadata"
+                                          className="h-32 w-32 object-cover sm:h-36 sm:w-36"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <a
+                                        key={media.id}
+                                        href={media.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group block overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm"
+                                      >
+                                        <img
+                                          src={media.url}
+                                          alt="Customer review"
+                                          className="h-32 w-32 object-cover transition duration-300 group-hover:scale-105 sm:h-36 sm:w-36"
+                                        />
+                                      </a>
+                                    ),
+                                  )}
+                                </div>
+                              )}
 
-        {/* ===================================================
+                              {/* DATE */}
+
+                              {validReviewDate && (
+                                <p className="mt-4 text-xs text-gray-400">
+                                  {reviewDate.toLocaleDateString("en-IN", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center">
+                        <Star size={28} className="mx-auto text-gray-300" />
+
+                        <h3 className="mt-3 text-sm font-black text-gray-900">
+                          No reviews yet
+                        </h3>
+
+                        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
+                          Verified customer reviews will appear here after
+                          customers review this product.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </section>
+
+          {/* ===================================================
             HOW IT WORKS
         =================================================== */}
 
-        <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
-          <h2 className="text-2xl font-black">Buy with confidence</h2>
+          <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
+            <h2 className="text-2xl font-black">Buy with confidence</h2>
 
-          <div className="mt-7 grid gap-6 md:grid-cols-3">
-            <Step
-              number="01"
-              icon={<Smartphone size={20} />}
-              title="Choose your phone"
-              text="Select your preferred storage, colour and payment option."
-            />
+            <div className="mt-7 grid gap-6 md:grid-cols-3">
+              <Step
+                number="01"
+                icon={<Smartphone size={20} />}
+                title="Choose your phone"
+                text="Select your preferred storage, colour and payment option."
+              />
 
-            <Step
-              number="02"
-              icon={<ShieldCheck size={20} />}
-              title="Secure checkout"
-              text="Complete your payment through our secure checkout process."
-            />
+              <Step
+                number="02"
+                icon={<ShieldCheck size={20} />}
+                title="Secure checkout"
+                text="Complete your payment through our secure checkout process."
+              />
 
-            <Step
-              number="03"
-              icon={<Truck size={20} />}
-              title="Get it delivered"
-              text="Your quality-checked phone is packed and delivered safely."
-            />
-          </div>
+              <Step
+                number="03"
+                icon={<Truck size={20} />}
+                title="Get it delivered"
+                text="Your quality-checked phone is packed and delivered safely."
+              />
+            </div>
+          </section>
         </section>
-      </section>
-    </main>
+      </main>
+    </>
   );
 }
 
