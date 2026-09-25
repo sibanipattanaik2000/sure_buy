@@ -229,34 +229,31 @@ export default function CheckoutPage() {
       [field]: value,
     }));
   };
-const waitForRazorpay = async (): Promise<boolean> => {
-  if (typeof window !== "undefined" && window.Razorpay) {
-    setRazorpayLoaded(true);
-    return true;
-  }
-
-  /*
-   * Razorpay may still be loading because checkout.js
-   * uses afterInteractive.
-   *
-   * Wait instead of immediately failing the order.
-   */
-  for (let attempt = 0; attempt < 100; attempt++) {
-    await new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 100);
-    });
-
-    if (
-      typeof window !== "undefined" &&
-      window.Razorpay
-    ) {
+  const waitForRazorpay = async (): Promise<boolean> => {
+    if (typeof window !== "undefined" && window.Razorpay) {
       setRazorpayLoaded(true);
       return true;
     }
-  }
 
-  return false;
-};
+    /*
+     * Razorpay may still be loading because checkout.js
+     * uses afterInteractive.
+     *
+     * Wait instead of immediately failing the order.
+     */
+    for (let attempt = 0; attempt < 100; attempt++) {
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, 100);
+      });
+
+      if (typeof window !== "undefined" && window.Razorpay) {
+        setRazorpayLoaded(true);
+        return true;
+      }
+    }
+
+    return false;
+  };
   /*
    * SUBMIT
    */
@@ -529,138 +526,138 @@ const waitForRazorpay = async (): Promise<boolean> => {
       /* =====================================================
    ONLINE PAYMENT — RAZORPAY
 ===================================================== */
-/* =====================================================
+      /* =====================================================
    PAYMENT — RAZORPAY
    COD = ₹500 ADVANCE
    UPI / CARD / EMI = FULL AMOUNT
 ===================================================== */
 
-const paymentOrderResponse = await createPaymentOrder(order.id);
+      const paymentOrderResponse = await createPaymentOrder(order.id);
 
-if (!paymentOrderResponse.success || !paymentOrderResponse.data) {
-  throw new Error(
-    paymentOrderResponse.message || "Unable to start online payment.",
-  );
-}
-
-const paymentOrder = paymentOrderResponse.data;
-
-const razorpayReady = await waitForRazorpay();
-
-if (!razorpayReady || !window.Razorpay) {
-  throw new Error(
-    "Unable to load the payment gateway. Please refresh the page and try again.",
-  );
-}
-
-let paymentCancelled = false;
-
-await new Promise<void>((resolve, reject) => {
-  let settled = false;
-
-  const resolveOnce = () => {
-    if (settled) return;
-    settled = true;
-    resolve();
-  };
-
-  const rejectOnce = (error: Error) => {
-    if (settled) return;
-    settled = true;
-    reject(error);
-  };
-
-  const razorpay = new window.Razorpay({
-    key: paymentOrder.keyId,
-
-    // Backend decides the amount:
-    // COD      -> ₹500
-    // UPI/CARD -> Full order amount
-    amount: paymentOrder.amountInPaise,
-
-    currency: paymentOrder.currency,
-
-    name: "Phone Bhai",
-
-    description:
-      backendPaymentMethod === "COD"
-        ? `₹500 advance for COD order ${order.orderNumber}`
-        : `Payment for order ${order.orderNumber}`,
-
-    order_id: paymentOrder.razorpayOrderId,
-
-    prefill: {
-      name: fullName,
-      contact: phone,
-    },
-
-    notes: {
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      paymentMethod: backendPaymentMethod,
-    },
-
-    theme: {
-      color: "#4f46e5",
-    },
-
-    handler: async (response) => {
-      try {
-        const verification = await verifyPayment(order.id, {
-          razorpayPaymentId: response.razorpay_payment_id,
-          razorpayOrderId: response.razorpay_order_id,
-          razorpaySignature: response.razorpay_signature,
-        });
-
-        if (!verification.success || !verification.data) {
-          throw new Error(
-            verification.message || "Payment verification failed.",
-          );
-        }
-
-        if (verification.data.status !== "PAID") {
-          throw new Error("Payment has not been confirmed yet.");
-        }
-
-        resolveOnce();
-      } catch (error) {
-        rejectOnce(
-          error instanceof Error
-            ? error
-            : new Error("Payment verification failed."),
+      if (!paymentOrderResponse.success || !paymentOrderResponse.data) {
+        throw new Error(
+          paymentOrderResponse.message || "Unable to start online payment.",
         );
       }
-    },
 
-    modal: {
-      ondismiss: () => {
-        if (settled) return;
+      const paymentOrder = paymentOrderResponse.data;
 
-        paymentCancelled = true;
-        settled = true;
-        resolve();
-      },
-    },
-  });
+      const razorpayReady = await waitForRazorpay();
 
-  razorpay.on("payment.failed", (response) => {
-    const description = response?.error?.description;
+      if (!razorpayReady || !window.Razorpay) {
+        throw new Error(
+          "Unable to load the payment gateway. Please refresh the page and try again.",
+        );
+      }
 
-    rejectOnce(
-      new Error(description || "Payment failed. Please try again."),
-    );
-  });
+      let paymentCancelled = false;
 
-  razorpay.open();
-});
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
 
-// Payment was cancelled — STOP here.
-if (paymentCancelled) {
-  setError("Payment was cancelled. Your order has not been confirmed.");
-  return;
-}
+        const resolveOnce = () => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        };
 
-/* =====================================================
+        const rejectOnce = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          reject(error);
+        };
+
+        const razorpay = new window.Razorpay({
+          key: paymentOrder.keyId,
+
+          // Backend decides the amount:
+          // COD      -> ₹500
+          // UPI/CARD -> Full order amount
+          amount: paymentOrder.amountInPaise,
+
+          currency: paymentOrder.currency,
+
+          name: "Phone Bhai",
+
+          description:
+            backendPaymentMethod === "COD"
+              ? `₹500 advance for COD order ${order.orderNumber}`
+              : `Payment for order ${order.orderNumber}`,
+
+          order_id: paymentOrder.razorpayOrderId,
+
+          prefill: {
+            name: fullName,
+            contact: phone,
+          },
+
+          notes: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            paymentMethod: backendPaymentMethod,
+          },
+
+          theme: {
+            color: "#4f46e5",
+          },
+
+          handler: async (response) => {
+            try {
+              const verification = await verifyPayment(order.id, {
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+
+              if (!verification.success || !verification.data) {
+                throw new Error(
+                  verification.message || "Payment verification failed.",
+                );
+              }
+
+              if (verification.data.status !== "PAID") {
+                throw new Error("Payment has not been confirmed yet.");
+              }
+
+              resolveOnce();
+            } catch (error) {
+              rejectOnce(
+                error instanceof Error
+                  ? error
+                  : new Error("Payment verification failed."),
+              );
+            }
+          },
+
+          modal: {
+            ondismiss: () => {
+              if (settled) return;
+
+              paymentCancelled = true;
+              settled = true;
+              resolve();
+            },
+          },
+        });
+
+        razorpay.on("payment.failed", (response) => {
+          const description = response?.error?.description;
+
+          rejectOnce(
+            new Error(description || "Payment failed. Please try again."),
+          );
+        });
+
+        razorpay.open();
+      });
+
+      // Payment was cancelled — STOP here.
+      if (paymentCancelled) {
+        setError("Payment was cancelled. Your order has not been confirmed.");
+        return;
+      }
+
+      /* =====================================================
    PAYMENT SUCCESS CONFIRMED
    ===================================================== */
       /* =====================================================
@@ -737,22 +734,22 @@ if (paymentCancelled) {
 
   return (
     <>
-     <Script
-  id="razorpay-checkout-script"
-  src="https://checkout.razorpay.com/v1/checkout.js"
-  strategy="afterInteractive"
-  onLoad={() => {
-    if (typeof window !== "undefined" && window.Razorpay) {
-      setRazorpayLoaded(true);
-    }
-  }}
-  onError={() => {
-    setRazorpayLoaded(false);
-    setError(
-      "Unable to load the payment gateway. Please refresh and try again.",
-    );
-  }}
-/>
+      <Script
+        id="razorpay-checkout-script"
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+        onLoad={() => {
+          if (typeof window !== "undefined" && window.Razorpay) {
+            setRazorpayLoaded(true);
+          }
+        }}
+        onError={() => {
+          setRazorpayLoaded(false);
+          setError(
+            "Unable to load the payment gateway. Please refresh and try again.",
+          );
+        }}
+      />
       <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
         <form
           onSubmit={handleSubmit}
@@ -907,19 +904,19 @@ if (paymentCancelled) {
                       >
                         {/* IMAGE */}
 
-                      <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
-  {product.image ? (
-    <img
-      src={product.image}
-      alt={product.name}
-      className="h-full w-full object-contain"
-    />
-  ) : (
-    <div className="text-xs text-gray-400">
-      No image
-    </div>
-  )}
-</div>
+                        <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            <div className="text-xs text-gray-400">
+                              No image
+                            </div>
+                          )}
+                        </div>
 
                         {/* DETAILS */}
 
@@ -1013,7 +1010,7 @@ if (paymentCancelled) {
                     onClick={() => setPaymentMethod("cod")}
                     icon={<Truck size={19} />}
                     title="Cash on Delivery"
-                    description="Pay when your device arrives"
+                    description="Pay ₹500 now • Remaining amount on delivery"
                   />
                 </div>
               </section>
@@ -1107,6 +1104,36 @@ if (paymentCancelled) {
                   />
                 </div>
               </div>
+              {paymentMethod === "cod" && (
+                <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-gray-700">
+                      Pay now
+                    </span>
+
+                    <span className="text-lg font-black text-indigo-600">
+                      ₹500
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      Remaining on delivery
+                    </span>
+
+                    <span className="text-sm font-black text-gray-900">
+                      ₹{Math.max(0, total - 500).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+
+                  <p className="mt-3 text-[11px] leading-5 text-indigo-600">
+                    A ₹500 advance is required to confirm your COD order. The
+                    remaining ₹
+                    {Math.max(0, total - 500).toLocaleString("en-IN")} will be
+                    collected when your device is delivered.
+                  </p>
+                </div>
+              )}
             </aside>
           </div>
         </form>

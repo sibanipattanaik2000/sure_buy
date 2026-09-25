@@ -7,8 +7,8 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { loginUser } from "@/app/lib/api";
 export default function LoginPage() {
-const router = useRouter();
-const { login } = useAuth();
+  const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -16,44 +16,46 @@ const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-const handleSubmit = async (
-  e: React.FormEvent<HTMLFormElement>,
-) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  setError("");
+    setError("");
 
-  if (!email.trim() || !password) {
-    setError(
-      "Please enter your email and password.",
-    );
-    return;
-  }
+    if (!email.trim() || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-  await login({
-  email: email.trim(),
-  password,
-});
+      await login({
+        email: email.trim(),
+        password,
+      });
 
-    router.replace("/");
-  } catch (error) {
-    console.error(
-      "LOGIN ERROR:",
-      error,
-    );
+      const redirect = new URLSearchParams(window.location.search).get(
+        "redirect",
+      );
 
-    setError(
-      error instanceof Error
-        ? error.message
-        : "Login failed. Please try again.",
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+      const safeRedirect =
+        redirect && redirect.startsWith("/") && !redirect.startsWith("//")
+          ? redirect
+          : "/";
+
+      router.replace(safeRedirect);
+    } catch (error) {
+      console.error("LOGIN ERROR:", error);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Login failed. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="min-h-[calc(100vh-72px)] bg-gray-50 px-5 py-16">

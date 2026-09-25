@@ -25,6 +25,7 @@ import { useCart } from "../../context/CartContext";
 import { getProduct } from "@/app/lib/api";
 import Image from "next/image";
 import { getOptimizedImageUrl } from "@/app/lib/image";
+import { useAuth } from "@/app/context/AuthContext";
 
 /* =========================================================
    TYPES
@@ -225,7 +226,7 @@ export default function ProductDetailsPage() {
   const { addToCart, isInCart, cartItems } = useCart();
 
   const { wishlist, toggleWishlist } = useWishlist();
-
+  const { isAuthenticated, loading: authLoading } = useAuth();
   /* =======================================================
      STATE
   ======================================================= */
@@ -781,6 +782,18 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   const handleAddToCart = () => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      const currentPath = window.location.pathname;
+
+      router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
+
+      return;
+    }
+
     if (!activeVariant) {
       return;
     }
@@ -805,6 +818,18 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   const handleBuyNow = () => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      const currentPath = window.location.pathname;
+
+      router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
+
+      return;
+    }
+
     if (!activeVariant) {
       return;
     }
@@ -817,15 +842,8 @@ export default function ProductDetailsPage() {
       return;
     }
 
-    /*
-     * Persist selected payment method.
-     */
     setPaymentMethod(paymentMethod);
 
-    /*
-     * Quantity is explicitly included.
-     * CheckoutContext will normalize it.
-     */
     setProduct(
       {
         ...cartProduct,
