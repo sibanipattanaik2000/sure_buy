@@ -9,8 +9,7 @@ import { CheckoutProvider } from "./context/CheckoutContext";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
 
-const SITE_URL = "https://phonebhai.com";
-
+const SITE_URL = "https://www.phonebhai.com";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
 

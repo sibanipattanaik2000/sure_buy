@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = "https://phonebhai.com";
+const SITE_URL = "https://www.phonebhai.com";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,17 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: [
-          "/admin/",
-          "/account/",
-          "/cart/",
-          "/checkout/",
-          "/login/",
-          "/register/",
-          "/orders/",
-          "/wishlist/",
-          "/order-success/",
-        ],
+        disallow: ["/admin/"],
       },
     ],
 
