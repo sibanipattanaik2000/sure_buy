@@ -83,11 +83,11 @@ const structuredData = {
         "@type": "ImageObject",
         url: `${SITE_URL}/logo-img.png`,
       },
-      sameAs: [
-        "https://www.instagram.com/surebuystore_/",
-        "https://www.facebook.com/share/1BmWF5KqYP/",
-        "https://youtube.com/@surebuystore",
-      ],
+      // sameAs: [
+      //   "https://www.instagram.com/surebuystore_/",
+      //   "https://www.facebook.com/share/1BmWF5KqYP/",
+      //   "https://youtube.com/@surebuystore",
+      // ],
     },
     {
       "@type": "WebSite",
