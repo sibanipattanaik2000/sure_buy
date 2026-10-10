@@ -90,12 +90,14 @@ const structuredData = {
       logo: {
         "@type": "ImageObject",
         url: `${SITE_URL}/logo-img.png`,
+        width: 512,
+        height: 512,
       },
-      // sameAs: [
-      //   "https://www.instagram.com/surebuystore_/",
-      //   "https://www.facebook.com/share/1BmWF5KqYP/",
-      //   "https://youtube.com/@surebuystore",
-      // ],
+      sameAs: [
+        "https://www.instagram.com/surebuystore_/",
+        "https://www.facebook.com/share/1BmWF5KqYP/",
+        "https://youtube.com/@surebuystore",
+      ],
     },
     {
       "@type": "WebSite",
@@ -107,6 +109,14 @@ const structuredData = {
         "@id": `${SITE_URL}/#organization`,
       },
       inLanguage: "en-IN",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${SITE_URL}/buy?q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
     },
   ],
 };
