@@ -81,7 +81,7 @@ const structuredData = {
       url: SITE_URL,
       logo: {
         "@type": "ImageObject",
-        url: `${SITE_URL}/favicon.ico`,
+        url: `${SITE_URL}/logo-img.png`,
       },
       sameAs: [
         "https://www.instagram.com/surebuystore_/",
