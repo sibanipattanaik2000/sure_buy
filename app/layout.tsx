@@ -60,6 +60,13 @@ export const metadata: Metadata = {
     title: "PhoneBhai | Buy Refurbished & Used Phones Online",
     description:
       "Shop quality-checked refurbished, used and new smartphones at PhoneBhai.",
+      images: [
+      {
+        url: "/logo-img.png",         
+        width: 512,
+        height: 512,
+        alt: "PhoneBhai Logo",
+      },]
   },
 
   twitter: {
@@ -67,6 +74,7 @@ export const metadata: Metadata = {
     title: "PhoneBhai | Buy Refurbished & Used Phones Online",
     description:
       "Shop quality-checked refurbished, used and new smartphones at PhoneBhai.",
+      images: ["/logo-img.png"],
   },
 };
 
