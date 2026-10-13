@@ -782,7 +782,7 @@ export default function Home() {
           <div id="products" className="bg-white">
             <ProductSection
               eyebrow="New inventory"
-              title="Fresh arrivals"
+              title="Fresh Arrivals"
               description="The latest smartphones added to the live PhoneBhai inventory."
               products={freshArrivals}
             />
