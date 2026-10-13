@@ -151,6 +151,10 @@ export default function CheckoutPage() {
     };
   }, [user, authLoading]);
   const [error, setError] = useState("");
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [couponMessage, setCouponMessage] = useState("");
+  const [couponMessageIsError, setCouponMessageIsError] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   /*
@@ -208,7 +212,12 @@ export default function CheckoutPage() {
 
   const deliveryCharge = 0;
 
-  const total = subtotal + deliveryCharge;
+  const couponDiscount = appliedCoupon === "SUREDISCOUNT" ? 1000 : 0;
+
+  const total = Math.max(
+    0,
+    Number((subtotal + deliveryCharge - couponDiscount).toFixed(2)),
+  );
 
   /*
    * TOTAL NUMBER OF PHYSICAL ITEMS
@@ -222,6 +231,40 @@ export default function CheckoutPage() {
   /*
    * HANDLE INPUT
    */
+
+  const applyCoupon = () => {
+    const normalizedCode = couponInput.trim().toUpperCase();
+
+    setCouponMessage("");
+    setCouponMessageIsError(false);
+
+    if (normalizedCode !== "SUREDISCOUNT") {
+      setAppliedCoupon(null);
+      setCouponMessage("Invalid coupon code. Please try SUREDISCOUNT.");
+      setCouponMessageIsError(true);
+      return;
+    }
+
+    if (subtotal <= 1000) {
+      setAppliedCoupon(null);
+      setCouponMessage(
+        "SUREDISCOUNT requires an order subtotal greater than ₹1,000.",
+      );
+      setCouponMessageIsError(true);
+      return;
+    }
+
+    setCouponInput("SUREDISCOUNT");
+    setAppliedCoupon("SUREDISCOUNT");
+    setCouponMessage("Coupon applied successfully! You saved ₹1,000.");
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponMessage("");
+    setCouponMessageIsError(false);
+  };
 
   const handleChange = (field: keyof DeliveryAddress, value: string) => {
     setForm((current) => ({
@@ -515,6 +558,7 @@ export default function CheckoutPage() {
       const orderResponse = await createOrder({
         addressId,
         paymentMethod: backendPaymentMethod,
+        ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
       });
 
       if (!orderResponse.success || !orderResponse.data) {
@@ -1021,7 +1065,126 @@ export default function CheckoutPage() {
             <aside>
               <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 className="text-lg font-black">Price details</h2>
+                <section className="mt-5 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                      <Check size={19} />
+                    </div>
 
+                    <div>
+                      <h3 className="text-sm font-extrabold text-gray-900">
+                        Get ₹1,000 off
+                      </h3>
+
+                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                        Apply{" "}
+                        <span className="font-extrabold text-black">
+                          SUREDISCOUNT
+                        </span>{" "}
+                        to save ₹1,000 on your order.
+                      </p>
+                    </div>
+                  </div>
+                  {appliedCoupon ? (
+                    <div className="coupon-celebration relative mt-2 overflow-hidden rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-violet-50 p-2">
+                      <span
+                        className="coupon-confetti confetti-one"
+                        aria-hidden="true"
+                      >
+                        🎉
+                      </span>
+                      <span
+                        className="coupon-confetti confetti-two"
+                        aria-hidden="true"
+                      >
+                        ✨
+                      </span>
+                      <span
+                        className="coupon-confetti confetti-three"
+                        aria-hidden="true"
+                      >
+                        🎊
+                      </span>
+
+                      <div className="relative z-10 flex items-center gap-3">
+                        <span
+                          className="coupon-party text-3xl"
+                          aria-hidden="true"
+                        >
+                          🥳
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="font-extrabold text-emerald-800">
+                            Yay! Coupon applied!
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-emerald-900">
+                            You saved ₹1,000 with{" "}
+                            <span className="font-extrabold text-black">
+                              {appliedCoupon}
+                            </span>
+                            ✨
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={removeCoupon}
+                          disabled={placingOrder}
+                          className="shrink-0 text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex gap-2">
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(event) => {
+                          setCouponInput(event.target.value);
+                          setCouponMessage("");
+                          setCouponMessageIsError(false);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            applyCoupon();
+                          }
+                        }}
+                        placeholder="Enter coupon code"
+                        maxLength={40}
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        disabled={placingOrder}
+                        aria-label="Coupon code"
+                        className="h-11 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold uppercase outline-none transition focus:border-indigo-500 disabled:opacity-50"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={applyCoupon}
+                        disabled={placingOrder || !couponInput.trim()}
+                        className="h-11 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  )}
+
+                  {couponMessage && (
+                    <p
+                      role="status"
+                      aria-live="polite"
+                      className={`mt-3 text-xs font-semibold ${
+                        couponMessageIsError ? "text-red-600" : "text-green-700"
+                      }`}
+                    >
+                      {couponMessage}
+                    </p>
+                  )}
+                </section>
                 <div className="mt-6 space-y-4 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">MRP</span>
@@ -1038,7 +1201,15 @@ export default function CheckoutPage() {
                       - ₹{savings.toLocaleString("en-IN")}
                     </span>
                   </div>
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-500">Coupon Applied</span>
 
+                      <span className="font-bold text-green-600">
+                        - ₹{couponDiscount.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-500">Delivery</span>
 
@@ -1065,7 +1236,8 @@ export default function CheckoutPage() {
 
                     <div>
                       <p className="text-xs font-bold text-green-700">
-                        You save ₹{savings.toLocaleString("en-IN")}
+                        You save ₹
+                        {(savings + couponDiscount).toLocaleString("en-IN")}
                       </p>
 
                       <p className="mt-1 text-[11px] leading-5 text-green-600">
@@ -1134,6 +1306,88 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               )}
+              <style jsx>{`
+                .coupon-celebration {
+                  animation: coupon-pop 450ms ease-out both;
+                }
+
+                .coupon-party {
+                  display: inline-block;
+                  animation: coupon-wiggle 700ms ease-in-out 2;
+                }
+
+                .coupon-confetti {
+                  position: absolute;
+                  top: -5px;
+                  opacity: 0;
+                  pointer-events: none;
+                  animation: coupon-float 1.5s ease-out both;
+                }
+
+                .confetti-one {
+                  left: 45%;
+                  animation-delay: 100ms;
+                }
+
+                .confetti-two {
+                  left: 68%;
+                  animation-delay: 250ms;
+                }
+
+                .confetti-three {
+                  left: 85%;
+                  animation-delay: 180ms;
+                }
+
+                @keyframes coupon-pop {
+                  0% {
+                    opacity: 0;
+                    transform: scale(0.94) translateY(8px);
+                  }
+                  70% {
+                    transform: scale(1.02);
+                  }
+                  100% {
+                    opacity: 1;
+                    transform: scale(1) translateY(0);
+                  }
+                }
+
+                @keyframes coupon-wiggle {
+                  0%,
+                  100% {
+                    transform: rotate(0deg) scale(1);
+                  }
+                  25% {
+                    transform: rotate(-15deg) scale(1.15);
+                  }
+                  75% {
+                    transform: rotate(15deg) scale(1.15);
+                  }
+                }
+
+                @keyframes coupon-float {
+                  0% {
+                    opacity: 0;
+                    transform: translateY(20px) rotate(-15deg) scale(0.7);
+                  }
+                  20% {
+                    opacity: 1;
+                  }
+                  100% {
+                    opacity: 0;
+                    transform: translateY(55px) rotate(25deg) scale(1.2);
+                  }
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+                  .coupon-celebration,
+                  .coupon-party,
+                  .coupon-confetti {
+                    animation: none;
+                  }
+                }
+              `}</style>
             </aside>
           </div>
         </form>

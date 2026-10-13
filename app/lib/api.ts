@@ -391,6 +391,7 @@ export async function getOrder(id: string) {
 export async function createOrder(payload: {
   addressId: string;
   paymentMethod: "COD" | "UPI" | "CARD" | "EMI";
+  couponCode?: string;
 }) {
   return apiRequest<Order>("/orders", {
     method: "POST",

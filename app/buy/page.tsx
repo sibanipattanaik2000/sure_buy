@@ -710,87 +710,227 @@ export default function BuyPage() {
 
         <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
           <aside className={`${mobileFilters ? "block" : "hidden"} lg:block`}>
-            <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-5">
-              <div className="flex items-center justify-between">
-                <h2 className="font-bold">Filters</h2>
+            <div className="sticky top-24 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.07)]">
+              {/* Gradient header */}
+              <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-violet-900 to-purple-800 p-5 text-white">
+                <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
 
+                <div className="relative flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Filter size={18} />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-100">
+                        PhoneBhai
+                      </span>
+                    </div>
+
+                    <h2 className="mt-3 text-xl font-black tracking-tight">
+                      Refine your search
+                    </h2>
+
+                    <p className="mt-1 text-xs text-indigo-100">
+                      Find your perfect device
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-bold transition hover:bg-white/20"
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                <div className="relative mt-5 flex items-center justify-between rounded-xl border border-white/15 bg-white/10 px-3 py-2.5">
+                  <span className="text-xs text-indigo-50">
+                    Filters selected
+                  </span>
+                  <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-2 text-xs font-black text-indigo-700">
+                    {selectedBrands.length +
+                      (maxPrice < 400000 ? 1 : 0) +
+                      (category !== "All" ? 1 : 0)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-6 p-5">
+                {/* Brands */}
+                <section>
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-gray-900">
+                        Shop by brand
+                      </h3>
+                      <p className="mt-1 text-[11px] text-gray-400">
+                        Choose your favourite
+                      </p>
+                    </div>
+
+                    <Smartphone size={19} className="text-indigo-500" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {brands.map((brand) => {
+                      const active = selectedBrands.includes(brand);
+
+                      return (
+                        <label
+                          key={brand}
+                          className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 transition-all duration-200 ${
+                            active
+                              ? "border-indigo-300 bg-indigo-50 text-indigo-700 shadow-sm"
+                              : "border-gray-100 bg-gray-50/70 text-gray-600 hover:border-indigo-200 hover:bg-indigo-50/50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={active}
+                            onChange={() => toggleBrand(brand)}
+                            className="h-4 w-4 shrink-0 rounded accent-indigo-600"
+                          />
+
+                          <span className="truncate text-xs font-bold">
+                            {brand}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <div className="border-t border-gray-100" />
+
+                {/* Budget */}
+                <section>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-gray-900">
+                        Your budget
+                      </h3>
+                      <p className="mt-1 text-[11px] text-gray-400">
+                        Find the right price
+                      </p>
+                    </div>
+
+                    <span className="rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-extrabold text-indigo-700">
+                      PRICE
+                    </span>
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                      Up to
+                    </p>
+
+                    <p className="mt-1 text-2xl font-black text-gray-950">
+                      ₹{maxPrice.toLocaleString("en-IN")}
+                    </p>
+
+                    <input
+                      type="range"
+                      min="10000"
+                      max="400000"
+                      step="5000"
+                      value={maxPrice}
+                      onChange={(event) =>
+                        setMaxPrice(Number(event.target.value))
+                      }
+                      aria-label="Maximum product price"
+                      className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full accent-indigo-600"
+                      style={{
+                        background: `linear-gradient(to right, #4f46e5 ${
+                          ((maxPrice - 10000) / 390000) * 100
+                        }%, #d1d5db ${((maxPrice - 10000) / 390000) * 100}%)`,
+                      }}
+                    />
+
+                    <div className="mt-2 flex justify-between text-[10px] font-semibold text-gray-400">
+                      <span>₹10K</span>
+                      <span>₹4L</span>
+                    </div>
+                  </div>
+
+                  <p className="mb-2 mt-4 text-[11px] font-bold text-gray-500">
+                    Quick select
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "₹15K", value: 15000 },
+                      { label: "₹30K", value: 30000 },
+                      { label: "₹50K", value: 50000 },
+                    ].map((preset) => {
+                      const active = maxPrice === preset.value;
+
+                      return (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => setMaxPrice(preset.value)}
+                          aria-pressed={active}
+                          className={`rounded-xl border py-2.5 text-xs font-extrabold transition ${
+                            active
+                              ? "border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                              : "border-gray-200 bg-white text-gray-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMaxPrice(400000)}
+                    className="mt-2 w-full rounded-xl border border-dashed border-gray-200 py-2.5 text-xs font-bold text-gray-500 transition hover:border-indigo-300 hover:text-indigo-700"
+                  >
+                    Show all prices
+                  </button>
+                </section>
+
+                {/* Trust panel */}
+                <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                      <ShieldCheck size={20} />
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-extrabold text-gray-900">
+                        Shop with confidence
+                      </p>
+
+                      <p className="mt-1 text-[11px] leading-5 text-gray-500">
+                        Quality-checked devices, transparent pricing and
+                        warranty-backed purchases.
+                      </p>
+
+                      <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-emerald-700">
+                        <BadgeCheck size={13} />
+                        Quality comes first
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clear filters */}
                 {(selectedBrands.length > 0 ||
                   maxPrice < 400000 ||
                   category !== "All") && (
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="text-xs font-bold text-indigo-600"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 py-3 text-xs font-extrabold text-gray-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                   >
-                    Clear
+                    <X size={15} />
+                    Clear all filters
                   </button>
                 )}
               </div>
-
-              <div className="mt-7">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                  Brand
-                </h3>
-
-                <div className="mt-4 space-y-3">
-                  {brands.map((brand) => (
-                    <label
-                      key={brand}
-                      className="flex cursor-pointer items-center justify-between text-sm"
-                    >
-                      <span className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedBrands.includes(brand)}
-                          onChange={() => toggleBrand(brand)}
-                          className="h-4 w-4 rounded border-gray-300 accent-indigo-600"
-                        />
-
-                        {brand}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-8 border-t border-gray-100 pt-7">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                  Maximum price
-                </h3>
-
-                <div className="mt-4 flex items-center justify-between text-sm font-bold">
-                  <span>₹10K</span>
-
-                  <span>₹{maxPrice.toLocaleString("en-IN")}</span>
-                </div>
-
-                <input
-                  type="range"
-                  min="10000"
-                  max="400000"
-                  step="5000"
-                  value={maxPrice}
-                  onChange={(event) => setMaxPrice(Number(event.target.value))}
-                  className="mt-4 w-full accent-indigo-600"
-                />
-              </div>
-
-              <div className="mt-8 rounded-2xl bg-gray-50 p-4">
-                <div className="flex gap-3">
-                  <ShieldCheck className="shrink-0 text-indigo-600" size={19} />
-
-                  <div>
-                    <p className="text-xs font-bold">Every device is checked</p>
-
-                    <p className="mt-1 text-[11px] leading-5 text-gray-500">
-                      Multi-point quality inspection before listing.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
-          </aside>
-
+          </aside>{" "}
           <div>
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
