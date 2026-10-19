@@ -696,7 +696,7 @@ export default function Home() {
           {trustItems.map(({ icon: Icon, title, text }) => (
             <div
               key={title}
-              className="group flex items-center gap-3 px-5 py-5 transition-colors duration-300 hover:bg-indigo-50/40 sm:py-6"
+              className="group flex items-center gap-3 px-3 py-3 transition-colors duration-300 hover:bg-indigo-50/40 sm:py-6"
             >
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-100 text-indigo-600 shadow-sm transition-transform duration-300 group-hover:scale-110">
                 <Icon size={21} />
@@ -897,7 +897,8 @@ export default function Home() {
                     The smarter phone cycle
                   </div>
 
-<h2 className="mt-4 max-w-xl text-2xl font-black leading-tight tracking-[-0.04em] text-white sm:mt-5 sm:text-4xl lg:text-5xl xl:text-6xl">                    {" "}
+                  <h2 className="mt-4 max-w-xl text-2xl font-black leading-tight tracking-[-0.04em] text-white sm:mt-5 sm:text-4xl lg:text-5xl xl:text-6xl">
+                    {" "}
                     Better phones
                     <br />
                     <span className="bg-gradient-to-r from-indigo-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
@@ -907,13 +908,16 @@ export default function Home() {
                     <span className="text-white/90">Better choice </span>
                   </h2>
 
-<p className="mt-5 hidden max-w-md text-sm leading-7 text-white/55 sm:block sm:text-base">
+                  <p className="mt-5 hidden max-w-md text-sm leading-7 text-white/55 sm:block sm:text-base">
                     We believe a good smartphone deserves more than one owner
                     PhoneBhai gives pre-owned phones a smarter second life
                   </p>
 
                   {/* Mini stats */}
-<div className="mt-5 hidden flex-wrap gap-3 sm:flex lg:mt-6">                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
+                  <div className="mt-5 hidden flex-wrap gap-3 sm:flex lg:mt-6">
+                    className="rounded-full bg-white px-4 py-2 text-xs font-bold
+                    text-gray-700 shadow-sm"{" "}
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
                         Focus
                       </p>
@@ -921,7 +925,6 @@ export default function Home() {
                         Smartphones
                       </p>
                     </div>
-
                     <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
                         Model
@@ -930,7 +933,6 @@ export default function Home() {
                         Pre-owned
                       </p>
                     </div>
-
                     <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
                         Mission
@@ -1244,12 +1246,17 @@ export default function Home() {
         </div>
       </section>
       {/* PhoneBhai Cycle */}
-<section className="px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">        <div className="mx-auto max-w-7xl">
-<div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 shadow-[0_20px_60px_rgba(79,70,229,0.08)] sm:rounded-3xl sm:p-5 lg:p-6">            {/* Decorative glow */}
+      <section className="px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
+        {" "}
+        <div className="mx-auto max-w-7xl">
+          <div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 shadow-[0_20px_60px_rgba(79,70,229,0.08)] sm:rounded-3xl sm:p-5 lg:p-6">
+            {" "}
+            {/* Decorative glow */}
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-300/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-violet-300/20 blur-3xl" />
-
-<div className="relative z-10 grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-6">              <div>
+            <div className="relative z-10 grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-6">
+              {" "}
+              <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">
                   The PhoneBhai cycle
                 </p>
@@ -1291,7 +1298,6 @@ export default function Home() {
                   </span>
                 </div>
               </div>
-
               {/* Right side highlight */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-3xl border border-white bg-white/80 p-6 shadow-sm backdrop-blur-sm">
