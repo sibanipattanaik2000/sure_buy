@@ -355,10 +355,11 @@ function ProductSection({
   const visibleProducts = products.slice(0, 4);
 
   return (
-    <section className="px-5 py-14 sm:py-16 lg:px-8 lg:py-20">
+    <section className="px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
+      {" "}
       <div className="mx-auto max-w-7xl">
         {/* SECTION HEADER */}
-        <div className="mb-8 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-6 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">
               {eyebrow}
@@ -387,7 +388,8 @@ function ProductSection({
 
         {/* PRODUCTS */}
         {visibleProducts.length > 0 ? (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+            {" "}
             {visibleProducts.map((product, index) => (
               <ProductCard key={product.id} product={product} index={index} />
             ))}
@@ -895,8 +897,7 @@ export default function Home() {
                     The smarter phone cycle
                   </div>
 
-                  <h2 className="mt-6 max-w-xl text-3xl font-black leading-[0.95] tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl xl:text-6xl gap-2">
-                    {" "}
+<h2 className="mt-4 max-w-xl text-2xl font-black leading-tight tracking-[-0.04em] text-white sm:mt-5 sm:text-4xl lg:text-5xl xl:text-6xl">                    {" "}
                     Better phones
                     <br />
                     <span className="bg-gradient-to-r from-indigo-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
@@ -906,14 +907,13 @@ export default function Home() {
                     <span className="text-white/90">Better choice </span>
                   </h2>
 
-                  <p className="mt-6 max-w-md text-sm leading-7 text-white/55 sm:text-base">
+<p className="mt-5 hidden max-w-md text-sm leading-7 text-white/55 sm:block sm:text-base">
                     We believe a good smartphone deserves more than one owner
                     PhoneBhai gives pre-owned phones a smarter second life
                   </p>
 
                   {/* Mini stats */}
-                  <div className="mt-8 flex flex-wrap gap-3">
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
+<div className="mt-5 hidden flex-wrap gap-3 sm:flex lg:mt-6">                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
                         Focus
                       </p>
@@ -1244,15 +1244,12 @@ export default function Home() {
         </div>
       </section>
       {/* PhoneBhai Cycle */}
-      <section className="px-5 py-14 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-7xl">
-          <div className="relative overflow-hidden rounded-[2.5rem] border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-7 shadow-[0_20px_60px_rgba(79,70,229,0.08)] sm:p-10 lg:p-14">
-            {/* Decorative glow */}
+<section className="px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">        <div className="mx-auto max-w-7xl">
+<div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 shadow-[0_20px_60px_rgba(79,70,229,0.08)] sm:rounded-3xl sm:p-5 lg:p-6">            {/* Decorative glow */}
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-300/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-violet-300/20 blur-3xl" />
 
-            <div className="relative z-10 grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-              <div>
+<div className="relative z-10 grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-6">              <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">
                   The PhoneBhai cycle
                 </p>
