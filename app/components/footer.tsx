@@ -203,6 +203,7 @@ export default function Footer() {
               ["Device Handover Policy", "/device-handover-policy"],
               ["Cookie Policy", "/cookie-policy"],
               ["Terms & Conditions", "/terms-and-conditions"],
+              ["Return & Replace", "return-refund-policy"],
             ]}
           />
         </div>
