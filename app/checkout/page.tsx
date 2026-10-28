@@ -458,7 +458,7 @@ export default function CheckoutPage() {
           isDefault: savedAddresses.length === 0,
         };
 
-        console.log("Creating checkout address:", addressPayload);
+        //console.log("Creating checkout address:", addressPayload);
 
         const addressResponse = await createAddress(addressPayload);
 
