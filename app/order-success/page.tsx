@@ -130,10 +130,28 @@ function OrderSuccessContent() {
           ? "Credit / Debit Card"
           : "EMI";
 
-  const paymentStatusLabel =
-    order.paymentStatus?.toUpperCase() === "PAID"
-      ? "Paid"
-      : order.paymentStatus?.toUpperCase() === "PENDING"
+  const normalizedPaymentStatus = order.paymentStatus?.toUpperCase();
+
+  const isCodAdvancePaid =
+    order.paymentMethod === "COD" &&
+    normalizedPaymentStatus === "PARTIALLY_PAID";
+
+  const paidAmount = isCodAdvancePaid
+    ? Math.min(500, Number(order.totalAmount) || 0)
+    : normalizedPaymentStatus === "PAID"
+      ? Number(order.totalAmount) || 0
+      : 0;
+
+  const pendingAmount = Math.max(
+    0,
+    (Number(order.totalAmount) || 0) - paidAmount,
+  );
+
+  const paymentStatusLabel = isCodAdvancePaid
+    ? "₹500 advance paid"
+    : normalizedPaymentStatus === "PAID"
+      ? "Paid in full"
+      : normalizedPaymentStatus === "PENDING"
         ? "Payment pending"
         : formatStatus(order.paymentStatus);
 
@@ -380,7 +398,8 @@ function OrderSuccessContent() {
 
                   <span
                     className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                      order.paymentStatus?.toUpperCase() === "PAID"
+                      //order.paymentStatus?.toUpperCase() === "PAID"
+                      normalizedPaymentStatus === "PAID" || isCodAdvancePaid
                         ? "bg-green-50 text-green-700"
                         : "bg-yellow-50 text-yellow-700"
                     }`}
@@ -388,6 +407,32 @@ function OrderSuccessContent() {
                     {paymentStatusLabel}
                   </span>
                 </div>
+                {isCodAdvancePaid && (
+                  <div className="mt-4 space-y-3 border-t border-gray-200 pt-4">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-xs text-gray-500">
+                        Advance paid online
+                      </span>
+                      <span className="text-sm font-bold text-green-700">
+                        {formatCurrency(paidAmount, order.currency)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between gap-3">
+                      <span className="text-xs text-gray-500">
+                        Balance due on delivery
+                      </span>
+                      <span className="text-sm font-black text-gray-900">
+                        {formatCurrency(pendingAmount, order.currency)}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] leading-5 text-gray-500">
+                      Your ₹500 advance is confirmed. Please pay the remaining
+                      balance to the delivery partner when your order arrives.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* ACTIONS */}

@@ -595,7 +595,8 @@ export default function CheckoutPage() {
       }
 
       let paymentCancelled = false;
-
+      const expectedPaymentStatus =
+        backendPaymentMethod === "COD" ? "PARTIALLY_PAID" : "PAID";
       await new Promise<void>((resolve, reject) => {
         let settled = false;
 
@@ -659,8 +660,14 @@ export default function CheckoutPage() {
                 );
               }
 
-              if (verification.data.status !== "PAID") {
-                throw new Error("Payment has not been confirmed yet.");
+              const confirmedStatus = verification.data.status?.toUpperCase();
+
+              if (confirmedStatus !== expectedPaymentStatus) {
+                throw new Error(
+                  backendPaymentMethod === "COD"
+                    ? "Your ₹500 advance payment has not been confirmed yet."
+                    : "Payment has not been confirmed yet.",
+                );
               }
 
               resolveOnce();
