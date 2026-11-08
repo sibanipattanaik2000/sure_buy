@@ -604,16 +604,6 @@ function TrustItem({
 function LoadingState() {
   return (
     <main className="min-h-screen bg-[#f7f8fa]">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center px-5 lg:px-8">
-          <Link
-            href="/"
-            className="text-xl font-black tracking-tight text-gray-950"
-          >
-            Sure<span className="text-indigo-600">Buy</span>
-          </Link>
-        </div>
-      </header>
 
       <section className="mx-auto max-w-5xl px-5 py-14 lg:px-8">
         <div className="animate-pulse">
