@@ -410,17 +410,9 @@ export interface CreatePaymentOrderResponse {
   amountInPaise: number;
   currency: string;
   keyId: string;
-    /**
-   * COD orders require a fixed ₹500 advance.
-   * The backend is the source of truth for this value.
-   */
-  paymentPurpose?: "FULL_PAYMENT" | "COD_ADVANCE";
-
-  /**
-   * Amount remaining after the currently-created payment.
-   * Backend calculated.
-   */
+  paymentPurpose?: "FULL_PAYMENT" | "COD_ADVANCE" | "BALANCE_PAYMENT";
   remainingAmount?: number;
+  paidAmount?: number;
 }
 
 export interface VerifyPaymentPayload {
