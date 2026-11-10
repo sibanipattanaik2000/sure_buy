@@ -1,6 +1,5 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "https://api.phonebhai.com/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ?? "https://api.phonebhai.com/api/v1";
 
 export type ApiResponse<T> = {
   success: boolean;
@@ -374,6 +373,23 @@ export interface Order {
 
   createdAt: string;
   updatedAt?: string;
+
+  paidAmount?: number;
+  remainingAmount?: number;
+
+  payments?: Array<{
+    id: string;
+    provider: string;
+    providerPaymentId?: string | null;
+    amount: number;
+    currency: string;
+    status: string;
+    method: string;
+    refundAmount?: number;
+    refundReason?: string | null;
+    refundedAt?: string | null;
+    createdAt: string;
+  }>;
 }
 
 export async function getOrders() {
@@ -986,9 +1002,7 @@ export async function createProductMediaUploadUrl(payload: {
   );
 }
 
-export async function createAdminProduct(
-  payload: CreateAdminProductPayload,
-) {
+export async function createAdminProduct(payload: CreateAdminProductPayload) {
   return apiRequest<unknown>("/admin/products", {
     method: "POST",
     body: JSON.stringify(payload),

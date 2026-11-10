@@ -12,81 +12,55 @@ import {
   MapPin,
   Package,
   Send,
-  ShieldCheck,
   Star,
   Truck,
   Video,
 } from "lucide-react";
 
-import { ApiError, getOrder } from "@/app/lib/api";
+import {
+  ApiError,
+  getOrder,
+  createPaymentOrder,
+  verifyPayment,
+  type Order as ApiOrder,
+} from "@/app/lib/api";
 
 /* =========================================================
    BACKEND TYPES
 ========================================================= */
 
-type BackendOrderItem = {
+type BackendPayment = {
   id: string;
-  productId: string;
-  variantId?: string | null;
-
-  productName?: string | null;
-  brand?: string | null;
-  category?: string | null;
-  condition?: string | null;
-
-  storage?: string | null;
-  color?: string | null;
-
-  imageUrl?: string | null;
-
-  unitPrice?: number | string | null;
-  originalPrice?: number | string | null;
-
-  quantity?: number | null;
-  subtotal?: number | string | null;
-
-  createdAt?: string | null;
+  provider: string;
+  providerPaymentId?: string | null;
+  amount: number | string;
+  currency: string;
+  status: string;
+  method: string;
+  refundAmount?: number | string | null;
+  refundReason?: string | null;
+  refundedAt?: string | null;
+  createdAt: string;
 };
 
 type BackendShippingAddress = {
   fullName?: string | null;
   phone?: string | null;
-
   addressLine1?: string | null;
   addressLine2?: string | null;
-
   area?: string | null;
-
   city?: string | null;
   state?: string | null;
   postalCode?: string | null;
-
   country?: string | null;
   landmark?: string | null;
 };
 
-type BackendOrder = {
-  id: string;
-  orderNumber?: string | null;
-  userId?: string;
-
-  status?: string | null;
-  paymentStatus?: string | null;
-  paymentMethod?: string | null;
-
-  subtotal?: number | string | null;
-  deliveryAmount?: number | string | null;
-  discountAmount?: number | string | null;
-  totalAmount?: number | string | null;
-
-  currency?: string | null;
-
+type BackendOrder = Omit<ApiOrder, "shippingAddress"> & {
+  paidAmount?: number | string | null;
+  remainingAmount?: number | string | null;
+  payments?: BackendPayment[];
   shippingAddress?: BackendShippingAddress | null;
-
-  items?: BackendOrderItem[];
-
-  createdAt?: string | null;
-  updatedAt?: string | null;
 };
 
 /* =========================================================
@@ -105,25 +79,29 @@ type OrderProduct = {
   quantity?: number;
 };
 
+type OrderPayment = {
+  id: string;
+  provider: string;
+  amount: number;
+  currency: string;
+  status: string;
+  method: string;
+  createdAt: string;
+};
+
 type Order = {
   orderId: string;
   orderNumber?: string;
   createdAt: string;
-
   status: string;
-
   paymentMethod: string;
   paymentStatus: string;
-
   product: OrderProduct;
-
   quantity: number;
-
   subtotal: number;
   deliveryFee: number;
   discount: number;
   total: number;
-
   address: {
     name: string;
     phone: string;
@@ -136,7 +114,9 @@ type Order = {
     country?: string;
     landmark?: string;
   };
-
+  paidAmount: number;
+  remainingAmount: number;
+  payments: OrderPayment[];
   expectedDelivery?: string;
 };
 
@@ -150,9 +130,10 @@ const FALLBACK_IMAGE = "/images/iphone-15.png";
    HELPERS
 ========================================================= */
 
-const toNumber = (value: number | string | null | undefined): number => {
+const toNumber = (
+  value: number | string | null | undefined,
+): number => {
   const number = Number(value ?? 0);
-
   return Number.isFinite(number) ? number : 0;
 };
 
@@ -175,8 +156,6 @@ const formatDate = (value?: string | null) => {
 const normalizeStatus = (status?: string | null) => {
   switch (status?.toUpperCase()) {
     case "PENDING":
-      return "Processing";
-
     case "PROCESSING":
       return "Processing";
 
@@ -247,95 +226,117 @@ const normalizePaymentStatus = (value?: string | null) => {
 
 const normalizeOrder = (backendOrder: BackendOrder): Order => {
   const item = backendOrder.items?.[0];
-
   const shipping = backendOrder.shippingAddress;
 
   const productId = String(item?.productId ?? "");
-
   const productName = item?.productName || "Product";
-
   const brand = item?.brand || "";
-
   const image = item?.imageUrl || FALLBACK_IMAGE;
 
   const quantity = Math.max(1, Number(item?.quantity ?? 1));
 
   const unitPrice = toNumber(item?.unitPrice);
-
   const subtotal = toNumber(backendOrder.subtotal);
-
   const total = toNumber(backendOrder.totalAmount);
-
   const deliveryFee = toNumber(backendOrder.deliveryAmount);
-
   const discount = toNumber(backendOrder.discountAmount);
+
+  const payments: OrderPayment[] = (backendOrder.payments ?? []).map(
+    (payment: BackendPayment) => ({
+      id: payment.id,
+      provider: payment.provider,
+      amount: toNumber(payment.amount),
+      currency: payment.currency,
+      status: payment.status,
+      method: payment.method,
+      createdAt: payment.createdAt,
+    }),
+  );
+
+  /*
+   * Prefer the backend's authoritative aggregate when provided.
+   * Fallback calculation is only for older API responses.
+   */
+  const calculatedPaidAmount = (backendOrder.payments ?? []).reduce(
+    (sum: number, payment: BackendPayment) => {
+      const status = payment.status.toUpperCase();
+      const amount = toNumber(payment.amount);
+      const refundAmount = toNumber(payment.refundAmount);
+
+      if (
+        status === "PAID" ||
+        status === "PARTIALLY_PAID" ||
+        status === "REFUND_PENDING"
+      ) {
+        return sum + amount;
+      }
+
+      if (status === "PARTIALLY_REFUNDED") {
+        return sum + Math.max(0, amount - refundAmount);
+      }
+
+      return sum;
+    },
+    0,
+  );
+
+  const paidAmount =
+    backendOrder.paidAmount !== null &&
+    backendOrder.paidAmount !== undefined
+      ? Math.max(0, toNumber(backendOrder.paidAmount))
+      : calculatedPaidAmount;
+
+  const remainingAmount =
+    backendOrder.remainingAmount !== null &&
+    backendOrder.remainingAmount !== undefined
+      ? Math.max(0, toNumber(backendOrder.remainingAmount))
+      : Math.max(0, total - paidAmount);
 
   return {
     orderId: backendOrder.id,
-
     orderNumber: backendOrder.orderNumber || undefined,
-
     createdAt: backendOrder.createdAt || "",
-
     status: normalizeStatus(backendOrder.status),
-
     paymentMethod: normalizePaymentMethod(backendOrder.paymentMethod),
-
     paymentStatus: normalizePaymentStatus(backendOrder.paymentStatus),
+
+    paidAmount,
+    remainingAmount,
+    payments,
 
     product: {
       id: productId,
-
       name: productName,
-
       brand,
-
       image,
-
       storage: item?.storage || undefined,
-
       color: item?.color || undefined,
-
       condition: item?.condition || undefined,
-
       price: unitPrice,
-
       quantity,
     },
 
     quantity,
-
     subtotal,
-
     deliveryFee,
-
     discount,
-
     total,
 
     address: {
       name: shipping?.fullName || "—",
-
       phone: shipping?.phone || "—",
-
       address: shipping?.addressLine1 || "—",
-
       addressLine2: shipping?.addressLine2 || undefined,
-
       area: shipping?.area || undefined,
-
       city: shipping?.city || "—",
-
       state: shipping?.state || "—",
-
       pincode: shipping?.postalCode || "—",
-
       country: shipping?.country || undefined,
-
       landmark: shipping?.landmark || undefined,
     },
   };
 };
+
 const ratingEmoji = {
   1: "😞",
   2: "🙁",
@@ -351,40 +352,95 @@ const ratingLabel = {
   4: "Happy",
   5: "Happiest!",
 } as const;
+
+/* =========================================================
+   RAZORPAY SCRIPT LOADER
+   Uses the existing global Window.Razorpay declaration
+   from app/types/razorpay.d.ts.
+========================================================= */
+
+function loadRazorpayCheckout(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(false);
+      return;
+    }
+
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const scriptUrl =
+      "https://checkout.razorpay.com/v1/checkout.js";
+
+    const existingScript =
+      document.querySelector<HTMLScriptElement>(
+        `script[src="${scriptUrl}"]`,
+      );
+
+    if (existingScript) {
+      if (existingScript.dataset.loaded === "true" && window.Razorpay) {
+        resolve(true);
+        return;
+      }
+
+      existingScript.addEventListener(
+        "load",
+        () => resolve(!!window.Razorpay),
+        { once: true },
+      );
+
+      existingScript.addEventListener(
+        "error",
+        () => resolve(false),
+        { once: true },
+      );
+
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = scriptUrl;
+    script.async = true;
+
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve(!!window.Razorpay);
+    };
+
+    script.onerror = () => resolve(false);
+
+    document.body.appendChild(script);
+  });
+}
+
 /* =========================================================
    PAGE
 ========================================================= */
 
 export default function OrderDetailsPage() {
   const params = useParams<{ id: string }>();
-
   const orderId = params?.id;
 
   const [order, setOrder] = useState<Order | null>(null);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
 
-  /* =======================================================
-     REVIEW STATE
-  ======================================================= */
+  const [payingBalance, setPayingBalance] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
+
+  /* REVIEW STATE */
 
   const [rating, setRating] = useState(0);
-
   const [hoverRating, setHoverRating] = useState(0);
-
   const [reviewText, setReviewText] = useState("");
-
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
-
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
-
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
-
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
 
   /* =======================================================
@@ -405,42 +461,17 @@ export default function OrderDetailsPage() {
         setLoading(true);
         setError("");
 
-        console.log("Fetching order:", orderId);
-
         const response = await getOrder(String(orderId));
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
-        /*
-         * apiRequest returns:
-         *
-         * {
-         *   success: true,
-         *   data: {...}
-         * }
-         */
-
-        const payload = response as {
-          success?: boolean;
-          data?: BackendOrder;
-        };
-
-        if (!payload?.success || !payload?.data) {
+        if (!response.success || !response.data) {
           throw new Error("Invalid order response from server.");
         }
 
-        const normalized = normalizeOrder(payload.data);
+        const normalized = normalizeOrder(response.data);
 
         setOrder(normalized);
-
-        /*
-         * Load locally saved review for now.
-         *
-         * This will later be replaced by
-         * the real review API.
-         */
 
         try {
           const savedReview = localStorage.getItem(
@@ -454,23 +485,16 @@ export default function OrderDetailsPage() {
             };
 
             setRating(Number(parsedReview.rating ?? 0));
-
             setReviewText(parsedReview.review || "");
-
             setReviewSubmitted(true);
           }
         } catch {
-          /*
-           * Local review data should never
-           * break the order page.
-           */
+          // Local review data must never break the order page.
         }
       } catch (err) {
         console.error("ORDER DETAILS LOAD ERROR:", err);
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         if (err instanceof ApiError) {
           if (err.status === 401) {
@@ -494,7 +518,7 @@ export default function OrderDetailsPage() {
       }
     };
 
-    loadOrder();
+    void loadOrder();
 
     return () => {
       cancelled = true;
@@ -511,21 +535,30 @@ export default function OrderDetailsPage() {
 
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-
-    const validFiles = files.filter((file) => file.type.startsWith("image/"));
+    const validFiles = files.filter((file) =>
+      file.type.startsWith("image/"),
+    );
 
     if (validFiles.length === 0) {
       event.target.value = "";
       return;
     }
 
-    const combinedFiles = [...selectedPhotos, ...validFiles].slice(0, 5);
+    const availableSlots = Math.max(0, 5 - selectedPhotos.length);
+    const acceptedFiles = validFiles.slice(0, availableSlots);
+
+    if (acceptedFiles.length === 0) {
+      event.target.value = "";
+      return;
+    }
+
+    const combinedFiles = [...selectedPhotos, ...acceptedFiles];
+    const newPreviews = acceptedFiles.map((file) =>
+      URL.createObjectURL(file),
+    );
 
     setSelectedPhotos(combinedFiles);
-
-    const previews = combinedFiles.map((file) => URL.createObjectURL(file));
-
-    setPhotoPreviews(previews);
+    setPhotoPreviews((current) => [...current, ...newPreviews]);
 
     event.target.value = "";
   };
@@ -545,10 +578,7 @@ export default function OrderDetailsPage() {
     }
 
     setSelectedVideo(file);
-
-    const preview = URL.createObjectURL(file);
-
-    setVideoPreview(preview);
+    setVideoPreview(URL.createObjectURL(file));
 
     event.target.value = "";
   };
@@ -560,17 +590,13 @@ export default function OrderDetailsPage() {
       URL.revokeObjectURL(preview);
     }
 
-    const updatedFiles = selectedPhotos.filter(
-      (_, fileIndex) => fileIndex !== index,
+    setSelectedPhotos((current) =>
+      current.filter((_, fileIndex) => fileIndex !== index),
     );
 
-    const updatedPreviews = photoPreviews.filter(
-      (_, previewIndex) => previewIndex !== index,
+    setPhotoPreviews((current) =>
+      current.filter((_, previewIndex) => previewIndex !== index),
     );
-
-    setSelectedPhotos(updatedFiles);
-
-    setPhotoPreviews(updatedPreviews);
   };
 
   const removeVideo = () => {
@@ -582,12 +608,24 @@ export default function OrderDetailsPage() {
     setVideoPreview(null);
   };
 
+  useEffect(() => {
+    return () => {
+      photoPreviews.forEach((preview) => URL.revokeObjectURL(preview));
+
+      if (videoPreview) {
+        URL.revokeObjectURL(videoPreview);
+      }
+    };
+  }, [photoPreviews, videoPreview]);
+
   const handleSubmitReview = async () => {
     if (!order) return;
+
     if (order.status !== "Delivered") {
       alert("You can review this product only after the order is delivered.");
       return;
     }
+
     if (rating === 0) {
       alert("Please select a rating first.");
       return;
@@ -603,18 +641,14 @@ export default function OrderDetailsPage() {
       return;
     }
 
-    if (reviewSubmitting) {
-      return;
-    }
+    if (reviewSubmitting) return;
 
     try {
       setReviewSubmitting(true);
 
       const formData = new FormData();
       formData.append("orderId", order.orderId);
-
       formData.append("rating", String(rating));
-
       formData.append("comment", reviewText.trim());
 
       selectedPhotos.slice(0, 5).forEach((file) => {
@@ -626,7 +660,8 @@ export default function OrderDetailsPage() {
       }
 
       const apiBaseUrl =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.phonebhai.com/api/v1";
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        "https://api.phonebhai.com/api/v1";
 
       const response = await fetch(
         `${apiBaseUrl}/products/${order.product.id}/reviews`,
@@ -641,15 +676,12 @@ export default function OrderDetailsPage() {
 
       if (!response.ok) {
         throw new Error(
-          payload?.message || payload?.error || "Unable to submit your review.",
+          payload?.message ||
+            payload?.error ||
+            "Unable to submit your review.",
         );
       }
 
-      /*
-       * Keep localStorage only as a lightweight
-       * UI fallback for this order page.
-       * The actual review is now stored in the backend.
-       */
       localStorage.setItem(
         `PhoneBhai-review-${order.orderId}`,
         JSON.stringify({
@@ -661,21 +693,160 @@ export default function OrderDetailsPage() {
         }),
       );
 
-      localStorage.setItem(`PhoneBhai-rating-${order.orderId}`, String(rating));
+      localStorage.setItem(
+        `PhoneBhai-rating-${order.orderId}`,
+        String(rating),
+      );
 
       setReviewSubmitted(true);
-
       alert("Your review has been submitted successfully.");
-    } catch (error) {
-      console.error("REVIEW SUBMISSION ERROR:", error);
+    } catch (reviewError) {
+      console.error("REVIEW SUBMISSION ERROR:", reviewError);
 
       alert(
-        error instanceof Error
-          ? error.message
+        reviewError instanceof Error
+          ? reviewError.message
           : "Unable to submit your review. Please try again.",
       );
     } finally {
       setReviewSubmitting(false);
+    }
+  };
+
+  /* =======================================================
+     PAY REMAINING BALANCE
+  ======================================================= */
+
+  const handlePayRemainingAmount = async () => {
+    if (!order || payingBalance) return;
+
+    if (order.remainingAmount <= 0) {
+      setPaymentMessage("There is no outstanding balance for this order.");
+      return;
+    }
+
+    if (order.status === "Cancelled") {
+      setError("A cancelled order cannot receive another payment.");
+      return;
+    }
+
+    setPayingBalance(true);
+    setPaymentMessage("");
+    setError("");
+
+    try {
+      const scriptLoaded = await loadRazorpayCheckout();
+
+      if (!scriptLoaded || !window.Razorpay) {
+        throw new Error(
+          "Unable to load the secure payment gateway. Please try again.",
+        );
+      }
+
+      const paymentResponse = await createPaymentOrder(order.orderId);
+
+      if (!paymentResponse.success || !paymentResponse.data) {
+        throw new Error(
+          paymentResponse.message || "Unable to start balance payment.",
+        );
+      }
+
+      const paymentData = paymentResponse.data;
+
+      if (
+        !paymentData.razorpayOrderId ||
+        !paymentData.keyId ||
+        !paymentData.amountInPaise ||
+        paymentData.amountInPaise <= 0
+      ) {
+        throw new Error("Invalid payment details received from the server.");
+      }
+
+      const razorpay = new window.Razorpay({
+        key: paymentData.keyId,
+        amount: paymentData.amountInPaise,
+        currency: paymentData.currency,
+        name: "PhoneBhai",
+        description: `Balance payment for ${
+          order.orderNumber ?? order.orderId
+        }`,
+        order_id: paymentData.razorpayOrderId,
+
+        theme: {
+          color: "#4f46e5",
+        },
+
+        modal: {
+          ondismiss: () => {
+            setPayingBalance(false);
+          },
+        },
+
+        handler: async (razorpayResponse) => {
+          try {
+            const verification = await verifyPayment(order.orderId, {
+              razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+              razorpayOrderId: razorpayResponse.razorpay_order_id,
+              razorpaySignature: razorpayResponse.razorpay_signature,
+            });
+
+            if (!verification.success) {
+              throw new Error(
+                "Payment verification could not be completed.",
+              );
+            }
+
+            const refreshed = await getOrder(order.orderId);
+
+            if (!refreshed.success || !refreshed.data) {
+              throw new Error(
+                "Payment was submitted, but the latest order status could not be loaded. Refresh this page.",
+              );
+            }
+
+            setOrder(normalizeOrder(refreshed.data));
+
+            setPaymentMessage(
+              "Payment verification completed. Your order balance has been refreshed.",
+            );
+          } catch (verificationError) {
+            console.error(
+              "BALANCE PAYMENT VERIFICATION ERROR:",
+              verificationError,
+            );
+
+            setError(
+              verificationError instanceof Error
+                ? verificationError.message
+                : "Payment verification is pending. Please refresh your order.",
+            );
+          } finally {
+            setPayingBalance(false);
+          }
+        },
+      });
+
+      razorpay.on("payment.failed", (response: unknown) => {
+        console.error("RAZORPAY BALANCE PAYMENT FAILED:", response);
+
+        setError(
+          "The payment was not completed. Your outstanding balance has not been marked as paid.",
+        );
+
+        setPayingBalance(false);
+      });
+
+      razorpay.open();
+    } catch (paymentError) {
+      console.error("PAY REMAINING AMOUNT ERROR:", paymentError);
+
+      setError(
+        paymentError instanceof Error
+          ? paymentError.message
+          : "Unable to start the balance payment.",
+      );
+
+      setPayingBalance(false);
     }
   };
 
@@ -758,7 +929,6 @@ export default function OrderDetailsPage() {
   }
 
   const product = order.product;
-
   return (
     <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
       <section className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
@@ -788,9 +958,7 @@ export default function OrderDetailsPage() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
-          {/* =================================================
-              LEFT
-          ================================================= */}
+          {/* LEFT */}
 
           <div className="space-y-6">
             {/* STATUS */}
@@ -866,7 +1034,9 @@ export default function OrderDetailsPage() {
 
                     {product.color && <p>Colour: {product.color}</p>}
 
-                    {product.condition && <p>Condition: {product.condition}</p>}
+                    {product.condition && (
+                      <p>Condition: {product.condition}</p>
+                    )}
 
                     <p>Quantity: {order.quantity}</p>
                   </div>
@@ -878,9 +1048,7 @@ export default function OrderDetailsPage() {
               </div>
             </div>
 
-            {/* =================================================
-                RATE & REVIEW
-            ================================================= */}
+            {/* RATE & REVIEW */}
 
             <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
               <div className="flex items-center gap-3">
@@ -918,7 +1086,7 @@ export default function OrderDetailsPage() {
                       aria-label={`Rate ${star} out of 5`}
                       onMouseEnter={() => setHoverRating(star)}
                       onClick={() => handleRating(star)}
-                      className={`flex h-14 w-14 items-center justify-center rounded-2xl text-3xl transition-all duration-200 focus:outline-none `}
+                      className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl transition-all duration-200 focus:outline-none"
                     >
                       <span className={isActive ? "animate-bounce" : ""}>
                         {ratingEmoji[star as keyof typeof ratingEmoji]}
@@ -945,6 +1113,7 @@ export default function OrderDetailsPage() {
                   </span>
                 </p>
               )}
+
               {/* REVIEW */}
 
               <div className="mt-7 border-t border-gray-100 pt-7">
@@ -965,8 +1134,7 @@ export default function OrderDetailsPage() {
 
                 <div className="mt-2 flex justify-end">
                   <span className="text-[11px] text-gray-400">
-                    {reviewText.length}
-                    /1000
+                    {reviewText.length}/1000
                   </span>
                 </div>
 
@@ -1052,7 +1220,7 @@ export default function OrderDetailsPage() {
                     </div>
                   )}
 
-                  {/* VIDEO */}
+                  {/* VIDEO PREVIEW */}
 
                   {videoPreview && (
                     <div className="mt-5">
@@ -1080,7 +1248,7 @@ export default function OrderDetailsPage() {
                   )}
                 </div>
 
-                {/* SUBMIT */}
+                {/* SUBMIT REVIEW */}
 
                 <button
                   type="button"
@@ -1116,7 +1284,7 @@ export default function OrderDetailsPage() {
               </div>
             </div>
 
-            {/* DELIVERY */}
+            {/* DELIVERY ADDRESS */}
 
             <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
               <div className="flex items-center gap-3">
@@ -1140,18 +1308,21 @@ export default function OrderDetailsPage() {
 
                 <p className="mt-2 text-sm leading-6 text-gray-600">
                   {order.address.address}
+
                   {order.address.addressLine2 && (
                     <>
                       <br />
                       {order.address.addressLine2}
                     </>
                   )}
+
                   {order.address.area && (
                     <>
                       <br />
                       {order.address.area}
                     </>
                   )}
+
                   <br />
                   {order.address.city}, {order.address.state} -{" "}
                   {order.address.pincode}
@@ -1168,8 +1339,7 @@ export default function OrderDetailsPage() {
                 </p>
               </div>
             </div>
-
-            {/* PAYMENT */}
+                        {/* PAYMENT INFORMATION */}
 
             <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-7">
               <div className="flex items-center gap-3">
@@ -1187,16 +1357,70 @@ export default function OrderDetailsPage() {
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <Info label="Payment method" value={order.paymentMethod} />
+                <Info
+                  label="Payment method"
+                  value={order.paymentMethod}
+                />
 
-                <Info label="Payment status" value={order.paymentStatus} />
+                <Info
+                  label="Payment status"
+                  value={order.paymentStatus}
+                />
+
+                <Info
+                  label="Total amount"
+                  value={`₹${order.total.toLocaleString("en-IN")}`}
+                />
+
+                <Info
+                  label="Amount collected"
+                  value={`₹${order.paidAmount.toLocaleString("en-IN")}`}
+                />
+
+                <Info
+                  label="Remaining balance"
+                  value={`₹${order.remainingAmount.toLocaleString("en-IN")}`}
+                />
               </div>
+
+              {order.payments.length > 0 && (
+                <div className="mt-5 border-t border-gray-100 pt-5">
+                  <h3 className="text-sm font-black">Payment history</h3>
+
+                  <div className="mt-3 space-y-3">
+                    {order.payments.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">
+                            {payment.provider} · {payment.method}
+                          </p>
+
+                          <p className="mt-1 text-xs text-gray-500">
+                            {payment.status} · {formatDate(payment.createdAt)}
+                          </p>
+                        </div>
+
+                        <p className="text-sm font-black">
+                          ₹{payment.amount.toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {paymentMessage && (
+                <p className="mt-4 rounded-xl bg-green-50 p-3 text-sm text-green-700">
+                  {paymentMessage}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* =================================================
-              RIGHT
-          ================================================= */}
+          {/* RIGHT: ORDER SUMMARY */}
 
           <aside>
             <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -1226,8 +1450,7 @@ export default function OrderDetailsPage() {
                     <span className="text-gray-500">Discount</span>
 
                     <span className="font-semibold text-green-600">
-                      -₹
-                      {order.discount.toLocaleString("en-IN")}
+                      -₹{order.discount.toLocaleString("en-IN")}
                     </span>
                   </div>
                 )}
@@ -1260,6 +1483,24 @@ export default function OrderDetailsPage() {
               </div>
 
               <div className="mt-6 space-y-3">
+                {order.remainingAmount > 0 &&
+                  order.status !== "Cancelled" &&
+                  order.paymentStatus !== "REFUND_PENDING" &&
+                  order.paymentStatus !== "REFUNDED" && (
+                    <button
+                      type="button"
+                      onClick={() => void handlePayRemainingAmount()}
+                      disabled={payingBalance}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <CreditCard size={17} />
+
+                      {payingBalance
+                        ? "Processing payment..."
+                        : `Pay Remaining ₹${order.remainingAmount.toLocaleString("en-IN")}`}
+                    </button>
+                  )}
+
                 {order.status !== "Cancelled" && (
                   <Link
                     href={`/track-order/${order.orderId}`}
@@ -1302,15 +1543,23 @@ export default function OrderDetailsPage() {
 }
 
 /* =========================================================
-   INFO
+   INFO COMPONENT
 ========================================================= */
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-2xl bg-gray-50 p-4">
       <p className="text-xs font-semibold text-gray-400">{label}</p>
 
-      <p className="mt-1 text-sm font-bold capitalize text-gray-900">{value}</p>
+      <p className="mt-1 text-sm font-bold capitalize text-gray-900">
+        {value}
+      </p>
     </div>
   );
 }
