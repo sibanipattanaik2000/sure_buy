@@ -1,5 +1,6 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://api.phonebhai.com/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://api.phonebhai.com/api/v1";
 
 export type ApiResponse<T> = {
   success: boolean;
@@ -75,33 +76,44 @@ export interface User {
   createdAt?: string;
   updatedAt?: string;
 }
-
 export interface LoginPayload {
-  email: string;
-  password: string;
+  phone: string;
+  code: string;
 }
 
 export interface RegisterPayload {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  phone?: string;
+  fullName: string;
+  phone: string;
 }
 
 export interface LoginResponse {
   user: User;
 }
 
+export interface RegistrationResponse {
+  phone: string;
+}
+
 export async function registerUser(payload: RegisterPayload) {
-  return apiRequest<User>("/auth/register", {
+  return apiRequest<RegistrationResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function verifyRegistrationOtp(payload: {
+  fullName: string;
+  phone: string;
+  code: string;
+}) {
+  return apiRequest<LoginResponse>("/auth/register/verify", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export async function loginUser(payload: LoginPayload) {
-  return apiRequest<LoginResponse>("/auth/login", {
+  return apiRequest<LoginResponse>("/auth/phone/verify", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -373,23 +385,6 @@ export interface Order {
 
   createdAt: string;
   updatedAt?: string;
-
-  paidAmount?: number;
-  remainingAmount?: number;
-
-  payments?: Array<{
-    id: string;
-    provider: string;
-    providerPaymentId?: string | null;
-    amount: number;
-    currency: string;
-    status: string;
-    method: string;
-    refundAmount?: number;
-    refundReason?: string | null;
-    refundedAt?: string | null;
-    createdAt: string;
-  }>;
 }
 
 export async function getOrders() {
@@ -426,9 +421,17 @@ export interface CreatePaymentOrderResponse {
   amountInPaise: number;
   currency: string;
   keyId: string;
-  paymentPurpose?: "FULL_PAYMENT" | "COD_ADVANCE" | "BALANCE_PAYMENT";
+    /**
+   * COD orders require a fixed ₹500 advance.
+   * The backend is the source of truth for this value.
+   */
+  paymentPurpose?: "FULL_PAYMENT" | "COD_ADVANCE";
+
+  /**
+   * Amount remaining after the currently-created payment.
+   * Backend calculated.
+   */
   remainingAmount?: number;
-  paidAmount?: number;
 }
 
 export interface VerifyPaymentPayload {
@@ -1002,7 +1005,9 @@ export async function createProductMediaUploadUrl(payload: {
   );
 }
 
-export async function createAdminProduct(payload: CreateAdminProductPayload) {
+export async function createAdminProduct(
+  payload: CreateAdminProductPayload,
+) {
   return apiRequest<unknown>("/admin/products", {
     method: "POST",
     body: JSON.stringify(payload),

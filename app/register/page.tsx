@@ -1,459 +1,472 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
-  Eye,
-  EyeOff,
+  CheckCircle2,
+  RefreshCw,
   ShieldCheck,
-  UserPlus,
-  Zap,
+  Smartphone,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { registerUser } from "../lib/api";
+import {
+  ApiError,
+  registerUser,
+  verifyRegistrationOtp,
+} from "@/app/lib/api";
+import { useAuth } from "@/app/context/AuthContext";
+
+const OTP_DURATION = 120;
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    terms: false,
-  });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
+  const { refreshUser } = useAuth();
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
 
-    // Remove error when user starts correcting the field
-    if (errors[name]) {
-      setErrors((prev) => {
-        const updated = { ...prev };
-        delete updated[name];
-        return updated;
-      });
+  const [step, setStep] = useState<"details" | "otp" | "success">("details");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Two-minute OTP countdown
+  useEffect(() => {
+    if (!expiresAt) {
+      setRemainingSeconds(0);
+      return;
     }
+
+    const updateTimer = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((expiresAt - Date.now()) / 1000),
+      );
+
+      setRemainingSeconds(remaining);
+
+      if (remaining === 0) {
+        setExpiresAt(null);
+      }
+    };
+
+    updateTimer();
+
+    const interval = window.setInterval(updateTimer, 250);
+
+    return () => window.clearInterval(interval);
+  }, [expiresAt]);
+
+  const startCountdown = () => {
+    setRemainingSeconds(OTP_DURATION);
+    setExpiresAt(Date.now() + OTP_DURATION * 1000);
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const formattedTime = `${String(
+    Math.floor(remainingSeconds / 60),
+  ).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
-    if (!form.name.trim()) {
-      newErrors.name = "Please enter your full name.";
-    } else if (form.name.trim().length < 2) {
-      newErrors.name = "Name must contain at least 2 characters.";
-    }
-
-    if (!form.email.trim()) {
-      newErrors.email = "Please enter your email address.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      newErrors.email = "Please enter a valid email address.";
-    }
-
-    if (!form.phone.trim()) {
-      newErrors.phone = "Please enter your mobile number.";
-    } else if (!/^[6-9]\d{9}$/.test(form.phone)) {
-      newErrors.phone = "Please enter a valid 10-digit mobile number.";
-    }
-
-    if (!form.password) {
-      newErrors.password = "Please create a password.";
-    } else if (form.password.length < 8) {
-      newErrors.password = "Password must contain at least 8 characters.";
-    }
-
-    if (!form.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password.";
-    } else if (form.password !== form.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match.";
-    }
-
-    if (!form.terms) {
-      newErrors.terms =
-        "Please accept the Terms & Conditions and Privacy Policy.";
-    }
-
-    setErrors(newErrors);
-
-    return Object.keys(newErrors).length === 0;
+  const getErrorMessage = (err: unknown) => {
+    if (err instanceof ApiError) return err.message;
+    if (err instanceof Error) return err.message;
+    return "Something went wrong. Please try again.";
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const cleanPhone = phone.replace(/\D/g, "").slice(0, 10);
 
-    if (!validateForm()) {
+  const handleSendOtp = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+
+    const name = fullName.trim();
+
+    if (!name) {
+      setError("Please enter your full name.");
+      return;
+    }
+
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setError("Please enter a valid 10-digit Indian mobile number.");
       return;
     }
 
     try {
-      const nameParts = form.name.trim().split(/\s+/);
-
-      const firstName = nameParts[0];
-
-      const lastName = nameParts.slice(1).join(" ") || "User";
-
-      const phone = form.phone.trim();
+      setLoading(true);
 
       await registerUser({
-        firstName,
-        lastName,
-        email: form.email.trim(),
-        password: form.password,
-        phone,
+        fullName: name,
+        phone: cleanPhone,
       });
 
-      router.push(
-        `/verify-user?phone=${encodeURIComponent(phone)}&mode=register`,
-      );
-    } catch (error) {
-      console.error("REGISTER ERROR:", error);
+      setPhone(cleanPhone);
+      setOtp("");
+      startCountdown();
+      setStep("otp");
 
-      const message =
-        error instanceof Error ? error.message : "Registration failed";
-
-      setErrors({
-        submit: message,
-      });
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
     }
   };
 
+  const handleOtpChange = (value: string, index: number) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+
+    const digits = otp.split("");
+    digits[index] = digit;
+
+    const nextOtp = digits.join("").slice(0, 6);
+    setOtp(nextOtp);
+
+    if (digit && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    index: number,
+  ) => {
+    if (event.key === "Backspace" && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+
+    const pasted = event.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+
+    setOtp(pasted);
+
+    const focusIndex = Math.min(pasted.length, 5);
+    otpRefs.current[focusIndex]?.focus();
+  };
+
+  const handleVerify = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+
+    if (otp.length !== 6) {
+      setError("Please enter the complete 6-digit OTP.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await verifyRegistrationOtp({
+        fullName: fullName.trim(),
+        phone: cleanPhone,
+        code: otp,
+      });
+
+      await refreshUser();
+
+      setExpiresAt(null);
+      setRemainingSeconds(0);
+      setStep("success");
+
+      setTimeout(() => {
+        router.replace("/");
+      }, 1200);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resending || loading || remainingSeconds > 0) return;
+
+    setError("");
+
+    try {
+      setResending(true);
+
+      await registerUser({
+        fullName: fullName.trim(),
+        phone: cleanPhone,
+      });
+
+      setOtp("");
+      startCountdown();
+
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleBack = () => {
+    setStep("details");
+    setOtp("");
+    setError("");
+    setExpiresAt(null);
+    setRemainingSeconds(0);
+  };
+
   return (
-    <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 px-5 py-12 sm:py-16">
-      <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
-        {/* LEFT */}
+    <main className="min-h-screen bg-white px-4 py-10 text-black sm:px-6">
+      <div className="mx-auto flex min-h-[80vh] w-full max-w-md flex-col justify-center">
+        <Link
+          href="/"
+          className="mb-8 inline-flex items-center gap-2 self-center text-xl font-black tracking-tight"
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black text-sm font-black text-white">
+            PB
+          </span>
+          PhoneBhai
+        </Link>
 
-        <div className="hidden lg:block">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700">
-            <Zap size={15} />
-            Welcome to PhoneBhai
-          </div>
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          {step === "details" && (
+            <>
+              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
+                <Smartphone size={27} />
+              </div>
 
-          <h1 className="max-w-xl text-5xl font-black leading-[1.05] tracking-[-0.04em] text-gray-950">
-            Your smarter way to{" "}
-            <span className="text-indigo-600">buy & sell phones.</span>
-          </h1>
-
-          <p className="mt-6 max-w-lg text-base leading-7 text-gray-600">
-            Create your PhoneBhai account to buy certified phones, sell your old
-            phone, track orders and manage your wishlist.
-          </p>
-
-          <div className="mt-10 flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-              <ShieldCheck size={21} className="text-green-600" />
-            </div>
-
-            <div>
-              <p className="text-sm font-bold text-gray-900">Secure account</p>
-
-              <p className="mt-1 text-xs text-gray-500">
-                Your personal information stays protected.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* REGISTER */}
-
-        <div className="mx-auto w-full max-w-md">
-          <div className="mb-8 text-center lg:hidden">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-black text-white">
-              <Zap size={20} />
-            </div>
-
-            <h1 className="text-3xl font-black text-gray-950">
-              Create your account
-            </h1>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Join PhoneBhai and get started.
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] sm:p-8">
-            <div className="mb-7 hidden lg:block">
-              <h2 className="text-2xl font-black text-gray-950">
+              <h1 className="text-2xl font-bold tracking-tight">
                 Create your account
-              </h2>
+              </h1>
 
-              <p className="mt-2 text-sm text-gray-500">
-                Enter your details to get started.
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                Enter your name and mobile number to get started with
+                PhoneBhai.
               </p>
-            </div>
 
-            <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-              {/* NAME */}
+              <form onSubmit={handleSendOtp} className="mt-7 space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Full name
+                  </label>
+                  <input
+                    type="text"
+                    autoComplete="name"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                    className="h-12 w-full rounded-xl border border-gray-300 px-4 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/5"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label
-                  htmlFor="name"
-                  className="mb-2 block text-sm font-semibold text-gray-700"
-                >
-                  Full name
-                </label>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold">
+                    Mobile number
+                  </label>
 
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="Enter your full name"
-                  className={`h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition ${
-                    errors.name
-                      ? "border-red-400 focus:ring-4 focus:ring-red-500/10 text-gray-900"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-900"
-                  }`}
-                />
-
-                {errors.name && (
-                  <p className="mt-1.5 text-xs font-medium text-red-500">
-                    {errors.name}
-                  </p>
-                )}
-              </div>
-
-              {/* EMAIL */}
-
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-sm font-semibold text-gray-700"
-                >
-                  Email address
-                </label>
-
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="you@example.com"
-                  className={`h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition ${
-                    errors.email
-                      ? "border-red-400 focus:ring-4 focus:ring-red-500/10 text-gray-900"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-900"
-                  }`}
-                />
-
-                {errors.email && (
-                  <p className="mt-1.5 text-xs font-medium text-red-500">
-                    {errors.email}
-                  </p>
-                )}
-              </div>
-
-              {/* PHONE */}
-
-              <div>
-                <label
-                  htmlFor="phone"
-                  className="mb-2 block text-sm font-semibold text-gray-700"
-                >
-                  Mobile number
-                </label>
-
-                <div
-                  className={`flex h-12 overflow-hidden rounded-xl border ${
-                    errors.phone ? "border-red-400" : "border-gray-200"
-                  }`}
-                >
-                  <div className="flex items-center border-r border-gray-200 bg-gray-50 px-3 text-sm font-semibold text-gray-600">
-                    +91
+                  <div className="flex h-12 overflow-hidden rounded-xl border border-gray-300 focus-within:border-black">
+                    <span className="flex items-center border-r border-gray-200 bg-gray-50 px-4 text-sm font-semibold">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      placeholder="10-digit mobile number"
+                      value={phone}
+                      onChange={(event) =>
+                        setPhone(
+                          event.target.value.replace(/\D/g, "").slice(0, 10),
+                        )
+                      }
+                      className="min-w-0 flex-1 px-4 text-sm outline-none"
+                      maxLength={10}
+                      required
+                    />
                   </div>
-
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={handleChange}
-                    maxLength={10}
-                    placeholder="Enter mobile number"
-                    className="min-w-0 flex-1 bg-white px-4 text-sm outline-none text-gray-900 placeholder:text-gray-400 focus:ring-4 focus:ring-indigo-500/10"
-                  />
                 </div>
 
-                {errors.phone && (
-                  <p className="mt-1.5 text-xs font-medium text-red-500">
-                    {errors.phone}
+                {error && (
+                  <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {error}
                   </p>
                 )}
-              </div>
 
-              {/* PASSWORD */}
-
-              <div>
-                <label
-                  htmlFor="password"
-                  className="mb-2 block text-sm font-semibold text-gray-700"
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-black px-5 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Password
-                </label>
+                  {loading ? "Sending OTP..." : "Continue"}
+                  {!loading && <ArrowRight size={17} />}
+                </button>
+              </form>
 
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="Create a password"
-                    className={`h-12 w-full rounded-xl border bg-white px-4 pr-12 text-sm outline-none transition ${
-                      errors.password
-                        ? "border-red-400 focus:ring-4 focus:ring-red-500/10 text-gray-900"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-900"
-                    }`}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-700"
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="mt-1.5 text-xs font-medium text-red-500">
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-
-              {/* CONFIRM PASSWORD */}
-
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="mb-2 block text-sm font-semibold text-gray-700"
-                >
-                  Confirm password
-                </label>
-
-                <div className="relative">
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Confirm your password"
-                    className={`h-12 w-full rounded-xl border bg-white px-4 pr-12 text-sm outline-none transition ${
-                      errors.confirmPassword
-                        ? "border-red-400 focus:ring-4 focus:ring-red-500/10 text-gray-900"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-gray-900"
-                    }`}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-700"
-                    aria-label={
-                      showConfirmPassword
-                        ? "Hide confirm password"
-                        : "Show confirm password"
-                    }
-                  >
-                    {showConfirmPassword ? (
-                      <Eye size={18} />
-                    ) : (
-                      <EyeOff size={18} />
-                    )}
-                  </button>
-                </div>
-
-                {errors.confirmPassword && (
-                  <p className="mt-1.5 text-xs font-medium text-red-500">
-                    {errors.confirmPassword}
-                  </p>
-                )}
-              </div>
-
-              {/* TERMS */}
-
-              <div>
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    name="terms"
-                    checked={form.terms}
-                    onChange={handleChange}
-                    className="mt-0.5 h-4 w-4 accent-indigo-600"
-                  />
-
-                  <span className="text-xs leading-5 text-gray-500">
-                    I agree to PhoneBhai's{" "}
-                    <Link
-                      href="/terms"
-                      className="font-semibold text-indigo-600"
-                    >
-                      Terms & Conditions
-                    </Link>{" "}
-                    and{" "}
-                    <Link
-                      href="/privacy"
-                      className="font-semibold text-indigo-600"
-                    >
-                      Privacy Policy
-                    </Link>
-                    .
-                  </span>
-                </label>
-
-                {errors.terms && (
-                  <p className="mt-1.5 text-xs font-medium text-red-500">
-                    {errors.terms}
-                  </p>
-                )}
-              </div>
-              {errors.submit && (
-                <p className="text-sm font-medium text-red-500">
-                  {errors.submit}
-                </p>
-              )}
-              {/* SUBMIT */}
-
-              <button
-                type="submit"
-                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white transition hover:bg-indigo-700"
-              >
-                Create account
-                <ArrowRight
-                  size={17}
-                  className="transition-transform group-hover:translate-x-1"
-                />
-              </button>
-            </form>
-
-            <div className="mt-7 border-t border-gray-100 pt-6 text-center">
-              <p className="text-sm text-gray-500">
+              <p className="mt-6 text-center text-sm text-gray-500">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="font-bold text-indigo-600 hover:text-indigo-700"
+                  className="font-semibold text-black underline underline-offset-4"
                 >
-                  Sign in
+                  Login
                 </Link>
               </p>
+            </>
+          )}
+
+          {step === "otp" && (
+            <>
+              <button
+                type="button"
+                onClick={handleBack}
+                className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-gray-500 transition hover:text-black"
+              >
+                <ArrowLeft size={16} />
+                Change details
+              </button>
+
+              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
+                <ShieldCheck size={27} />
+              </div>
+
+              <h1 className="text-2xl font-bold tracking-tight">
+                Verify your mobile
+              </h1>
+
+              <p className="mt-2 text-sm leading-6 text-gray-500">
+                We sent a 6-digit verification code to{" "}
+                <span className="font-semibold text-black">
+                  +91 {phone}
+                </span>
+                .
+              </p>
+
+              <form onSubmit={handleVerify} className="mt-7 space-y-6">
+                <div>
+                  <label className="mb-3 block text-sm font-semibold">
+                    Enter OTP
+                  </label>
+
+                  <div className="flex justify-between gap-2">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <input
+                        key={index}
+                        ref={(element) => {
+                          otpRefs.current[index] = element;
+                        }}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete={index === 0 ? "one-time-code" : "off"}
+                        maxLength={1}
+                        value={otp[index] || ""}
+                        onChange={(event) =>
+                          handleOtpChange(event.target.value, index)
+                        }
+                        onKeyDown={(event) =>
+                          handleOtpKeyDown(event, index)
+                        }
+                        onPaste={index === 0 ? handleOtpPaste : undefined}
+                        className="h-12 min-w-0 flex-1 rounded-xl border border-gray-300 text-center text-lg font-bold outline-none transition focus:border-black focus:ring-2 focus:ring-black/5"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {error && (
+                  <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || otp.length !== 6}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-black px-5 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? "Verifying..." : "Verify & Create Account"}
+                  {!loading && <ArrowRight size={17} />}
+                </button>
+              </form>
+
+              <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">
+                      Your OTP expires in
+                    </p>
+                    <p
+                      className={`mt-1 text-xl font-bold tabular-nums ${
+                        remainingSeconds > 0 ? "text-black" : "text-red-600"
+                      }`}
+                    >
+                      {formattedTime}
+                    </p>
+                  </div>
+
+                  {remainingSeconds > 0 ? (
+                    <span className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-gray-500">
+                      Wait to resend
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={resending || loading}
+                      className="inline-flex items-center gap-2 rounded-lg bg-black px-3 py-2 text-xs font-semibold text-white transition hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        size={14}
+                        className={resending ? "animate-spin" : ""}
+                      />
+                      {resending ? "Sending..." : "Resend OTP"}
+                    </button>
+                  )}
+                </div>
+
+                {remainingSeconds === 0 && (
+                  <p className="mt-2 text-xs text-red-600">
+                    Your OTP has expired. Request a new OTP to continue.
+                  </p>
+                )}
+              </div>
+
+              <p className="mt-5 text-center text-xs leading-5 text-gray-400">
+                Never share your OTP with anyone.
+              </p>
+            </>
+          )}
+
+          {step === "success" && (
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-600">
+                <CheckCircle2 size={34} />
+              </div>
+
+              <h1 className="text-2xl font-bold">Account created!</h1>
+
+              <p className="mt-3 text-sm leading-6 text-gray-500">
+                Your mobile number has been verified successfully. Welcome to
+                PhoneBhai.
+              </p>
+
+              <p className="mt-6 text-sm font-semibold text-gray-700">
+                Redirecting you...
+              </p>
             </div>
-          </div>
+          )}
         </div>
+
+        <p className="mt-6 text-center text-xs text-gray-400">
+          By continuing, you agree to PhoneBhai&apos;s terms and policies.
+        </p>
       </div>
     </main>
   );

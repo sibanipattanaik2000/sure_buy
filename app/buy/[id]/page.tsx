@@ -8,21 +8,24 @@ import {
   ArrowRight,
   BadgeCheck,
   Check,
+  ChevronDown,
   CreditCard,
+  Gift,
   Heart,
   MapPin,
   ShieldCheck,
   Smartphone,
   Star,
   Truck,
-  Wallet,
   ShoppingCart,
+  Wallet,
+  Clock3,
 } from "lucide-react";
 
 import { useWishlist } from "../../context/WishlistContext";
 import { useCheckout } from "@/app/context/CheckoutContext";
 import { useCart } from "../../context/CartContext";
-import { getProduct } from "@/app/lib/api";
+import { getProduct, getProducts } from "@/app/lib/api";
 import Image from "next/image";
 import { getOptimizedImageUrl } from "@/app/lib/image";
 import { useAuth } from "@/app/context/AuthContext";
@@ -99,32 +102,27 @@ type ApiProduct = {
   active: boolean;
   createdAt: string;
   updatedAt: string;
-
   variants: ApiVariant[];
   images: ApiImage[];
-
   highlights: {
     id: number;
     productId: number;
     text: string;
     position: number;
   }[];
-
-  /*
-   * IMPORTANT:
-   * This is the ONLY reviews property.
-   * The previous duplicate declaration is removed.
-   */
   reviews: ApiReview[];
 };
 
-/* =========================================================
-   API RESPONSE
-========================================================= */
-
-type ProductApiResponse = {
+type ProductListPayload = {
   success?: boolean;
-  data?: ApiProduct;
+  data?:
+    | ApiProduct[]
+    | {
+        products?: ApiProduct[];
+        items?: ApiProduct[];
+      };
+  products?: ApiProduct[];
+  items?: ApiProduct[];
   message?: string;
 };
 
@@ -139,7 +137,6 @@ function toNumber(value: number | string | null | undefined): number {
 
   if (typeof value === "string") {
     const parsed = Number(value);
-
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
@@ -154,13 +151,10 @@ function formatCondition(condition: ApiProduct["condition"]): string {
   switch (condition) {
     case "LIKE_NEW":
       return "Like New";
-
     case "EXCELLENT":
       return "Excellent";
-
     case "GOOD":
       return "Good";
-
     default:
       return condition;
   }
@@ -177,6 +171,7 @@ function safeImages(images: ApiImage[] | null | undefined): ApiImage[] {
 function sortImages(images: ApiImage[]): ApiImage[] {
   return [...images].sort((a, b) => a.position - b.position);
 }
+
 function normalizeStorage(value: string | null | undefined): string {
   return (value || "").trim().toLowerCase().replace(/\s+/g, "");
 }
@@ -184,30 +179,53 @@ function normalizeStorage(value: string | null | undefined): string {
 function normalizeColor(value: string | null | undefined): string {
   return (value || "").trim().toLowerCase();
 }
+
 function getRatingColor(rating: number): string {
-  if (rating >= 4) {
-    return "text-green-600";
-  }
-
-  if (rating >= 3) {
-    return "text-yellow-500";
-  }
-
+  if (rating >= 4) return "text-green-600";
+  if (rating >= 3) return "text-yellow-500";
   return "text-red-500";
 }
 
 function getRatingBgColor(rating: number): string {
-  if (rating >= 4) {
-    return "bg-green-600";
-  }
-
-  if (rating >= 3) {
-    return "bg-yellow-500";
-  }
-
+  if (rating >= 4) return "bg-green-600";
+  if (rating >= 3) return "bg-yellow-500";
   return "bg-red-500";
 }
-/* =====  ====================================================
+
+function getProductList(payload: ProductListPayload): ApiProduct[] {
+  if (Array.isArray(payload.data)) {
+    return payload.data;
+  }
+
+  if (Array.isArray(payload.data?.products)) {
+    return payload.data.products;
+  }
+
+  if (Array.isArray(payload.data?.items)) {
+    return payload.data.items;
+  }
+
+  if (Array.isArray(payload.products)) {
+    return payload.products;
+  }
+
+  if (Array.isArray(payload.items)) {
+    return payload.items;
+  }
+
+  return [];
+}
+
+function formatCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(
+    remainingSeconds,
+  ).padStart(2, "0")}`;
+}
+
+/* =========================================================
    PAGE
 ========================================================= */
 
@@ -221,51 +239,91 @@ export default function ProductDetailsPage() {
      CONTEXTS
   ======================================================= */
 
-  const { setProduct, setPaymentMethod } = useCheckout();
+  const { setProduct } = useCheckout();
 
   const { addToCart, isInCart, cartItems } = useCart();
 
   const { wishlist, toggleWishlist } = useWishlist();
+
   const { isAuthenticated, loading: authLoading } = useAuth();
+
   /* =======================================================
      STATE
   ======================================================= */
 
   const [product, setProductData] = useState<ApiProduct | null>(null);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
   const [selectedStorage, setSelectedStorage] = useState("");
-
   const [selectedColor, setSelectedColor] = useState("");
-
   const [selectedImage, setSelectedImage] = useState(0);
-
-  const [paymentMethod, setPaymentMethodState] = useState("upi");
-
   const [quantity, setQuantity] = useState(1);
-  useEffect(() => {
-    if (!product || product.variants.length === 0) {
-      return;
-    }
 
-    const firstVariant = product.variants[0];
+  /* New UI states */
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-    setSelectedStorage(firstVariant.storage);
-    setSelectedColor(firstVariant.color);
-    setSelectedImage(0);
-    setQuantity(1);
-  }, [product]);
+  const [similarProducts, setSimilarProducts] = useState<ApiProduct[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+
+  /* Five-minute gift offer */
+  const [giftSeconds, setGiftSeconds] = useState(300);
+  const [deliveryPincode, setDeliveryPincode] = useState("");
+  const [deliveryEstimate, setDeliveryEstimate] = useState<string | null>(null);
+  const [deliveryChecked, setDeliveryChecked] = useState(false);
+  const [deliveryError, setDeliveryError] = useState("");
   /* =======================================================
-     FETCH PRODUCT + REVIEWS
+     VARIANT INITIALIZATION
   ======================================================= */
 
   useEffect(() => {
-    if (!productIdentifier) {
-      return;
-    }
+    if (!product || !product.variants?.length) return;
+
+    const firstVariant = product.variants[0];
+
+    setSelectedStorage(firstVariant.storage || "");
+    setSelectedColor(firstVariant.color || "");
+    setSelectedImage(0);
+    setQuantity(1);
+  }, [product]);
+
+  /* =======================================================
+     GIFT COUNTDOWN
+
+     Starts when this product page is opened.
+     It does not restart on every React render.
+  ======================================================= */
+
+  useEffect(() => {
+    if (!product) return;
+
+    setGiftSeconds(300);
+
+    const interval = window.setInterval(() => {
+      setGiftSeconds((current) => {
+        if (current <= 1) {
+          window.clearInterval(interval);
+          return 0;
+        }
+
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [product?.id]);
+
+  const giftOfferActive = giftSeconds > 0;
+
+  /* =======================================================
+     FETCH PRODUCT + REVIEWS
+
+     Existing API fetching preserved.
+  ======================================================= */
+
+  useEffect(() => {
+    if (!productIdentifier) return;
 
     let cancelled = false;
 
@@ -276,37 +334,32 @@ export default function ProductDetailsPage() {
 
         const decodedIdentifier = decodeURIComponent(productIdentifier);
 
-        /* -----------------------------------------------
-         PRODUCT
-         ----------------------------------------------- */
         const response = await getProduct<ApiProduct>(decodedIdentifier);
 
         if (!response.success || !response.data) {
           throw new Error(response.message || "Unable to load product");
         }
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         const productData = response.data;
 
-        /*
-         * Render the product immediately.
-         * Do NOT wait for the reviews API.
-         */
         setProductData({
           ...productData,
+          variants: Array.isArray(productData.variants)
+            ? productData.variants
+            : [],
+          images: safeImages(productData.images),
+          highlights: Array.isArray(productData.highlights)
+            ? productData.highlights
+            : [],
           reviews: safeReviews(productData.reviews),
           rating: toNumber(productData.rating),
         });
 
         setLoading(false);
 
-        /* -----------------------------------------------
-         REVIEWS
-         Load separately in the background.
-         ----------------------------------------------- */
+        /* Existing separate reviews API */
         try {
           const API_URL =
             process.env.NEXT_PUBLIC_API_URL ||
@@ -323,9 +376,7 @@ export default function ProductDetailsPage() {
             },
           );
 
-          if (!reviewsResponse.ok || cancelled) {
-            return;
-          }
+          if (!reviewsResponse.ok || cancelled) return;
 
           const reviewsPayload = await reviewsResponse.json();
 
@@ -337,9 +388,7 @@ export default function ProductDetailsPage() {
                 ? reviewsPayload.data
                 : [];
 
-          if (cancelled || reviews.length === 0) {
-            return;
-          }
+          if (cancelled || reviews.length === 0) return;
 
           const calculatedRating =
             reviews.reduce(
@@ -358,22 +407,17 @@ export default function ProductDetailsPage() {
               : current,
           );
         } catch (reviewError) {
-          /*
-           * Reviews are non-blocking.
-           * The product page should remain usable even
-           * when the reviews request fails.
-           */
           console.error("FAILED TO FETCH REVIEWS:", reviewError);
         }
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
+      } catch (fetchError) {
+        if (cancelled) return;
 
-        console.error("FAILED TO FETCH PRODUCT:", error);
+        console.error("FAILED TO FETCH PRODUCT:", fetchError);
 
         setError(
-          error instanceof Error ? error.message : "Failed to load product",
+          fetchError instanceof Error
+            ? fetchError.message
+            : "Failed to load product",
         );
 
         setLoading(false);
@@ -386,6 +430,64 @@ export default function ProductDetailsPage() {
       cancelled = true;
     };
   }, [productIdentifier]);
+
+  /* =======================================================
+     SAME BRAND PRODUCTS
+
+     Uses existing products listing API.
+     Searches the brand and filters the results client-side.
+     Does not introduce a backend endpoint.
+  ======================================================= */
+
+  useEffect(() => {
+    if (!product?.brand) return;
+
+    let cancelled = false;
+
+    const fetchSimilarProducts = async () => {
+      try {
+        setSimilarLoading(true);
+
+        const response = await getProducts({
+          page: 1,
+          limit: 100,
+          search: product.brand,
+        });
+
+        if (cancelled) return;
+
+        const payload = response as unknown as ProductListPayload;
+
+        const products = getProductList(payload);
+
+        const filteredProducts = products.filter(
+          (item) =>
+            item.active !== false &&
+            String(item.id) !== String(product.id) &&
+            item.brand?.trim().toLowerCase() ===
+              product.brand.trim().toLowerCase(),
+        );
+
+        setSimilarProducts(filteredProducts);
+      } catch (similarError) {
+        console.error("FAILED TO FETCH SIMILAR PRODUCTS:", similarError);
+
+        if (!cancelled) {
+          setSimilarProducts([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSimilarLoading(false);
+        }
+      }
+    };
+
+    fetchSimilarProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.id, product?.brand]);
 
   /* =======================================================
      LOADING
@@ -440,7 +542,6 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   const productPrice = toNumber(product.price);
-
   const productOriginalPrice = toNumber(product.originalPrice);
 
   const reviewRatings = safeReviews(product.reviews);
@@ -472,17 +573,9 @@ export default function ProductDetailsPage() {
       : 0;
 
   /* =======================================================
-   AVAILABLE OPTIONS
-======================================================= */
+     AVAILABLE OPTIONS
+  ======================================================= */
 
-  /*
-   * Storage is normalized so:
-   * "256GB"
-   * "256 GB"
-   * "256gb"
-   *
-   * are treated as the same storage.
-   */
   const storageOptions = Array.from(
     new Map(
       product.variants
@@ -494,9 +587,6 @@ export default function ProductDetailsPage() {
     ).values(),
   );
 
-  /*
-   * Colours remain unique by their actual normalized value.
-   */
   const colorOptions = Array.from(
     new Map(
       product.variants
@@ -508,13 +598,6 @@ export default function ProductDetailsPage() {
     ).values(),
   );
 
-  /*
-   * Colours available for the currently selected storage.
-   */
-
-  /*
-   * Storage options available for the currently selected colour.
-   */
   const availableColorsForStorage = new Set(
     product.variants
       .filter(
@@ -528,6 +611,7 @@ export default function ProductDetailsPage() {
   /* =======================================================
      ACTIVE VARIANT
   ======================================================= */
+
   const activeVariant =
     product.variants.find(
       (variant) =>
@@ -566,9 +650,10 @@ export default function ProductDetailsPage() {
           ),
         )
       : discount;
+
   /* =========================================================
-   PRODUCT SEO STRUCTURED DATA
-========================================================= */
+     PRODUCT SEO STRUCTURED DATA
+  ========================================================= */
 
   const seoImage =
     product.images?.find(
@@ -588,29 +673,21 @@ export default function ProductDetailsPage() {
     .map((variant) => {
       const price = toNumber(variant.price);
 
-      if (price <= 0) {
-        return null;
-      }
+      if (price <= 0) return null;
 
       return {
         "@type": "Offer",
-
         url: `https://phonebhai.com/buy/${product.id}`,
-
         priceCurrency: "INR",
-
         price: price.toFixed(2),
-
         availability:
           Number(variant.stock || 0) > 0
             ? "https://schema.org/InStock"
             : "https://schema.org/OutOfStock",
-
         itemCondition:
           product.condition === "LIKE_NEW"
             ? "https://schema.org/RefurbishedCondition"
             : "https://schema.org/UsedCondition",
-
         seller: {
           "@type": "Organization",
           name: "PhoneBhai",
@@ -623,34 +700,22 @@ export default function ProductDetailsPage() {
   const productStructuredData = {
     "@context": "https://schema.org",
     "@type": "Product",
-
     name: `${product.brand} ${product.name}`.trim(),
-
     description:
       product.description ||
       `Buy ${product.brand} ${product.name} at PhoneBhai.`,
-
     sku: String(product.id),
-
     brand: {
       "@type": "Brand",
       name: product.brand,
     },
-
     category: product.category,
-
-    ...(seoImage
-      ? {
-          image: [seoImage],
-        }
-      : {}),
-
+    ...(seoImage ? { image: [seoImage] } : {}),
     ...(productOffers.length > 0
       ? {
           offers: productOffers.length === 1 ? productOffers[0] : productOffers,
         }
       : {}),
-
     ...(productRating > 0 && product.reviewCount > 0
       ? {
           aggregateRating: {
@@ -663,17 +728,10 @@ export default function ProductDetailsPage() {
         }
       : {}),
   };
+
   /* =======================================================
      GALLERY
-     
-     IMPORTANT:
-     Images + videos are both retained.
-     Variant media has priority over product media.
   ======================================================= */
-
-  /* =========================================================
-   GALLERY
-========================================================= */
 
   const variantGallery = activeVariant
     ? sortImages(safeImages(activeVariant.images))
@@ -681,17 +739,8 @@ export default function ProductDetailsPage() {
 
   const productGallery = sortImages(safeImages(product.images));
 
-  /*
-   * Variant images/videos take priority.
-   * If the selected variant has media, show only that media.
-   * Otherwise fall back to product-level media.
-   */
   const gallery = variantGallery.length > 0 ? variantGallery : productGallery;
 
-  /*
-   * Keep selected index safe even if the gallery changes
-   * because storage/color was changed.
-   */
   const safeImageIndex =
     gallery.length > 0
       ? Math.min(Math.max(selectedImage, 0), gallery.length - 1)
@@ -722,7 +771,6 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   const currentStorage = activeVariant?.storage || selectedStorage || "";
-
   const currentColor = activeVariant?.color || selectedColor || "";
 
   const currentVariantInCart = isInCart(
@@ -747,10 +795,7 @@ export default function ProductDetailsPage() {
 
   const cartProduct = {
     id: String(product.id),
-
-    // IMPORTANT: send the selected variant to backend
     variantId: activeVariant?.id ?? null,
-
     name: product.name,
     brand: product.brand,
     category: product.category,
@@ -764,6 +809,9 @@ export default function ProductDetailsPage() {
       gallery.find((media) => media.type === "IMAGE")?.url ||
       activeMedia?.url ||
       "",
+
+    // Gift eligibility is carried with the frontend cart item.
+    giftOffer: giftOfferActive,
   };
 
   /* =======================================================
@@ -814,8 +862,6 @@ export default function ProductDetailsPage() {
       );
 
     if (matchingVariant) {
-      // Keep the selected storage as the canonical value
-      // already shown in the storage options.
       const matchingStorageOption = storageOptions.find(
         (storage) =>
           normalizeStorage(storage) ===
@@ -835,13 +881,8 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   const stock = activeVariant?.stock ?? 0;
-
   const isOutOfStock = stock <= 0;
 
-  /*
-   * If the entire available stock is already
-   * in the cart, don't allow another addition.
-   */
   const cannotAddMore =
     isOutOfStock || remainingStock <= 0 || quantity > remainingStock;
 
@@ -850,9 +891,7 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   const handleIncreaseQuantity = () => {
-    if (isOutOfStock) {
-      return;
-    }
+    if (isOutOfStock) return;
 
     setQuantity((current) => Math.min(stock, current + 1));
   };
@@ -861,12 +900,6 @@ export default function ProductDetailsPage() {
     setQuantity((current) => Math.max(1, current - 1));
   };
 
-  /*
-   * Unit price stays unchanged in the product
-   * price card.
-   *
-   * This is the actual selected quantity total.
-   */
   const selectedQuantityTotal = activePrice * quantity;
 
   const selectedQuantitySavings = Math.max(
@@ -879,9 +912,7 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   const handleAddToCart = () => {
-    if (authLoading) {
-      return;
-    }
+    if (authLoading) return;
 
     if (!isAuthenticated) {
       const currentPath = window.location.pathname;
@@ -891,21 +922,8 @@ export default function ProductDetailsPage() {
       return;
     }
 
-    if (!activeVariant) {
-      return;
-    }
-
-    if (isOutOfStock) {
-      return;
-    }
-
-    if (quantity <= 0) {
-      return;
-    }
-
-    if (quantity > remainingStock) {
-      return;
-    }
+    if (!activeVariant || isOutOfStock) return;
+    if (quantity <= 0 || quantity > remainingStock) return;
 
     addToCart(cartProduct, quantity);
   };
@@ -915,9 +933,7 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   const handleBuyNow = () => {
-    if (authLoading) {
-      return;
-    }
+    if (authLoading) return;
 
     if (!isAuthenticated) {
       const currentPath = window.location.pathname;
@@ -927,50 +943,57 @@ export default function ProductDetailsPage() {
       return;
     }
 
-    if (!activeVariant) {
-      return;
-    }
+    if (!activeVariant || isOutOfStock) return;
+    if (quantity > stock || quantity <= 0) return;
 
-    if (isOutOfStock) {
-      return;
-    }
+    const checkoutProduct = {
+      ...cartProduct,
+      quantity,
+      giftOffer: giftOfferActive,
+    };
 
-    if (quantity > stock || quantity <= 0) {
-      return;
-    }
-
-    setPaymentMethod(paymentMethod);
-
-    setProduct(
-      {
-        ...cartProduct,
-        quantity,
-      },
-      currentStorage,
-      currentColor,
-    );
+    setProduct(checkoutProduct, currentStorage, currentColor);
 
     router.push("/checkout");
   };
 
   /* =======================================================
-     PAYMENT CHANGE
+     SELECT MEDIA
   ======================================================= */
 
-  const handlePaymentMethodChange = (method: string) => {
-    setPaymentMethodState(method);
-    setPaymentMethod(method);
-  };
-  /* =========================================================
-   SELECT MEDIA
-========================================================= */
-
   const handleMediaSelect = (index: number) => {
-    if (index < 0 || index >= gallery.length) {
+    if (index < 0 || index >= gallery.length) return;
+
+    setSelectedImage(index);
+  };
+  const handleCheckDelivery = () => {
+    const pincode = deliveryPincode.trim();
+
+    if (!/^\d{6}$/.test(pincode)) {
+      setDeliveryError("Please enter a valid 6-digit PIN code.");
+      setDeliveryEstimate(null);
+      setDeliveryChecked(false);
       return;
     }
 
-    setSelectedImage(index);
+    setDeliveryError("");
+
+    // Temporary UI estimate: 5 days.
+    // This will be replaced with Shiprocket's actual estimate.
+    const estimatedDate = new Date();
+    estimatedDate.setDate(estimatedDate.getDate() + 5);
+
+    const weekday = estimatedDate.toLocaleDateString("en-IN", {
+      weekday: "long",
+    });
+
+    const formattedDate = estimatedDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+    });
+
+    setDeliveryEstimate(`${weekday}, ${formattedDate}`);
+    setDeliveryChecked(true);
   };
   /* =======================================================
      UI
@@ -978,26 +1001,29 @@ export default function ProductDetailsPage() {
 
   return (
     <>
-     <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(productStructuredData).replace(
-          /</g,
-          "\\u003c",
-        ),
-      }}
-    />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productStructuredData).replace(
+            /</g,
+            "\\u003c",
+          ),
+        }}
+      />
+
       <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
-        <section className="mx-auto max-w-7xl px-5 py-8 lg:px-8">
-          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-            {/* =================================================
-              LEFT IMAGE SECTION
+        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-5 sm:py-8 lg:px-8">
+          {/* =================================================
+              MAIN PRODUCT LAYOUT
           ================================================= */}
 
-            <div>
-              {/* MAIN IMAGE / VIDEO */}
+          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+            {/* LEFT IMAGE SECTION */}
 
-              <div className="relative flex min-h-[520px] items-center justify-center rounded-[2rem] border border-gray-200 bg-white p-8 shadow-sm">
+            <div className="min-w-0">
+              {/* MAIN IMAGE */}
+
+              <div className="relative flex h-[390px] w-full items-center justify-center overflow-hidden rounded-[2rem] border border-gray-200 bg-white p-3 shadow-sm sm:h-[480px] lg:h-[540px]">
                 {activeDiscount > 0 && (
                   <span className="absolute left-5 top-5 z-20 rounded-full bg-green-500 px-3 py-1.5 text-xs font-bold text-white">
                     {activeDiscount}% OFF
@@ -1019,13 +1045,9 @@ export default function ProductDetailsPage() {
                   <Heart size={20} fill={liked ? "currentColor" : "none"} />
                 </button>
 
-                {/* PRODUCT MEDIA */}
+                {/* FILLED IMAGE AREA */}
 
-                {/* =========================================================
-    ACTIVE PRODUCT MEDIA
-========================================================= */}
-
-                <div className="flex h-full w-full items-center justify-center">
+                <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-2xl">
                   {activeMedia?.url ? (
                     activeMedia.type === "VIDEO" ? (
                       <video
@@ -1034,7 +1056,7 @@ export default function ProductDetailsPage() {
                         controls
                         playsInline
                         preload="metadata"
-                        className="max-h-[420px] max-w-[85%] rounded-2xl object-contain"
+                        className="h-full w-full object-contain"
                       >
                         Your browser does not support video playback.
                       </video>
@@ -1044,26 +1066,25 @@ export default function ProductDetailsPage() {
                         src={getOptimizedImageUrl(activeMedia.url, 900, 80)}
                         alt={
                           activeMedia.altText ||
-                          `${product.name}${activeVariant ? ` ${activeVariant.color}` : ""}`
+                          `${product.name}${
+                            activeVariant ? ` ${activeVariant.color}` : ""
+                          }`
                         }
-                        width={700}
-                        height={700}
+                        fill
                         priority
-                        sizes="(max-width: 1024px) 90vw, 700px"
-                        className="max-h-[420px] max-w-[85%] object-contain transition duration-500 hover:scale-105"
+                        sizes="(max-width: 1024px) 100vw, 55vw"
+                        className="object-contain p-3 transition duration-500 hover:scale-[1.03]"
                       />
                     )
                   ) : (
-                    <div className="flex h-[380px] items-center justify-center text-gray-300">
+                    <div className="flex h-full items-center justify-center text-gray-300">
                       <Smartphone size={80} />
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* =========================================================
-    IMAGE / VIDEO THUMBNAILS
-========================================================= */}
+              {/* IMAGE / VIDEO THUMBNAILS */}
 
               {gallery.length > 0 && (
                 <div className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-5">
@@ -1079,13 +1100,12 @@ export default function ProductDetailsPage() {
                           media.type === "VIDEO" ? "video" : "image"
                         } ${index + 1}`}
                         aria-pressed={isActive}
-                        className={`relative flex h-24 items-center justify-center overflow-hidden rounded-2xl border bg-white p-2 transition-all duration-200 ${
+                        className={`relative flex h-20 items-center justify-center overflow-hidden rounded-2xl border bg-white p-2 transition-all duration-200 sm:h-24 ${
                           isActive
                             ? "border-2 border-indigo-600 ring-2 ring-indigo-100"
                             : "border-gray-200 hover:border-indigo-400"
                         }`}
                       >
-                        {/* IMAGE THUMBNAIL */}
                         {media.type === "IMAGE" ? (
                           <Image
                             src={getOptimizedImageUrl(media.url, 240, 72)}
@@ -1099,7 +1119,6 @@ export default function ProductDetailsPage() {
                             className="h-full w-full object-contain"
                           />
                         ) : (
-                          /* VIDEO THUMBNAIL */
                           <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-xl bg-gray-100">
                             <video
                               key={`thumbnail-video-${media.id}`}
@@ -1110,22 +1129,18 @@ export default function ProductDetailsPage() {
                               className="h-full w-full object-cover"
                             />
 
-                            {/* DARK OVERLAY */}
                             <div className="absolute inset-0 bg-black/20" />
 
-                            {/* PLAY BUTTON */}
                             <span className="absolute flex h-9 w-9 items-center justify-center rounded-full bg-white text-indigo-600 shadow-md">
-                              <span className="ml-0.5 text-sm">▶</span>
+                              ▶
                             </span>
 
-                            {/* VIDEO LABEL */}
                             <span className="absolute left-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white">
                               VIDEO
                             </span>
                           </div>
                         )}
 
-                        {/* ACTIVE CHECK */}
                         {isActive && (
                           <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white shadow">
                             <Check size={12} strokeWidth={3} />
@@ -1154,11 +1169,9 @@ export default function ProductDetailsPage() {
               </div>
             </div>
 
-            {/* =================================================
-              RIGHT PRODUCT DETAILS
-          ================================================= */}
+            {/* RIGHT PRODUCT DETAILS */}
 
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
                 {product.brand}
               </p>
@@ -1190,18 +1203,56 @@ export default function ProductDetailsPage() {
                 </span>
               </div>
 
-              {/* DESCRIPTION */}
+              {/* =================================================
+                  COLLAPSIBLE DESCRIPTION
+              ================================================= */}
 
-              <p className="mt-6 text-sm leading-7 text-gray-500">
-                {product.description}
-              </p>
+              <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setDescriptionOpen((current) => !current)}
+                  aria-expanded={descriptionOpen}
+                  className="flex w-full items-center justify-between gap-4 p-2 text-left"
+                >
+                  <div>
+                    <p className="text-sm font-black">Product Description</p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Know more about this device
+                    </p>
+                  </div>
+
+                  <ChevronDown
+                    size={20}
+                    className={`shrink-0 text-gray-500 transition-transform duration-300 ${
+                      descriptionOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                <div
+                  className={`grid transition-all duration-500 ease-in-out ${
+                    descriptionOpen
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="border-t border-gray-100 px-5 py-4">
+                      <p className="text-sm leading-7 text-gray-600">
+                        {product.description ||
+                          `Explore the ${product.brand} ${product.name} at PhoneBhai. This device is quality checked and available in the selected condition and configuration.`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* PRICE */}
 
-              <div className="mt-7 rounded-2xl border border-gray-200 bg-white p-5">
+              <div className="mt-2 rounded-2xl border border-gray-200 bg-white p-5">
                 <div className="flex flex-wrap items-end gap-3">
                   <span className="text-3xl font-black">
-                    ₹{formatPrice(activePrice * quantity)}
+                    ₹{formatPrice(selectedQuantityTotal)}
                   </span>
 
                   {activeOriginalPrice > activePrice && (
@@ -1211,25 +1262,94 @@ export default function ProductDetailsPage() {
                       </span>
 
                       <span className="mb-1 text-sm font-bold text-green-600">
-                        Save ₹
-                        {formatPrice(
-                          (activeOriginalPrice - activePrice) * quantity,
-                        )}
+                        Save ₹{formatPrice(selectedQuantitySavings)}
                       </span>
                     </>
                   )}
                 </div>
-
-                {/* QUANTITY TOTAL */}
-
+                {/* 
                 <div className="mt-4 flex items-center gap-2 rounded-xl bg-indigo-50 px-4 py-3">
-                  <CreditCard size={18} className="text-indigo-600" />
+                  <CreditCard
+                    size={18}
+                    className="shrink-0 text-indigo-600"
+                  />
 
                   <p className="text-xs font-semibold text-indigo-700">
                     EMI available from ₹{formatPrice(emiPrice)}
                     /month for 12 months
                   </p>
+                </div> */}
+              </div>
+
+              {/* =================================================
+                  FIVE-MINUTE GIFT OFFER
+              ================================================= */}
+
+              <div
+                className={`relative mt-5 overflow-hidden rounded-2xl border p-4 sm:p-5 ${
+                  giftOfferActive
+                    ? "border-amber-200 bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50"
+                    : "border-gray-200 bg-gray-100"
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`flex h-10 w-14 shrink-0 items-center justify-center rounded-2xl ${
+                      giftOfferActive
+                        ? "bg-amber-100 text-amber-600"
+                        : "bg-gray-200 text-gray-400"
+                    }`}
+                  >
+                    <Gift
+                      size={30}
+                      className={giftOfferActive ? "gift-vibrate" : ""}
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-black text-gray-900">
+                        {giftOfferActive
+                          ? "Special Gift with Your Order!"
+                          : "Limited-time gift offer ended"}
+                      </h3>
+
+                      {giftOfferActive && (
+                        <span className="rounded-full bg-red-100 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-red-600">
+                          Limited offer
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="mt-1 text-xs leading-5 text-gray-600">
+                      {giftOfferActive
+                        ? "Order within the countdown to qualify for a special gift with your product."
+                        : "The five-minute offer for this visit has expired."}
+                    </p>
+                  </div>
                 </div>
+
+                {giftOfferActive ? (
+                  <div className="mt-4 flex items-center justify-between rounded-xl bg-white/80 px-4 py-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                      <Clock3 size={16} className="text-red-500" />
+                      Offer ends in
+                    </div>
+
+                    <div className="rounded-lg bg-gray-900 px-4 py-2 font-mono text-xl font-black tracking-widest text-white">
+                      {formatCountdown(giftSeconds)}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-xl bg-white/70 px-4 py-3 text-xs font-semibold text-gray-500">
+                    No active gift offer on this visit.
+                  </div>
+                )}
+
+                <p className="mt-2 text-[10px] leading-4 text-gray-500">
+                  Gift eligibility is subject to order verification and offer
+                  availability.
+                </p>
               </div>
 
               {/* STORAGE */}
@@ -1272,78 +1392,77 @@ export default function ProductDetailsPage() {
                 </div>
               )}
 
-              {/* COLOR */}
-              <div className="mt-2">
-                {/* COLOR */}
-                {colorOptions.length > 0 && (
-                  <div className="mt-6">
-                    <p className="text-sm font-bold">Colour</p>
-                    <div className="mt-3 flex flex-wrap gap-3">
-                      {colorOptions.map((color) => {
-                        const matchingVariant =
-                          product.variants.find(
-                            (variant) =>
-                              normalizeColor(variant.color) ===
-                                normalizeColor(color) &&
-                              normalizeStorage(variant.storage) ===
-                                normalizeStorage(selectedStorage),
-                          ) ||
-                          product.variants.find(
-                            (variant) =>
-                              normalizeColor(variant.color) ===
-                              normalizeColor(color),
-                          );
+              {/* COLOUR */}
 
-                        const isAvailable =
-                          !selectedStorage ||
-                          availableColorsForStorage.has(normalizeColor(color));
+              {colorOptions.length > 0 && (
+                <div className="mt-6">
+                  <p className="text-sm font-bold">Colour</p>
 
-                        const isSelected =
-                          normalizeColor(selectedColor) ===
-                          normalizeColor(color);
-
-                        const colorHex = matchingVariant?.colorHex;
-
-                        return (
-                          <button
-                            key={color}
-                            type="button"
-                            disabled={!isAvailable}
-                            onClick={() => handleColorChange(color)}
-                            aria-label={`Select ${color}`}
-                            aria-pressed={isSelected}
-                            className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-                              isSelected
-                                ? "border-indigo-600 bg-indigo-50 text-gray-900"
-                                : isAvailable
-                                  ? "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
-                                  : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
-                            }`}
-                          >
-                            <span
-                              className={`h-5 w-5 shrink-0 rounded-full border border-gray-300 ${
-                                !isAvailable ? "opacity-40" : ""
-                              }`}
-                              style={{
-                                backgroundColor: colorHex || "#E5E7EB",
-                              }}
-                            />
-
-                            <span>{color}</span>
-
-                            {isSelected && (
-                              <Check size={15} className="text-indigo-600" />
-                            )}
-                          </button>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    {colorOptions.map((color) => {
+                      const matchingVariant =
+                        product.variants.find(
+                          (variant) =>
+                            normalizeColor(variant.color) ===
+                              normalizeColor(color) &&
+                            normalizeStorage(variant.storage) ===
+                              normalizeStorage(selectedStorage),
+                        ) ||
+                        product.variants.find(
+                          (variant) =>
+                            normalizeColor(variant.color) ===
+                            normalizeColor(color),
                         );
-                      })}
-                    </div>
+
+                      const isAvailable =
+                        !selectedStorage ||
+                        availableColorsForStorage.has(normalizeColor(color));
+
+                      const isSelected =
+                        normalizeColor(selectedColor) === normalizeColor(color);
+
+                      const colorHex = matchingVariant?.colorHex;
+
+                      return (
+                        <button
+                          key={color}
+                          type="button"
+                          disabled={!isAvailable}
+                          onClick={() => handleColorChange(color)}
+                          aria-label={`Select ${color}`}
+                          aria-pressed={isSelected}
+                          className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                            isSelected
+                              ? "border-indigo-600 bg-indigo-50 text-gray-900"
+                              : isAvailable
+                                ? "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+                                : "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300"
+                          }`}
+                        >
+                          <span
+                            className={`h-5 w-5 shrink-0 rounded-full border border-gray-300 ${
+                              !isAvailable ? "opacity-40" : ""
+                            }`}
+                            style={{
+                              backgroundColor: colorHex || "#E5E7EB",
+                            }}
+                          />
+
+                          <span>{color}</span>
+
+                          {isSelected && (
+                            <Check size={15} className="text-indigo-600" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
               {/* STOCK */}
 
-              <div className="mt-5">
+              <div className="mt-2">
                 {isOutOfStock ? (
                   <p className="text-sm font-bold text-red-600">Out of stock</p>
                 ) : (
@@ -1361,7 +1480,7 @@ export default function ProductDetailsPage() {
 
               {/* QUANTITY */}
 
-              <div className="mt-6">
+              <div className="mt-2">
                 <p className="text-sm font-bold">Quantity</p>
 
                 <div className="mt-3 inline-flex h-11 items-center overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -1393,63 +1512,93 @@ export default function ProductDetailsPage() {
 
               {/* DELIVERY */}
 
-              <div className="mt-7 rounded-2xl border border-gray-200 bg-white p-5">
-                <div className="flex items-center gap-3">
-                  <MapPin size={19} className="text-indigo-600" />
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <MapPin className="h-5 w-5 text-gray-800" />
+                  <h3 className="text-base font-semibold text-gray-900">
+                    Check delivery
+                  </h3>
+                </div>
 
-                  <div>
-                    <p className="text-sm font-bold">Check delivery</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Enter your PIN code to check the estimated delivery date.
+                </p>
 
-                    <p className="mt-1 text-xs text-gray-500">
-                      Enter your PIN code at checkout
-                    </p>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleCheckDelivery();
+                  }}
+                  className="flex flex-col sm:flex-row gap-2"
+                >
+                  <div className="relative flex-1">
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                      maxLength={6}
+                      value={deliveryPincode}
+                      onChange={(e) => {
+                        const value = e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 6);
+                        setDeliveryPincode(value);
+                        setDeliveryEstimate(null);
+                        setDeliveryChecked(false);
+                        setDeliveryError("");
+                      }}
+                      placeholder="Enter 6-digit PIN code"
+                      aria-label="Delivery PIN code"
+                      className="w-full h-12 rounded-xl border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    />
                   </div>
-                </div>
-              </div>
 
-              {/* PAYMENT */}
+                  <button
+                    type="submit"
+                    disabled={deliveryPincode.length !== 6}
+                    className="h-12 rounded-xl bg-black px-6 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Check
+                  </button>
+                </form>
 
-              <div className="mt-7">
-                <h2 className="text-lg font-black">Choose payment method</h2>
+                {deliveryError && (
+                  <p className="mt-2 text-sm text-red-600">{deliveryError}</p>
+                )}
 
-                <div className="mt-4 grid gap-3">
-                  <PaymentOption
-                    active={paymentMethod === "upi"}
-                    onClick={() => handlePaymentMethodChange("upi")}
-                    icon={<Wallet size={19} />}
-                    title="UPI"
-                    description="Google Pay, PhonePe, Paytm and more"
-                  />
+                {deliveryChecked && deliveryEstimate && (
+                  <div className="mt-4 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
+                      <Truck className="h-5 w-5 text-green-700" />
+                    </div>
 
-                  <PaymentOption
-                    active={paymentMethod === "card"}
-                    onClick={() => handlePaymentMethodChange("card")}
-                    icon={<CreditCard size={19} />}
-                    title="Credit / Debit Card"
-                    description="Secure card payment"
-                  />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-green-800">
+                        Estimated delivery by
+                      </p>
+                      <p className="mt-0.5 text-base font-bold text-gray-900">
+                        {deliveryEstimate}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-600">
+                        Delivery estimate for PIN code {deliveryPincode}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-                  <PaymentOption
-                    active={paymentMethod === "emi"}
-                    onClick={() => handlePaymentMethodChange("emi")}
-                    icon={<CreditCard size={19} />}
-                    title="EMI"
-                    description="Pay monthly with eligible cards"
-                  />
-
-                  <PaymentOption
-                    active={paymentMethod === "cod"}
-                    onClick={() => handlePaymentMethodChange("cod")}
-                    icon={<Truck size={19} />}
-                    title="Cash on Delivery"
-                    description="Pay when your phone arrives"
-                  />
-                </div>
+                {!deliveryChecked && !deliveryError && (
+                  <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+                    <Truck className="h-4 w-4 shrink-0" />
+                    <span>
+                      Check your estimated delivery date before ordering.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* CART + BUY */}
 
-              <div className="mt-7 grid gap-3 sm:grid-cols-2">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   disabled={isOutOfStock || cannotAddMore}
@@ -1511,71 +1660,238 @@ export default function ProductDetailsPage() {
                 </Link>
               )}
 
-              <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-gray-500">
-                <ShieldCheck size={15} className="text-green-600" />
+              <div className="mt-4 flex items-center justify-center gap-2 text-center text-xs font-semibold text-gray-500">
+                <ShieldCheck size={15} className="shrink-0 text-green-600" />
                 Secure payment • Warranty backed • Quality checked
               </div>
             </div>
           </div>
 
           {/* ===================================================
-            PRODUCT INFORMATION
-        =================================================== */}
+              COLLAPSIBLE PRODUCT DETAILS
+          =================================================== */}
 
-          <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
-            <h2 className="text-2xl font-black">Product details</h2>
+          <section className="mt-5 overflow-hidden rounded-3xl border border-gray-200 bg-white">
+            <button
+              type="button"
+              onClick={() => setDetailsOpen((current) => !current)}
+              aria-expanded={detailsOpen}
+              className="flex w-full items-center justify-between gap-4 p-2 text-left sm:p-4"
+            >
+              <div>
+                <h2 className="text-xl font-black sm:text-2xl">
+                  Product Details
+                </h2>
 
-            {product.highlights.length > 0 && (
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {product.highlights.map((highlight) => (
-                  <div
-                    key={highlight.id}
-                    className="flex items-start gap-3 rounded-2xl bg-gray-50 p-4"
-                  >
-                    <Check
-                      size={18}
-                      className="mt-0.5 shrink-0 text-green-600"
+                <p className="mt-1 text-sm text-gray-500">
+                  Specifications, features and device information
+                </p>
+              </div>
+
+              <div
+                className={`flex h-8 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 transition-all duration-300 ${
+                  detailsOpen
+                    ? "rotate-180 bg-indigo-50 text-indigo-600"
+                    : "text-gray-600"
+                }`}
+              >
+                <ChevronDown size={21} />
+              </div>
+            </button>
+
+            <div
+              className={`grid transition-all duration-500 ease-in-out ${
+                detailsOpen
+                  ? "grid-rows-[1fr] opacity-100"
+                  : "grid-rows-[0fr] opacity-0"
+              }`}
+            >
+              <div className="overflow-hidden">
+                <div className="border-t border-gray-100 p-6 sm:p-8">
+                  {product.highlights.length > 0 && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {product.highlights.map((highlight) => (
+                        <div
+                          key={highlight.id}
+                          className="flex items-start gap-3 rounded-2xl bg-gray-50 p-4"
+                        >
+                          <Check
+                            size={18}
+                            className="mt-0.5 shrink-0 text-green-600"
+                          />
+
+                          <p className="text-sm font-semibold text-gray-700">
+                            {highlight.text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className=" grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Detail title="Brand" value={product.brand} />
+
+                    <Detail title="Model" value={product.name} />
+
+                    <Detail
+                      title="Storage"
+                      value={activeVariant?.storage || selectedStorage || "—"}
                     />
 
-                    <p className="text-sm font-semibold text-gray-700">
-                      {highlight.text}
-                    </p>
+                    <Detail
+                      title="Colour"
+                      value={activeVariant?.color || selectedColor || "—"}
+                    />
+
+                    <Detail
+                      title="Condition"
+                      value={formatCondition(product.condition)}
+                    />
+
+                    <Detail title="Warranty" value={product.warranty || "—"} />
+
+                    <Detail
+                      title="Rating"
+                      value={`${productRating.toFixed(1)}/5`}
+                    />
+
+                    <Detail title="Category" value={product.category || "—"} />
                   </div>
-                ))}
+                </div>
               </div>
-            )}
-
-            <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Detail title="Brand" value={product.brand} />
-
-              <Detail title="Model" value={product.name} />
-
-              <Detail
-                title="Storage"
-                value={activeVariant?.storage || selectedStorage || "—"}
-              />
-
-              <Detail
-                title="Colour"
-                value={activeVariant?.color || selectedColor || "—"}
-              />
-
-              <Detail
-                title="Condition"
-                value={formatCondition(product.condition)}
-              />
-
-              <Detail title="Warranty" value={product.warranty || "—"} />
-
-              <Detail title="Rating" value={`${productRating.toFixed(1)}/5`} />
-
-              <Detail title="Category" value={product.category || "—"} />
             </div>
           </section>
 
           {/* ===================================================
-    CUSTOMER REVIEWS
-=================================================== */}
+              SAME BRAND PRODUCTS CAROUSEL
+          =================================================== */}
+
+          {(similarLoading || similarProducts.length > 0) && (
+            <section className="mt-10">
+              <div className="mb-5 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+                    Explore more
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-black sm:text-2xl">
+                    More from {product.brand}
+                  </h2>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Discover other devices from this brand.
+                  </p>
+                </div>
+
+                <Link
+                  href={`/buy?search=${encodeURIComponent(product.brand)}`}
+                  className="shrink-0 text-xs font-bold text-indigo-600 transition hover:text-indigo-800 sm:text-sm"
+                >
+                  View all
+                  <ArrowRight size={14} className="ml-1 inline" />
+                </Link>
+              </div>
+
+              {similarLoading ? (
+                <div className="flex gap-4 overflow-hidden">
+                  {[1, 2, 3, 4].map((item) => (
+                    <div
+                      key={item}
+                      className="h-64 min-w-[180px] flex-1 animate-pulse rounded-2xl bg-gray-200"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4">
+                  {similarProducts.map((item) => {
+                    const itemImage =
+                      item.images?.find((image) => image.type === "IMAGE")
+                        ?.url ||
+                      item.variants?.[0]?.images?.find(
+                        (image) => image.type === "IMAGE",
+                      )?.url;
+
+                    const itemPrice = toNumber(item.price);
+                    const itemOriginalPrice = toNumber(item.originalPrice);
+
+                    const itemDiscount =
+                      itemOriginalPrice > itemPrice && itemOriginalPrice > 0
+                        ? Math.round(
+                            ((itemOriginalPrice - itemPrice) /
+                              itemOriginalPrice) *
+                              100,
+                          )
+                        : 0;
+
+                    return (
+                      <Link
+                        key={item.id}
+                        href={`/buy/${item.id}`}
+                        className="group w-[175px] min-w-[175px] snap-start overflow-hidden rounded-2xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-lg sm:w-[220px] sm:min-w-[220px]"
+                      >
+                        <div className="relative flex h-40 items-center justify-center bg-gray-50 p-4 sm:h-48">
+                          {itemDiscount > 0 && (
+                            <span className="absolute left-3 top-3 z-10 rounded-full bg-green-600 px-2 py-1 text-[10px] font-bold text-white">
+                              {itemDiscount}% OFF
+                            </span>
+                          )}
+
+                          {itemImage ? (
+                            <Image
+                              src={getOptimizedImageUrl(itemImage, 400, 75)}
+                              alt={`${item.brand} ${item.name}`}
+                              fill
+                              sizes="220px"
+                              className="object-contain p-3 transition duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <Smartphone size={45} className="text-gray-300" />
+                          )}
+                        </div>
+
+                        <div className="p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                            {item.brand}
+                          </p>
+
+                          <h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-bold text-gray-900">
+                            {item.name}
+                          </h3>
+
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <span className="text-base font-black text-gray-900">
+                              ₹{formatPrice(itemPrice)}
+                            </span>
+
+                            {itemOriginalPrice > itemPrice && (
+                              <span className="text-xs text-gray-400 line-through">
+                                ₹{formatPrice(itemOriginalPrice)}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-[10px] font-semibold text-gray-500">
+                              {formatCondition(item.condition)}
+                            </span>
+
+                            <span className="flex items-center gap-1 text-xs font-bold text-indigo-600">
+                              View
+                              <ArrowRight size={13} />
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ===================================================
+              CUSTOMER REVIEWS
+          =================================================== */}
 
           <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
             {(() => {
@@ -1601,13 +1917,10 @@ export default function ProductDetailsPage() {
 
               const totalRatings = reviews.length;
 
-              const getBarWidth = (count: number) => {
-                if (totalRatings === 0) {
-                  return 0;
-                }
-
-                return Math.round((count / totalRatings) * 100);
-              };
+              const getBarWidth = (count: number) =>
+                totalRatings === 0
+                  ? 0
+                  : Math.round((count / totalRatings) * 100);
 
               const ratingRows = [
                 {
@@ -1639,8 +1952,6 @@ export default function ProductDetailsPage() {
 
               return (
                 <>
-                  {/* REVIEW HEADER */}
-
                   <div className="flex flex-col gap-8 lg:flex-row lg:items-center">
                     <div className="min-w-[220px]">
                       <h2 className="text-2xl font-black">Customer reviews</h2>
@@ -1674,15 +1985,13 @@ export default function ProductDetailsPage() {
                             ))}
                           </div>
 
-                          <p className="mt-2 text-xs font-semibold text-gray-400">
+                          <p className="mt-0 text-xs font-semibold text-gray-400">
                             {product.reviewCount}{" "}
                             {product.reviewCount === 1 ? "rating" : "ratings"}
                           </p>
                         </div>
                       </div>
                     </div>
-
-                    {/* RATING BREAKDOWN */}
 
                     <div className="w-full max-w-xl flex-1 rounded-2xl bg-gray-50 p-5">
                       <div className="space-y-3">
@@ -1691,8 +2000,6 @@ export default function ProductDetailsPage() {
                             key={row.rating}
                             className="flex items-center gap-3"
                           >
-                            {/* STAR NUMBER */}
-
                             <div className="flex w-8 shrink-0 items-center justify-end gap-1">
                               <span className="text-sm font-bold text-gray-700">
                                 {row.rating}
@@ -1705,8 +2012,6 @@ export default function ProductDetailsPage() {
                               />
                             </div>
 
-                            {/* BAR */}
-
                             <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-200">
                               <div
                                 className={`h-full rounded-full transition-all duration-500 ${row.color}`}
@@ -1716,8 +2021,6 @@ export default function ProductDetailsPage() {
                               />
                             </div>
 
-                            {/* COUNT */}
-
                             <span className="w-8 text-right text-xs font-bold text-gray-500">
                               {row.count}
                             </span>
@@ -1726,8 +2029,6 @@ export default function ProductDetailsPage() {
                       </div>
                     </div>
                   </div>
-
-                  {/* REVIEWS */}
 
                   <div className="mt-8 border-t border-gray-100 pt-8">
                     {reviews.length > 0 ? (
@@ -1753,8 +2054,6 @@ export default function ProductDetailsPage() {
                               key={review.id}
                               className="rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
                             >
-                              {/* CUSTOMER + RATING */}
-
                               <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
                                   <p className="text-sm font-bold text-gray-900">
@@ -1775,18 +2074,13 @@ export default function ProductDetailsPage() {
                                   )}`}
                                 >
                                   {reviewRating.toFixed(0)}
-
                                   <Star size={12} fill="currentColor" />
                                 </div>
                               </div>
 
-                              {/* COMMENT */}
-
                               <p className="mt-4 text-sm leading-6 text-gray-600">
                                 {review.comment}
                               </p>
-
-                              {/* MEDIA */}
 
                               {review.media && review.media.length > 0 && (
                                 <div className="mt-4 flex flex-wrap gap-3">
@@ -1814,6 +2108,7 @@ export default function ProductDetailsPage() {
                                         <img
                                           src={media.url}
                                           alt="Customer review"
+                                          loading="lazy"
                                           className="h-32 w-32 object-cover transition duration-300 group-hover:scale-105 sm:h-36 sm:w-36"
                                         />
                                       </a>
@@ -1821,8 +2116,6 @@ export default function ProductDetailsPage() {
                                   )}
                                 </div>
                               )}
-
-                              {/* DATE */}
 
                               {validReviewDate && (
                                 <p className="mt-4 text-xs text-gray-400">
@@ -1858,8 +2151,8 @@ export default function ProductDetailsPage() {
           </section>
 
           {/* ===================================================
-            HOW IT WORKS
-        =================================================== */}
+              HOW IT WORKS
+          =================================================== */}
 
           <section className="mt-10 rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
             <h2 className="text-2xl font-black">Buy with confidence</h2>
@@ -1869,7 +2162,7 @@ export default function ProductDetailsPage() {
                 number="01"
                 icon={<Smartphone size={20} />}
                 title="Choose your phone"
-                text="Select your preferred storage, colour and payment option."
+                text="Select your preferred storage and colour."
               />
 
               <Step
@@ -1889,6 +2182,54 @@ export default function ProductDetailsPage() {
           </section>
         </section>
       </main>
+
+      {/* GIFT VIBRATION ANIMATION */}
+
+      <style jsx global>{`
+        @keyframes giftVibration {
+          0% {
+            transform: rotate(0deg) scale(1);
+          }
+          15% {
+            transform: rotate(-13deg) scale(1.08);
+          }
+          30% {
+            transform: rotate(13deg) scale(1.08);
+          }
+          45% {
+            transform: rotate(-10deg) scale(1.05);
+          }
+          60% {
+            transform: rotate(10deg) scale(1.05);
+          }
+          75% {
+            transform: rotate(-5deg) scale(1.02);
+          }
+          100% {
+            transform: rotate(0deg) scale(1);
+          }
+        }
+
+        .gift-vibrate {
+          animation: giftVibration 0.85s ease-in-out infinite;
+          transform-origin: center;
+        }
+
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .gift-vibrate {
+            animation: none;
+          }
+        }
+      `}</style>
     </>
   );
 }
@@ -1904,58 +2245,6 @@ function InfoBox({ icon, title }: { icon: ReactNode; title: string }) {
 
       <p className="mt-2 text-[11px] font-bold text-gray-600">{title}</p>
     </div>
-  );
-}
-
-/* =========================================================
-   PAYMENT OPTION
-========================================================= */
-
-function PaymentOption({
-  active,
-  onClick,
-  icon,
-  title,
-  description,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition ${
-        active
-          ? "border-indigo-600 bg-indigo-50"
-          : "border-gray-200 bg-white hover:border-gray-300"
-      }`}
-    >
-      <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-          active ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"
-        }`}
-      >
-        {icon}
-      </div>
-
-      <div className="flex-1">
-        <p className="text-sm font-bold">{title}</p>
-
-        <p className="mt-1 text-xs text-gray-500">{description}</p>
-      </div>
-
-      <div
-        className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-          active ? "border-indigo-600 bg-indigo-600" : "border-gray-300"
-        }`}
-      >
-        {active && <Check size={12} className="text-white" />}
-      </div>
-    </button>
   );
 }
 

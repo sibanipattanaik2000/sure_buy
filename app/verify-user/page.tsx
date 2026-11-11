@@ -154,19 +154,6 @@ function VerifyUserContent() {
     try {
       setLoading(true);
 
-      /*
-       * =======================================================
-       * PASSWORD RESET FLOW
-       * =======================================================
-       *
-       * Do NOT call verifyPhoneOtp() here.
-       *
-       * The reset-password backend endpoint already accepts:
-       *
-       * phone + code + newPassword
-       *
-       * We therefore carry the OTP to the reset-password page.
-       */
       if (isResetMode) {
         router.replace(
           `/reset-password?phone=${encodeURIComponent(
@@ -177,13 +164,6 @@ function VerifyUserContent() {
         return;
       }
 
-      /*
-       * =======================================================
-       * REGISTRATION FLOW
-       * =======================================================
-       *
-       * Existing registration verification remains unchanged.
-       */
       await verifyPhoneOtp({
         phone,
         code: enteredOtp,
@@ -191,10 +171,6 @@ function VerifyUserContent() {
 
       setSuccess(true);
 
-      /*
-       * Backend sets the authentication cookie after
-       * successful registration phone verification.
-       */
       setTimeout(() => {
         router.push("/");
         router.refresh();
@@ -239,14 +215,6 @@ function VerifyUserContent() {
       setResending(true);
       setError("");
 
-      /*
-       * Reset flow:
-       * Use forgotPassword() so Twilio generates the correct
-       * password-reset OTP.
-       *
-       * Registration flow:
-       * Keep using sendPhoneOtp().
-       */
       if (isResetMode) {
         await forgotPassword(phone);
       } else {
@@ -277,11 +245,9 @@ function VerifyUserContent() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 px-5 py-12 sm:py-16">
+    <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-gray-100 px-5 py-12 sm:py-16">
       <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-2">
-        {/* =====================================================
-            LEFT SIDE
-        ===================================================== */}
+        {/* LEFT SIDE */}
 
         <div className="hidden lg:block">
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white shadow-lg">
@@ -292,15 +258,15 @@ function VerifyUserContent() {
             {isResetMode ? (
               <>
                 Reset your{" "}
-                <span className="text-indigo-600">
+                <span className="text-gray-500">
                   PhoneBhai password.
                 </span>
               </>
             ) : (
               <>
                 Verify your{" "}
-                <span className="text-indigo-600">
-                  PhoneBhai account.
+                <span className="text-gray-500">
+                  PhoneBhai Account
                 </span>
               </>
             )}
@@ -314,8 +280,8 @@ function VerifyUserContent() {
 
           <div className="mt-10 space-y-5">
             <div className="flex items-center gap-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50">
-                <ShieldCheck size={21} className="text-indigo-600" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
+                <ShieldCheck size={21} className="text-black" />
               </div>
 
               <div>
@@ -330,13 +296,13 @@ function VerifyUserContent() {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
-                <CheckCircle2 size={21} className="text-green-600" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
+                <CheckCircle2 size={21} className="text-black" />
               </div>
 
               <div>
                 <p className="text-sm font-bold text-gray-900">
-                  {isResetMode ? "Almost there" : "Almost there"}
+                  Almost there
                 </p>
 
                 <p className="mt-1 text-xs text-gray-500">
@@ -349,9 +315,7 @@ function VerifyUserContent() {
           </div>
         </div>
 
-        {/* =====================================================
-            VERIFICATION CARD
-        ===================================================== */}
+        {/* VERIFICATION CARD */}
 
         <div className="mx-auto w-full max-w-md">
           {/* MOBILE HEADER */}
@@ -380,8 +344,8 @@ function VerifyUserContent() {
                 {/* CARD HEADER */}
 
                 <div className="mb-8 text-center">
-                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-                    <ShieldCheck size={25} className="text-indigo-600" />
+                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
+                    <ShieldCheck size={25} className="text-black" />
                   </div>
 
                   <h2 className="text-2xl font-black tracking-tight text-gray-950">
@@ -429,7 +393,7 @@ function VerifyUserContent() {
                         className={`h-12 w-11 rounded-xl border bg-white text-center text-lg font-bold text-gray-900 outline-none transition disabled:cursor-not-allowed disabled:bg-gray-50 sm:h-14 sm:w-12 ${
                           error
                             ? "border-red-400 focus:ring-4 focus:ring-red-500/10"
-                            : "border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10"
+                            : "border-gray-200 focus:border-black focus:ring-4 focus:ring-black/5"
                         }`}
                       />
                     ))}
@@ -451,7 +415,7 @@ function VerifyUserContent() {
                   <button
                     type="submit"
                     disabled={loading || !phone}
-                    className="group mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-600/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                    className="group mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-black text-sm font-bold text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-lg hover:shadow-black/10 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                   >
                     {loading ? (
                       <>
@@ -481,7 +445,7 @@ function VerifyUserContent() {
                   {timer > 0 ? (
                     <p className="mt-2 text-xs font-semibold text-gray-400">
                       Resend OTP{" "}
-                      <span className="text-indigo-600">
+                      <span className="text-black">
                         in {timer}s
                       </span>
                     </p>
@@ -490,7 +454,7 @@ function VerifyUserContent() {
                       type="button"
                       onClick={handleResend}
                       disabled={resending || !phone}
-                      className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-indigo-600 transition hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-black transition hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <RefreshCw
                         size={15}
@@ -507,7 +471,7 @@ function VerifyUserContent() {
                 <div className="mt-6 border-t border-gray-100 pt-6 text-center">
                   <Link
                     href={isResetMode ? "/forgot-password" : "/register"}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-indigo-600"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-black"
                   >
                     <ArrowLeft size={15} />
 
@@ -518,13 +482,11 @@ function VerifyUserContent() {
                 </div>
               </>
             ) : (
-              /* =================================================
-                 REGISTRATION SUCCESS STATE
-              ================================================= */
+              /* REGISTRATION SUCCESS STATE */
 
               <div className="py-8 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
-                  <CheckCircle2 size={34} className="text-green-600" />
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                  <CheckCircle2 size={34} className="text-black" />
                 </div>
 
                 <h2 className="mt-6 text-2xl font-black text-gray-950">
@@ -537,7 +499,7 @@ function VerifyUserContent() {
 
                 <Link
                   href="/"
-                  className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 text-sm font-bold text-white transition hover:bg-indigo-700"
+                  className="mt-7 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-black px-6 text-sm font-bold text-white transition hover:bg-gray-800"
                 >
                   Continue to PhoneBhai
                   <ArrowRight size={17} />
@@ -562,12 +524,12 @@ export default function VerifyUserPage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 px-5 py-12 sm:py-16">
+        <main className="min-h-[calc(100vh-72px)] bg-gradient-to-br from-gray-50 via-white to-gray-100 px-5 py-12 sm:py-16">
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="rounded-2xl border border-gray-200 bg-white px-8 py-6 text-center shadow-sm">
               <RefreshCw
                 size={24}
-                className="mx-auto animate-spin text-indigo-600"
+                className="mx-auto animate-spin text-black"
               />
 
               <p className="mt-3 text-sm font-semibold text-gray-700">

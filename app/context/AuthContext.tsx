@@ -29,9 +29,9 @@ interface AuthContextType {
     payload: LoginPayload,
   ) => Promise<User>;
 
-  register: (
-    payload: RegisterPayload,
-  ) => Promise<User>;
+register: (
+  payload: RegisterPayload,
+) => Promise<{ phone: string }>;
 
   logout: () => Promise<void>;
 
