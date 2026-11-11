@@ -1,51 +1,52 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
   ChevronLeft,
   ChevronRight,
-  CircleCheck,
   Heart,
   PackageCheck,
   RefreshCw,
   ShieldCheck,
   Smartphone,
+  Star,
   Truck,
   Wallet,
-  Star,
+  Recycle,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { getProducts, type Product } from "./lib/api";
-import Image from "next/image";
-import { getOptimizedImageUrl } from "./lib/image";
+import { motion } from "framer-motion";
 
-type HomeImage = {
-  id?: number;
+import { getProducts, type Product } from "./lib/api";
+import { getOptimizedImageUrl } from "./lib/image";
+import { useWishlist } from "./context/WishlistContext";
+
+/* =========================================================
+   TYPES
+========================================================= */
+
+type ProductImage = {
+  id?: number | string;
   url?: string | null;
   type?: string;
   position?: number;
 };
 
-type HomeVariant = {
-  id: number;
-  price?: number | string;
-  originalPrice?: number | string;
+type ProductVariant = {
+  id?: number;
   stock?: number;
-  images?: HomeImage[];
+  images?: ProductImage[];
 };
 
 type HomeProduct = Omit<Product, "images"> & {
   slug?: string;
   description?: string;
+  images?: (string | ProductImage)[];
+  variants?: ProductVariant[];
   emiFrom?: number | string | null;
-  images?: HomeImage[];
-  variants?: HomeVariant[];
-  highlights?: {
-    text: string;
-  }[];
 };
 
 /* =========================================================
@@ -56,65 +57,62 @@ const heroBanners = [
   {
     id: 1,
     image: "https://media.phonebhai.com/banners/banners/KPq9l.jpg",
-    alt: "PhoneBhai premium phones",
-    title: "Premium Phones. Better Prices.",
-    description: "Verified smartphones at prices you'll love",
-    buttonText: "Shop Phones",
-    buttonLink: "/buy",
+    alt: "PhoneBhai premium smartphones",
   },
   {
     id: 2,
     image: "https://media.phonebhai.com/banners/banners/dK67F.jpg",
     alt: "PhoneBhai affordable smartphones",
-    title: "Upgrade Without Overspending.",
-    description: "Find quality phones that fit your budget",
-    buttonText: "Explore Phones",
-    buttonLink: "/buy",
   },
   {
     id: 3,
     image: "https://media.phonebhai.com/banners/banners/ksBX4.jpg",
-    alt: "PhoneBhai quality checked smartphones",
-    title: "Quality Checked. Ready to Go.",
-    description: "Shop verified phones with confidence",
-    buttonText: "Shop Verified Phones",
-    buttonLink: "/buy",
+    alt: "PhoneBhai verified smartphones",
   },
   {
     id: 4,
     image: "https://media.phonebhai.com/banners/banners/tam8S.jpg",
-    alt: "PhoneBhai verified smartphones",
-    title: "Your Next Phone Is Waiting.",
-    description: "Browse verified devices and choose with confidence",
-    buttonText: "Browse Phones",
-    buttonLink: "/buy",
+    alt: "Shop smartphones at PhoneBhai",
   },
 ];
 
 /* =========================================================
-   TRUST ITEMS
+   STATIC BRAND LOGOS
 ========================================================= */
 
-const trustItems = [
+const brandLogos = [
+  { name: "Apple", slug: "apple" },
+  { name: "Samsung", slug: "samsung" },
+  { name: "Google", slug: "google" },
+  { name: "Motorola", slug: "motorola" },
+  { name: "Xiaomi", slug: "xiaomi" },
+];
+
+/* =========================================================
+   STATIC REVIEWS
+========================================================= */
+
+const staticReviews = [
   {
-    icon: ShieldCheck,
-    title: "Verified phones",
-    text: "Quality checked devices",
+    id: 1,
+    name: "Rohit S.",
+    comment: "Amazing quality!",
+    sub: "Totally worth the price.",
+    rating: 5,
   },
   {
-    icon: BadgeCheck,
-    title: "Transparent pricing",
-    text: "No hidden surprises",
+    id: 2,
+    name: "Priya M.",
+    comment: "Phone looks like new and works flawlessly.",
+    sub: "",
+    rating: 5,
   },
   {
-    icon: Truck,
-    title: "Secure delivery",
-    text: "Delivered to your doorstep",
-  },
-  {
-    icon: PackageCheck,
-    title: "Warranty support",
-    text: "Buy with confidence",
+    id: 3,
+    name: "Aman K.",
+    comment: "Great service and fast delivery!",
+    sub: "",
+    rating: 5,
   },
 ];
 
@@ -122,57 +120,254 @@ const trustItems = [
    HELPERS
 ========================================================= */
 
-function toNumber(value: unknown): number {
-  const number = Number(value);
-
-  return Number.isFinite(number) ? number : 0;
+function numberValue(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function formatPrice(value: unknown): string {
-  return `₹${toNumber(value).toLocaleString("en-IN")}`;
+function priceLabel(value: unknown): string {
+  return `₹${numberValue(value).toLocaleString("en-IN")}`;
 }
 
-function conditionLabel(condition?: string): string {
+function getConditionLabel(condition?: string): string {
   switch (condition) {
     case "LIKE_NEW":
       return "Like New";
-
     case "EXCELLENT":
       return "Excellent";
-
     case "GOOD":
       return "Good";
-
     default:
       return condition || "Verified";
   }
 }
 
-function productHref(product: HomeProduct): string {
+function getProductHref(product: HomeProduct): string {
   return `/buy/${encodeURIComponent(product.slug || String(product.id))}`;
 }
 
-function productMedia(product: HomeProduct): HomeImage | null {
-  const variantMedia = (product.variants || [])
-    .flatMap((variant) => (Array.isArray(variant.images) ? variant.images : []))
-    .filter((media) => Boolean(media?.url))
+function getProductImage(product: HomeProduct): ProductImage | null {
+  const variantImages = (product.variants || [])
+    .flatMap((variant) =>
+      Array.isArray(variant.images) ? variant.images : [],
+    )
+    .filter((image) => Boolean(image?.url))
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-  const productMediaItems = (product.images || [])
-    .filter((media) => Boolean(media?.url))
+  const productImages = (product.images || [])
+    .map((image) => {
+      if (typeof image === "string") return { url: image };
+      return image;
+    })
+    .filter(
+      (image): image is ProductImage =>
+        Boolean(image && typeof image === "object" && image.url),
+    )
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-  return variantMedia[0] || productMediaItems[0] || null;
+  if (variantImages.length > 0) return variantImages[0];
+  if (productImages.length > 0) return productImages[0];
+  if (product.image) return { url: product.image };
+  return null;
 }
 
-function productStock(product: HomeProduct): number {
-  if (typeof product.stock === "number") {
-    return product.stock;
-  }
-
+function getProductStock(product: HomeProduct): number {
+  if (typeof product.stock === "number") return product.stock;
   return (product.variants || []).reduce(
-    (total, variant) => total + toNumber(variant.stock),
+    (total, variant) => total + numberValue(variant.stock),
     0,
+  );
+}
+
+function getDiscount(product: HomeProduct): number {
+  const price = numberValue(product.price);
+  const originalPrice = numberValue(product.originalPrice);
+  if (originalPrice <= price || originalPrice <= 0) return 0;
+  return Math.round(((originalPrice - price) / originalPrice) * 100);
+}
+
+function getSaving(product: HomeProduct): number {
+  return numberValue(product.originalPrice) - numberValue(product.price);
+}
+
+/* =========================================================
+   VIBRATING SHOP BUTTON
+========================================================= */
+
+const shopButtonClass =
+  "inline-flex items-center gap-2 rounded-full border-2 border-white bg-white px-5 py-2.5 text-xs font-black text-black shadow-[0_0_30px_rgba(255,255,255,0.45)] transition hover:scale-105 hover:bg-indigo-600 hover:text-white hover:shadow-[0_0_35px_rgba(99,102,241,0.6)] sm:px-7 sm:py-3.5 sm:text-sm animate-[vibrate_1.8s_ease-in-out_infinite]";
+
+/* =========================================================
+   BRAND LOGOS – seamless right → left infinite marquee
+========================================================= */
+
+function BrandLogos() {
+  // Duplicate 3 times so the loop never shows a blank gap
+  const items = [...brandLogos, ...brandLogos, ...brandLogos];
+
+  return (
+    <section className="overflow-hidden border-y border-gray-100 bg-white py-4">
+      <div className="relative flex">
+        <div className="phonebhai-brand-track flex w-max items-center gap-10 sm:gap-14">
+          {items.map((brand, index) => (
+            <Link
+              key={`${brand.name}-${index}`}
+              href={`/buy?brand=${encodeURIComponent(brand.name)}`}
+              className="flex shrink-0 items-center gap-2.5 opacity-80 transition hover:opacity-100"
+            >
+              <img
+                src={`https://cdn.simpleicons.org/${brand.slug}/111111`}
+                alt={brand.name}
+                className="h-5 w-5 object-contain sm:h-6 sm:w-6"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+              <span className="whitespace-nowrap text-[13px] font-semibold text-gray-800">
+                {brand.name}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <style jsx global>{`
+        .phonebhai-brand-track {
+          animation: brand-marquee 12s linear infinite;
+        }
+
+        @keyframes brand-marquee {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-33.333%);
+          }
+        }
+
+        @keyframes vibrate {
+          0%,
+          100% {
+            transform: translate(0, 0) scale(1);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.45);
+          }
+          20% {
+            transform: translate(-1px, 1px) scale(1.02);
+            box-shadow: 0 0 38px rgba(255, 255, 255, 0.65);
+          }
+          40% {
+            transform: translate(1px, -1px) scale(1.03);
+            box-shadow: 0 0 42px rgba(99, 102, 241, 0.5);
+          }
+          60% {
+            transform: translate(-1px, 0) scale(1.02);
+            box-shadow: 0 0 38px rgba(255, 255, 255, 0.6);
+          }
+          80% {
+            transform: translate(1px, 1px) scale(1.01);
+            box-shadow: 0 0 34px rgba(255, 255, 255, 0.5);
+          }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+/* =========================================================
+   HERO SLIDER
+========================================================= */
+
+function HeroSlider() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const nextSlide = useCallback(() => {
+    setCurrentSlide((current) => (current + 1) % heroBanners.length);
+  }, []);
+
+  const previousSlide = useCallback(() => {
+    setCurrentSlide(
+      (current) => (current - 1 + heroBanners.length) % heroBanners.length,
+    );
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(nextSlide, 5000);
+    return () => window.clearInterval(timer);
+  }, [nextSlide]);
+
+  return (
+    <section className="w-full overflow-hidden">
+      <div className="relative h-[210px] w-full sm:h-[300px] md:h-[360px] lg:h-[420px]">
+        {heroBanners.map((banner, index) => (
+          <motion.div
+            key={banner.id}
+            initial={false}
+            animate={{ opacity: currentSlide === index ? 1 : 0 }}
+            transition={{ duration: 0.5 }}
+            className={`absolute inset-0 ${
+              currentSlide === index
+                ? "pointer-events-auto"
+                : "pointer-events-none"
+            }`}
+          >
+            <Image
+              src={banner.image}
+              alt={banner.alt}
+              fill
+              priority={index === 0}
+              sizes="100vw"
+              quality={85}
+              className="object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/60" />
+          </motion.div>
+        ))}
+
+        {/* Vibrating Shop Now – 1st banner bottom center, others right center */}
+        <Link
+          href="/buy"
+          className={`${shopButtonClass} absolute z-20 ${
+            currentSlide === 0
+              ? "bottom-5 left-1/2 -translate-x-1/2 sm:bottom-8"
+              : "right-4 top-1/2 -translate-y-1/2 sm:right-8 lg:right-12"
+          }`}
+        >
+          Shop Now
+          <ArrowRight size={16} />
+        </Link>
+
+        <button
+          type="button"
+          onClick={previousSlide}
+          aria-label="Previous banner"
+          className="absolute left-3 top-1/2 z-30 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow-lg backdrop-blur transition hover:bg-white sm:left-5 sm:h-10 sm:w-10"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={nextSlide}
+          aria-label="Next banner"
+          className="absolute right-3 top-1/2 z-30 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow-lg backdrop-blur transition hover:bg-white sm:right-5 sm:h-10 sm:w-10"
+        >
+          <ChevronRight size={18} />
+        </button>
+
+        <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 gap-1.5">
+          {heroBanners.map((banner, index) => (
+            <button
+              key={banner.id}
+              type="button"
+              onClick={() => setCurrentSlide(index)}
+              aria-label={`Show banner ${index + 1}`}
+              className={`h-1.5 rounded-full transition-all ${
+                currentSlide === index ? "w-6 bg-white" : "w-2 bg-white/50"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -187,151 +382,172 @@ function ProductCard({
   product: HomeProduct;
   index: number;
 }) {
-  const media = productMedia(product);
-  const price = toNumber(product.price);
+  const { toggleWishlist, isWishlisted } = useWishlist();
 
-  const originalPrice = toNumber(product.originalPrice);
+  const productId = String(product.id);
+  const saved = isWishlisted(productId);
+  const image = getProductImage(product);
+  const stock = getProductStock(product);
+  const discount = getDiscount(product);
+  const rating = numberValue(product.rating);
+  const imageUrl = image?.url || product.image || "";
 
-  const discount =
-    originalPrice > price
-      ? Math.round(((originalPrice - price) / originalPrice) * 100)
-      : 0;
-
-  const rating = toNumber(product.rating);
-
-  const stock = productStock(product);
+  const handleWishlist = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    await toggleWishlist({
+      id: productId,
+      name: product.name,
+      brand: product.brand || "",
+      price: numberValue(product.price),
+      image: imageUrl,
+      storage: product.storage,
+    });
+  };
 
   return (
-    <motion.div
-      initial={{
-        opacity: 0,
-        y: 20,
-      }}
-      whileInView={{
-        opacity: 1,
-        y: 0,
-      }}
-      viewport={{
-        once: true,
-        margin: "-50px",
-      }}
-      transition={{
-        delay: index * 0.06,
-        duration: 0.4,
-      }}
-      className="group relative overflow-hidden rounded-[1.75rem] border border-gray-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-all duration-500 hover:-translate-y-2 hover:border-indigo-200 hover:shadow-[0_25px_60px_rgba(79,70,229,0.15)]"
+    <motion.article
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-35px" }}
+      transition={{ duration: 0.35, delay: index * 0.04 }}
+      className="group relative min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition duration-300 hover:-translate-y-1 hover:border-gray-300 hover:shadow-xl sm:rounded-2xl"
     >
-      <Link href={productHref(product)} className="block">
-        {/* IMAGE */}
-        <div className="relative h-64 overflow-hidden bg-gradient-to-br from-gray-50 via-white to-indigo-50/40 sm:h-72">
-          {" "}
-          {media?.url ? (
-            media.type === "VIDEO" ? (
-              <video
-                key={`video-${media.id}-${media.url}`}
-                src={media.url}
-                muted
-                autoPlay
-                loop
-                playsInline
-                preload="metadata"
-                className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-110 sm:p-6"
-              >
-                Your browser does not support video playback
-              </video>
+      <div className="relative">
+        <Link
+          href={getProductHref(product)}
+          className="block"
+          aria-label={`View ${product.name}`}
+        >
+          <div className="relative flex h-[150px] items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 sm:h-[210px] lg:h-[225px]">
+            {imageUrl ? (
+              image?.type === "VIDEO" ? (
+                <video
+                  src={imageUrl}
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
+                  preload="metadata"
+                  className="h-full w-full object-contain p-3 sm:p-5"
+                />
+              ) : (
+                <Image
+                  src={getOptimizedImageUrl(imageUrl, 480, 78)}
+                  alt={product.name}
+                  fill
+                  sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 280px"
+                  priority={index < 2}
+                  className="object-contain p-3 transition-transform duration-500 group-hover:scale-105 sm:p-5"
+                />
+              )
             ) : (
-              <Image
-                key={`image-${media.id}-${media.url}`}
-                src={getOptimizedImageUrl(media.url, 640, 78)}
-                alt={product.name}
-                width={640}
-                height={640}
-                priority={index < 2}
-                sizes="(max-width: 640px) 92vw, (max-width: 1024px) 45vw, 280px"
-                className="h-full w-full object-contain p-5 transition duration-500 group-hover:scale-110 sm:p-6"
+              <Smartphone
+                size={54}
+                strokeWidth={1}
+                className="text-gray-300 sm:h-16 sm:w-16"
               />
-            )
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <Smartphone size={80} strokeWidth={1} className="text-gray-300" />
-            </div>
-          )}
-          {/* BADGES */}
-          <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-            <span className="rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-[10px] font-black text-gray-800 shadow-lg backdrop-blur-md">
-              {conditionLabel(product.condition)}
-            </span>
-
-            {discount > 0 && (
-              <span className="rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-[10px] font-black text-white shadow-lg shadow-indigo-500/20">
-                {discount}% OFF
-              </span>
             )}
           </div>
-          {/* ARROW */}
-          <div className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/90 text-gray-800 shadow-lg backdrop-blur-md transition-all duration-300 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white">
-            <ArrowRight size={17} />
-          </div>
+        </Link>
+
+        <div className="absolute left-2 top-2 flex max-w-[75%] flex-wrap gap-1 sm:left-3 sm:top-3 sm:gap-1.5">
+          <span className="rounded-full border border-gray-200 bg-white/95 px-2 py-1 text-[8px] font-bold text-gray-700 shadow-sm sm:text-[9px]">
+            {getConditionLabel(product.condition)}
+          </span>
+          {discount > 0 && (
+            <span className="rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-2 py-1 text-[8px] font-black text-white shadow-sm sm:text-[9px]">
+              {discount}% OFF
+            </span>
+          )}
         </div>
 
-        {/* CONTENT */}
-        <div className="p-5">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">
-              {product.brand || "Phone"}
-            </p>
+        <button
+          type="button"
+          onClick={handleWishlist}
+          aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}
+          aria-pressed={saved}
+          className={`absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-white bg-white/95 shadow-sm transition hover:scale-110 sm:right-3 sm:top-3 sm:h-9 sm:w-9 ${
+            saved ? "bg-red-50" : ""
+          }`}
+        >
+          <Heart
+            size={17}
+            strokeWidth={2}
+            fill={saved ? "#ef4444" : "none"}
+            className="text-red-500"
+          />
+        </button>
+      </div>
 
-            {rating > 0 && (
-              <span className="flex items-center gap-1 text-xs font-bold text-gray-600">
-                <Star size={13} className="fill-amber-400 text-amber-400" />
+      <div className="p-2.5 sm:p-4">
+        <div className="flex min-h-4 items-center justify-between gap-1">
+          <p className="truncate text-[8px] font-black uppercase tracking-wider text-gray-500 sm:text-[10px]">
+            {product.brand || "Phone"}
+          </p>
+          {rating > 0 && (
+            <span className="flex shrink-0 items-center gap-1 text-[9px] font-bold text-emerald-600 sm:text-[11px]">
+              <Star size={11} className="fill-emerald-500 text-emerald-500" />
+              {rating.toFixed(1)}
+            </span>
+          )}
+        </div>
 
-                {rating.toFixed(1)}
-
-                {product.reviewCount ? ` (${product.reviewCount})` : ""}
-              </span>
-            )}
-          </div>
-
-          <h3 className="mt-2 truncate text-lg font-black tracking-tight text-gray-950">
-            {" "}
+        <Link href={getProductHref(product)}>
+          <h3 className="mt-1.5 min-h-[34px] line-clamp-2 text-[11px] font-bold leading-4 text-gray-950 hover:underline sm:min-h-[42px] sm:text-sm sm:leading-5">
             {product.name}
           </h3>
+        </Link>
 
-          <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
-            {product.storage && <span>{product.storage}</span>}
-
-            {product.color && <span>• {product.color}</span>}
-
-            {product.warranty && <span>• {product.warranty}</span>}
-          </div>
-
-          <div className="mt-5 flex items-end justify-between gap-3">
-            <div>
-              <p className="text-2xl font-black tracking-tight text-gray-950">
-                {" "}
-                {formatPrice(price)}
-              </p>
-
-              {originalPrice > price && (
-                <p className="mt-0.5 text-xs font-medium text-gray-400 line-through">
-                  {formatPrice(originalPrice)}
-                </p>
-              )}
-            </div>
-
-            <span
-              className={`rounded-full px-2.5 py-1 text-[9px] font-black tracking-wide ${
-                stock > 0
-                  ? "bg-emerald-50 text-emerald-600"
-                  : "bg-red-50 text-red-500"
-              }`}
-            >
-              {stock > 0 ? "IN STOCK" : "OUT OF STOCK"}
-            </span>
-          </div>
+        <div className="mt-1 min-h-4 truncate text-[8px] text-gray-500 sm:text-[10px]">
+          {[product.storage, product.color, product.warranty]
+            .filter(Boolean)
+            .join(" • ")}
         </div>
-      </Link>
-    </motion.div>
+
+        <div className="mt-2 flex min-h-[34px] items-center justify-between gap-1">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-gray-950 sm:text-lg">
+              {priceLabel(product.price)}
+            </p>
+            {numberValue(product.originalPrice) > numberValue(product.price) && (
+              <p className="text-[8px] text-gray-400 line-through sm:text-[10px]">
+                {priceLabel(product.originalPrice)}
+              </p>
+            )}
+          </div>
+          <span
+            className={`shrink-0 rounded-full px-1.5 py-1 text-[7px] font-bold sm:px-2 sm:text-[9px] ${
+              stock > 0
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-red-50 text-red-600"
+            }`}
+          >
+            {stock > 0 ? "In Stock" : "Sold Out"}
+          </span>
+        </div>
+
+        {stock > 0 ? (
+          <Link
+            href={getProductHref(product)}
+            className="mt-2.5 flex h-8 w-full items-center justify-center gap-1 rounded-lg bg-black text-[10px] font-bold text-white transition hover:bg-gray-800 sm:mt-3 sm:h-10 sm:rounded-xl sm:text-xs"
+          >
+            Buy Now
+            <ArrowRight size={12} />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="mt-2.5 h-8 w-full cursor-not-allowed rounded-lg bg-gray-200 text-[10px] font-bold text-gray-500 sm:mt-3 sm:h-10 sm:rounded-xl sm:text-xs"
+          >
+            Currently Unavailable
+          </button>
+        )}
+      </div>
+    </motion.article>
   );
 }
 
@@ -344,1006 +560,468 @@ function ProductSection({
   title,
   description,
   products,
-  priorityImages = false,
+  loading,
 }: {
   eyebrow: string;
   title: string;
   description: string;
   products: HomeProduct[];
-  priorityImages?: boolean;
+  loading: boolean;
 }) {
-  const visibleProducts = products.slice(0, 4);
+  const visible = products.slice(0, 4);
 
   return (
-    <section className="px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
-      {" "}
+    <section className="bg-white px-3 py-6 sm:px-4 sm:py-8 lg:px-6">
       <div className="mx-auto max-w-7xl">
-        {/* SECTION HEADER */}
-        <div className="mb-6 flex flex-col gap-3 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">
+        <div className="mb-5 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">
               {eyebrow}
             </p>
-
-            <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-gray-950 sm:text-4xl">
+            <h2 className="mt-1 text-2xl font-black tracking-tight text-black sm:text-3xl">
               {title}
             </h2>
-
-            <p className="mt-3 text-sm leading-6 text-gray-500 sm:text-base">
+            <p className="mt-1 max-w-md text-xs text-gray-500 sm:text-sm">
               {description}
             </p>
           </div>
-
           <Link
             href="/buy"
-            className="group inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black text-gray-800 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+            className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3.5 py-2 text-[10px] font-bold text-black transition hover:border-black hover:bg-black hover:text-white sm:text-xs"
           >
             View all
-            <ArrowRight
-              size={15}
-              className="transition-transform duration-300 group-hover:translate-x-1"
-            />
+            <ArrowRight size={13} />
           </Link>
         </div>
 
-        {/* PRODUCTS */}
-        {visibleProducts.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-5">
-            {" "}
-            {visibleProducts.map((product, index) => (
+        {loading ? (
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="animate-pulse overflow-hidden rounded-xl border border-gray-100 bg-white"
+              >
+                <div className="h-[150px] bg-gray-100 sm:h-[210px]" />
+                <div className="space-y-3 p-3">
+                  <div className="h-3 w-1/3 rounded bg-gray-100" />
+                  <div className="h-4 w-4/5 rounded bg-gray-100" />
+                  <div className="h-7 rounded bg-gray-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : visible.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+            {visible.map((product, index) => (
               <ProductCard key={product.id} product={product} index={index} />
             ))}
           </div>
         ) : (
-          <div className="rounded-3xl border border-gray-200 bg-gray-50 px-6 py-12 text-center">
-            <Smartphone
-              className="mx-auto text-gray-300"
-              size={42}
-              strokeWidth={1.2}
-            />
-
-            <p className="mt-4 text-sm font-semibold text-gray-500">
-              No phones available in this section right now.
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 text-center">
+            <Smartphone size={34} className="mx-auto text-gray-300" />
+            <p className="mt-3 text-sm font-semibold text-gray-600">
+              No phones are available right now.
             </p>
+            <Link
+              href="/buy"
+              className="mt-3 inline-flex text-xs font-bold text-black underline"
+            >
+              Browse the shop
+            </Link>
           </div>
         )}
       </div>
     </section>
   );
 }
+
 /* =========================================================
-   HOME
+   FULL-WIDTH PROMO BANNER
+========================================================= */
+
+function PromoBanner() {
+  return (
+    <section className="w-full overflow-hidden bg-black">
+      <div className="relative h-[140px] w-full sm:h-[180px] lg:h-[210px]">
+        <Image
+          src={heroBanners[1].image}
+          alt="Your next phone. Better value."
+          fill
+          sizes="100vw"
+          quality={85}
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-black/40 to-black/70" />
+
+        <div className="absolute inset-0 flex items-center justify-end px-5 sm:px-10 lg:px-16">
+          <div className="text-right text-white">
+            <h2 className="text-xl font-black leading-tight sm:text-3xl lg:text-4xl">
+              Your next phone.
+              <br />
+              <span className="text-indigo-300">Better value.</span>
+            </h2>
+            <Link href="/buy" className={`${shopButtonClass} mt-3 sm:mt-4`}>
+              Shop Now
+              <ArrowRight size={15} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   WHY PHONEBHAI
+========================================================= */
+
+const valueFeatures = [
+  {
+    icon: ShieldCheck,
+    title: "Quality Checked",
+    description: "Devices checked before being listed.",
+  },
+  {
+    icon: Wallet,
+    title: "Honest Pricing",
+    description: "Clear prices and product information.",
+  },
+  {
+    icon: Truck,
+    title: "Secure Delivery",
+    description: "Carefully packed and delivered to you.",
+  },
+  {
+    icon: Recycle,
+    title: "Second Life",
+    description: "Giving smartphones another useful life.",
+  },
+];
+
+function WhyPhoneBhai() {
+  return (
+    <section className="bg-white px-3 py-8 sm:px-5 sm:py-12 lg:px-8 lg:py-16">
+      <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.9fr_1.8fr] lg:items-center lg:gap-10">
+        <div>
+          <span className="inline-flex rounded-full border border-gray-200 px-3 py-1.5 text-[9px] font-bold text-gray-700 sm:text-[10px]">
+            Why PhoneBhai
+          </span>
+          <h2 className="mt-4 text-2xl font-black leading-tight tracking-tight text-black sm:text-3xl lg:text-4xl">
+            Refurbished phones
+            <span className="block text-indigo-600">Better value.</span>
+          </h2>
+          <p className="mt-3 max-w-sm text-xs leading-6 text-gray-500 sm:text-sm">
+            Quality-focused devices, fair prices and a smarter way to upgrade.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+          {valueFeatures.map(({ icon: Icon, title, description }) => (
+            <div
+              key={title}
+              className="flex min-h-[130px] flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-4 text-center transition hover:border-gray-400 hover:shadow-md sm:min-h-[155px] sm:rounded-2xl sm:px-4"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-black sm:h-12 sm:w-12">
+                <Icon size={22} strokeWidth={2.2} />
+              </div>
+              <h3 className="mt-3 text-[11px] font-bold text-gray-950 sm:text-sm">
+                {title}
+              </h3>
+              <p className="mt-1 text-[9px] leading-4 text-gray-500 sm:text-[10px]">
+                {description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   PHONEBHAI CYCLE
+========================================================= */
+
+function PhoneBhaiCycle() {
+  return (
+    <section className="bg-white px-3 pb-8 sm:px-5 sm:pb-12 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="relative overflow-hidden rounded-2xl bg-black px-5 py-7 sm:px-8 sm:py-9 lg:px-12">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-600/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-violet-600/20 blur-3xl" />
+
+          <div className="relative grid gap-7 md:grid-cols-[1.1fr_0.9fr] md:items-center">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/50 sm:text-[10px]">
+                The PhoneBhai cycle
+              </p>
+              <h2 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl lg:text-4xl">
+                From your old phone
+                <span className="block text-indigo-300">
+                  to someone&apos;s next phone.
+                </span>
+              </h2>
+              <p className="mt-3 max-w-lg text-xs leading-6 text-white/65 sm:text-sm">
+                A good smartphone deserves more than one owner. PhoneBhai makes
+                it easier to discover quality-focused pre-owned phones at better
+                prices.
+              </p>
+              <Link
+                href="/buy"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-xs font-black text-black transition hover:bg-gray-200"
+              >
+                Explore phones
+                <ArrowRight size={15} />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
+                <Recycle size={24} className="text-indigo-300" />
+                <h3 className="mt-3 text-sm font-black text-white">Less waste</h3>
+                <p className="mt-1 text-[10px] leading-5 text-white/55">
+                  Extend the useful life of smartphones.
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
+                <Wallet size={24} className="text-indigo-300" />
+                <h3 className="mt-3 text-sm font-black text-white">More value</h3>
+                <p className="mt-1 text-[10px] leading-5 text-white/55">
+                  Find better value when upgrading.
+                </p>
+              </div>
+              <div className="col-span-2 rounded-xl border border-white/10 bg-white/[0.07] p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-black">
+                    <Smartphone size={21} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-white sm:text-sm">
+                      Smartphones, made smarter
+                    </h3>
+                    <p className="mt-1 text-[10px] text-white/55">
+                      Discover phones for your next upgrade.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   TRUST STRIP
+========================================================= */
+
+function TrustStrip() {
+  const items = [
+    { icon: ShieldCheck, title: "Quality focused" },
+    { icon: BadgeCheck, title: "Transparent details" },
+    { icon: Truck, title: "Secure delivery" },
+    { icon: PackageCheck, title: "Warranty support" },
+  ];
+
+  return (
+    <section className="border-y border-gray-100 bg-white">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-gray-100 sm:grid-cols-4 sm:divide-y-0">
+        {items.map(({ icon: Icon, title }) => (
+          <div
+            key={title}
+            className="flex items-center justify-center gap-2 px-2 py-3 sm:py-4"
+          >
+            <Icon size={16} className="shrink-0 text-gray-800" />
+            <span className="text-[9px] font-bold text-gray-700 sm:text-xs">
+              {title}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   STATIC REVIEWS
+========================================================= */
+
+function ReviewsSection() {
+  return (
+    <section className="bg-white px-3 py-10 sm:px-5 sm:py-14 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-black sm:text-3xl">
+              People who bought from us.
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Real customer experiences...
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          {staticReviews.map((r) => (
+            <article
+              key={r.id}
+              className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+            >
+              <div className="flex items-center gap-0.5 text-yellow-400">
+                {Array.from({ length: r.rating }).map((_, i) => (
+                  <Star key={i} size={13} fill="currentColor" />
+                ))}
+              </div>
+              <p className="mt-3 text-sm font-medium text-gray-800">
+                “{r.comment}”
+              </p>
+              {r.sub && (
+                <p className="mt-0.5 text-sm text-gray-500">{r.sub}</p>
+              )}
+              <div className="mt-4 flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                  {r.name.charAt(0)}
+                </div>
+                <p className="text-sm font-semibold text-gray-900">{r.name}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================
+   HOME PAGE
 ========================================================= */
 
 export default function Home() {
   const [products, setProducts] = useState<HomeProduct[]>([]);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
-  /* =======================================================
-     HERO SLIDER STATE
-  ======================================================= */
-
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  /* =======================================================
-     FETCH LIVE BACKEND PRODUCTS
-  ======================================================= */
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getProducts({
+        page: 1,
+        limit: 100,
+        category: "Smartphones",
+      });
+      const data = Array.isArray(response.data) ? response.data : [];
+      setProducts(data as HomeProduct[]);
+    } catch (err) {
+      console.error("PhoneBhai homepage product fetch failed:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load products. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadProducts() {
+    let active = true;
+    async function run() {
       try {
-        setLoading(true);
-        setError(null);
-
         const response = await getProducts({
           page: 1,
-          limit: 20,
+          limit: 100,
           category: "Smartphones",
         });
-
-        if (!mounted) {
-          return;
-        }
-
-        const data = Array.isArray(response.data) ? response.data : [];
-
-        setProducts(data as HomeProduct[]);
+        if (!active) return;
+        setProducts(
+          Array.isArray(response.data)
+            ? (response.data as HomeProduct[])
+            : [],
+        );
+        setError(null);
       } catch (err) {
-        console.error("Homepage product fetch failed:", err);
-
-        if (!mounted) {
-          return;
-        }
-
-        setError(err instanceof Error ? err.message : "Unable to load phones");
+        if (!active) return;
+        console.error("PhoneBhai homepage product fetch failed:", err);
+        setError(
+          err instanceof Error ? err.message : "Unable to load products.",
+        );
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     }
-
-    loadProducts();
-
+    run();
     return () => {
-      mounted = false;
+      active = false;
     };
   }, []);
 
-  /* =======================================================
-     SECTIONS
-  ======================================================= */
-
-  const freshArrivals = useMemo(() => products.slice(0, 8), [products]);
-
-  const topRated = useMemo(
-    () =>
-      [...products]
-        .sort((a, b) => toNumber(b.rating) - toNumber(a.rating))
-        .slice(0, 8),
-    [products],
-  );
+  const freshArrivals = useMemo(() => products.slice(0, 4), [products]);
 
   const bestDeals = useMemo(
     () =>
       [...products]
-        .sort((a, b) => {
-          const aSaving = toNumber(a.originalPrice) - toNumber(a.price);
-
-          const bSaving = toNumber(b.originalPrice) - toNumber(b.price);
-
-          return bSaving - aSaving;
-        })
-        .slice(0, 8),
+        .sort((a, b) => getSaving(b) - getSaving(a))
+        .slice(0, 4),
     [products],
   );
 
-  /* =======================================================
-     HERO SLIDER
-  ======================================================= */
-
-  const heroBannerCount = heroBanners.length;
-
-  /* AUTO SLIDE */
-
-  useEffect(() => {
-    if (heroBannerCount < 2) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      setCurrentSlide((current) => (current + 1) % heroBannerCount);
-    }, 5000);
-
-    return () => window.clearInterval(interval);
-  }, [heroBannerCount]);
-
-  /* NEXT */
-
-  function nextSlide() {
-    if (!heroBannerCount) {
-      return;
-    }
-
-    setCurrentSlide((current) => (current + 1) % heroBannerCount);
-  }
-
-  /* PREVIOUS */
-
-  function previousSlide() {
-    if (!heroBannerCount) {
-      return;
-    }
-
-    setCurrentSlide(
-      (current) => (current - 1 + heroBannerCount) % heroBannerCount,
-    );
-  }
-
-  /* =========================================================
-     UI
-  ========================================================= */
-
   return (
-    <main className="min-h-screen bg-[#f6f7fb] text-[#111827] selection:bg-indigo-200 selection:text-indigo-950">
-      {" "}
-      {/* ===================================================
-          HERO
-      =================================================== */}
-      <section className="bg-gradient-to-b from-white via-indigo-50/30 to-[#f6f7fb] px-2 py-3 sm:px-3 sm:py-4 lg:px-5 lg:py-6">
-        {" "}
-        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[1rem] bg-gray-950 shadow-[0_25px_80px_rgba(79,70,229,0.18)] ring-1 ring-black/5 sm:rounded-[1.5rem] lg:rounded-[2rem]">
-          {" "}
-          <div className="relative h-[280px] overflow-hidden sm:h-[360px] lg:h-[470px]">
-            {/* =================================================
-                BANNER SLIDES
-            ================================================= */}
+    <main className="min-h-screen overflow-x-hidden bg-white text-black">
+      <HeroSlider />
 
-            {heroBanners.map((banner, index) => (
-              <motion.div
-                key={banner.id}
-                initial={false}
-                animate={{
-                  opacity: currentSlide === index ? 1 : 0,
-                }}
-                transition={{
-                  duration: 0.5,
-                }}
-                className={`absolute inset-0 ${
-                  currentSlide === index
-                    ? "pointer-events-auto"
-                    : "pointer-events-none"
-                }`}
-              >
-                {/* IMAGE */}
+      {/* Seamless infinite brand logos (right → left) */}
+      <BrandLogos />
 
-                <Image
-                  src={banner.image}
-                  alt={banner.alt}
-                  fill
-                  priority={index === 0}
-                  loading={index === 0 ? "eager" : "lazy"}
-                  sizes="100vw"
-                  quality={82}
-                  className="object-cover"
-                />
+      <ProductSection
+        eyebrow="New inventory"
+        title="Fresh Arrivals"
+        description="The latest smartphones added to our store."
+        products={freshArrivals}
+        loading={loading}
+      />
 
-                {/* DARK OVERLAY */}
+      <PromoBanner />
 
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/10" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-                {/* =================================================
-                    TEXT + BUTTON
-                ================================================= */}
+      <ProductSection
+        eyebrow="Better value"
+        title="Best deals right now"
+        description="Find phones where the current price gives you the biggest saving."
+        products={bestDeals}
+        loading={loading}
+      />
 
-                <div className="absolute inset-0 flex items-center">
-                  <div className="max-w-xl px-10 sm:px-14 lg:px-20">
-                    <motion.div
-                      initial={{
-                        opacity: 0,
-                        y: 20,
-                      }}
-                      animate={{
-                        opacity: currentSlide === index ? 1 : 0,
-                        y: currentSlide === index ? 0 : 20,
-                      }}
-                      transition={{
-                        duration: 0.5,
-                        delay: 0.15,
-                      }}
-                    >
-                      <h1 className="max-w-lg text-2xl font-black leading-tight text-white sm:text-3xl lg:text-5xl">
-                        {banner.title}
-                      </h1>
+      <WhyPhoneBhai />
+      <PhoneBhaiCycle />
+      <TrustStrip />
+      <ReviewsSection />
 
-                      <p className="mt-2 max-w-md text-xs leading-5 text-white/90 sm:mt-3 sm:text-sm sm:leading-6 lg:mt-4 lg:text-base">
-                        {banner.description}
-                      </p>
-
-                      <Link
-                        href={banner.buttonLink}
-                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-xs font-black text-gray-950 shadow-[0_10px_30px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-indigo-50 hover:shadow-[0_15px_35px_rgba(0,0,0,0.25)] sm:mt-5 sm:px-6 sm:py-3.5 sm:text-sm lg:mt-6"
-                      >
-                        {banner.buttonText}
-
-                        <ArrowRight size={15} />
-                      </Link>
-                    </motion.div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-
-            {/* =================================================
-                LEFT ARROW
-            ================================================= */}
-
-            <button
-              type="button"
-              onClick={previousSlide}
-              aria-label="Previous banner"
-              className="absolute left-2 top-1/2 z-30 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-md backdrop-blur-sm transition hover:bg-white sm:left-3 sm:h-8 sm:w-8 lg:left-5 lg:h-10 lg:w-10"
-            >
-              <ChevronLeft className="h-4 w-4 lg:h-5 lg:w-5" />
-            </button>
-
-            {/* =================================================
-                RIGHT ARROW
-            ================================================= */}
-
-            <button
-              type="button"
-              onClick={nextSlide}
-              aria-label="Next banner"
-              className="absolute right-2 top-1/2 z-30 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-900 shadow-md backdrop-blur-sm transition hover:bg-white sm:right-3 sm:h-8 sm:w-8 lg:right-5 lg:h-10 lg:w-10"
-            >
-              <ChevronRight className="h-4 w-4 lg:h-5 lg:w-5" />
-            </button>
-
-            {/* =================================================
-                4 SLIDER DOTS
-            ================================================= */}
-
-            <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 sm:bottom-4 lg:bottom-5">
-              {heroBanners.map((banner, index) => (
-                <button
-                  key={banner.id}
-                  type="button"
-                  onClick={() => setCurrentSlide(index)}
-                  aria-label={`Go to banner ${index + 1}`}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    currentSlide === index
-                      ? "w-7 bg-white"
-                      : "w-2 bg-white/50 hover:bg-white/80"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-      {/* ===================================================
-          TRUST BAR
-      =================================================== */}
-      <section className="border-y border-gray-100 bg-white shadow-[0_4px_25px_rgba(15,23,42,0.04)]">
-        {" "}
-        <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-y divide-gray-100 lg:grid-cols-4 lg:divide-y-0">
-          {trustItems.map(({ icon: Icon, title, text }) => (
-            <div
-              key={title}
-              className="group flex items-center gap-3 px-3 py-3 transition-colors duration-300 hover:bg-indigo-50/40 sm:py-6"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-100 text-indigo-600 shadow-sm transition-transform duration-300 group-hover:scale-110">
-                <Icon size={21} />
-              </div>
-
-              <div>
-                <p className="text-sm font-bold">{title}</p>
-
-                <p className="mt-0.5 text-[11px] text-gray-500 sm:text-xs">
-                  {text}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-      {/* ===================================================
-          PRODUCTS
-      =================================================== */}
-      {loading ? (
-        <section className="bg-white py-24">
-          <div className="flex items-center justify-center">
-            <div className="text-center">
-              <RefreshCw
-                className="mx-auto animate-spin text-indigo-600"
-                size={30}
-              />
-
-              <p className="mt-4 text-sm font-semibold text-gray-500">
-                Loading phones from PhoneBhai...
-              </p>
-            </div>
-          </div>
-        </section>
-      ) : error ? (
-        <section className="bg-white py-24">
-          <div className="mx-auto max-w-xl px-5 text-center">
-            <div className="rounded-3xl border border-red-100 bg-red-50 p-8">
-              <Smartphone className="mx-auto text-red-400" size={42} />
-
-              <h2 className="mt-4 text-xl font-black">
-                We couldn't load the phones
-              </h2>
-
-              <p className="mt-2 text-sm leading-6 text-gray-500">{error}</p>
-
-              <Link
-                href="/buy"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gray-950 px-5 py-3 text-sm font-bold text-white"
-              >
-                Open phone shop
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-          </div>
-        </section>
-      ) : products.length === 0 ? (
-        <section className="bg-white py-24">
-          <div className="mx-auto max-w-xl px-5 text-center">
-            <Smartphone
-              className="mx-auto text-gray-300"
-              size={52}
-              strokeWidth={1.2}
-            />
-
-            <h2 className="mt-5 text-2xl font-black">
-              No phones available right now
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500">
-              Check the shop again soon for new inventory
+      {!loading && error && (
+        <section className="bg-white px-5 pb-10">
+          <div className="mx-auto max-w-xl rounded-xl border border-red-100 bg-red-50 p-5 text-center">
+            <p className="text-sm font-bold text-red-700">
+              We couldn&apos;t refresh the live product inventory.
             </p>
-
+            <p className="mt-1 text-xs text-red-600">{error}</p>
+            <button
+              type="button"
+              onClick={loadProducts}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-xs font-bold text-white"
+            >
+              <RefreshCw size={13} />
+              Try again
+            </button>
             <Link
               href="/buy"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gray-950 px-5 py-3 text-sm font-bold text-white"
+              className="ml-3 inline-flex items-center text-xs font-bold text-black underline"
             >
-              Browse shop
-              <ArrowRight size={16} />
+              Open shop
             </Link>
           </div>
         </section>
-      ) : (
-        <>
-          <div id="products" className="bg-white">
-            <ProductSection
-              eyebrow="New inventory"
-              title="Fresh Arrivals"
-              description="The latest smartphones added to the live PhoneBhai inventory."
-              products={freshArrivals}
-            />
-          </div>
-
-          <ProductSection
-            eyebrow="Customer favourites"
-            title="Top rated phones"
-            description="Highly rated smartphones from the current backend inventory."
-            products={topRated}
-          />
-
-          <div className="bg-white">
-            <ProductSection
-              eyebrow="Better value"
-              title="Best deals right now"
-              description="Find phones where the current price gives you the biggest saving against the original price."
-              products={bestDeals}
-            />
-          </div>
-        </>
       )}
-      {/* PhoneBhai — Give Phones A Second Life */}
-      <section className="relative overflow-hidden px-5 py-16 sm:py-20 lg:px-8 lg:py-24">
-        <div className="mx-auto max-w-7xl">
-          <div className="relative min-h-[520px] overflow-hidden rounded-[2.5rem] bg-[#08081a] shadow-[0_35px_100px_rgba(79,70,229,0.22)] sm:min-h-[580px] lg:min-h-[620px]">
-            {/* Animated background glow */}
-            <div className="absolute -left-32 -top-32 h-[28rem] w-[28rem] animate-pulse rounded-full bg-indigo-600/20 blur-[100px]" />
-            <div className="absolute -bottom-40 -right-32 h-[32rem] w-[32rem] animate-pulse rounded-full bg-violet-600/20 blur-[110px]" />
-
-            {/* Moving gradient blobs */}
-            <motion.div
-              animate={{
-                x: [0, 80, -30, 0],
-                y: [0, -40, 50, 0],
-                scale: [1, 1.15, 0.95, 1],
-              }}
-              transition={{
-                duration: 12,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="absolute left-[20%] top-[10%] h-48 w-48 rounded-full bg-indigo-500/10 blur-3xl"
-            />
-
-            <motion.div
-              animate={{
-                x: [0, -70, 40, 0],
-                y: [0, 50, -30, 0],
-                scale: [1, 0.9, 1.15, 1],
-              }}
-              transition={{
-                duration: 14,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="absolute bottom-[5%] right-[15%] h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl"
-            />
-
-            {/* Grid pattern */}
-            <div
-              className="absolute inset-0 opacity-[0.08]"
-              style={{
-                backgroundImage:
-                  "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
-                backgroundSize: "55px 55px",
-              }}
-            />
-
-            {/* Floating particles */}
-            <motion.span
-              animate={{ y: [0, -30, 0], opacity: [0.2, 0.8, 0.2] }}
-              transition={{ duration: 4, repeat: Infinity }}
-              className="absolute left-[10%] top-[22%] h-1.5 w-1.5 rounded-full bg-indigo-300"
-            />
-
-            <motion.span
-              animate={{ y: [0, 35, 0], opacity: [0.2, 1, 0.2] }}
-              transition={{ duration: 5, repeat: Infinity, delay: 1 }}
-              className="absolute left-[45%] top-[12%] h-2 w-2 rounded-full bg-violet-300"
-            />
-
-            <motion.span
-              animate={{ y: [0, -25, 0], opacity: [0.2, 0.9, 0.2] }}
-              transition={{ duration: 4.5, repeat: Infinity, delay: 0.5 }}
-              className="absolute right-[12%] top-[30%] h-1.5 w-1.5 rounded-full bg-fuchsia-300"
-            />
-
-            <motion.span
-              animate={{ y: [0, 30, 0], opacity: [0.1, 0.8, 0.1] }}
-              transition={{ duration: 5.5, repeat: Infinity, delay: 2 }}
-              className="absolute bottom-[20%] left-[25%] h-2 w-2 rounded-full bg-indigo-200"
-            />
-
-            {/* Main content */}
-            <div className="relative z-10 grid min-h-[520px] items-center lg:min-h-[620px] lg:grid-cols-2">
-              {/* Left — Brand message */}
-              <div className="px-7 py-12 sm:px-12 lg:px-16">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.7 }}
-                >
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-200 backdrop-blur-xl sm:text-xs">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                    </span>
-                    The smarter phone cycle
-                  </div>
-
-                  <h2 className="mt-4 max-w-xl text-2xl font-black leading-tight tracking-[-0.04em] text-white sm:mt-5 sm:text-4xl lg:text-5xl xl:text-6xl">
-                    {" "}
-                    Better phones
-                    <br />
-                    <span className="bg-gradient-to-r from-indigo-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
-                      Better prices
-                    </span>
-                    <br />
-                    <span className="text-white/90">Better choice </span>
-                  </h2>
-
-                  <p className="mt-5 hidden max-w-md text-sm leading-7 text-white/55 sm:block sm:text-base">
-                    We believe a good smartphone deserves more than one owner
-                    PhoneBhai gives pre-owned phones a smarter second life
-                  </p>
-
-                  {/* Mini stats */}
-                  <div className="mt-5 hidden flex-wrap gap-3 sm:flex lg:mt-6">
-                    className="rounded-full bg-white px-4 py-2 text-xs font-bold
-                    text-gray-700 shadow-sm"{" "}
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
-                        Focus
-                      </p>
-                      <p className="mt-1 text-sm font-black text-white">
-                        Smartphones
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
-                        Model
-                      </p>
-                      <p className="mt-1 text-sm font-black text-white">
-                        Pre-owned
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur-md">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">
-                        Mission
-                      </p>
-                      <p className="mt-1 text-sm font-black text-white">
-                        Second Life
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Right — Animated phone */}
-              <div className="relative flex h-[360px] items-center justify-center lg:h-full">
-                {/* Outer animated rings */}
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 25,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute h-[280px] w-[280px] rounded-full border border-indigo-400/15 sm:h-[350px] sm:w-[350px] lg:h-[420px] lg:w-[420px]"
-                >
-                  <span className="absolute -top-1 left-1/2 h-2 w-2 rounded-full bg-indigo-300 shadow-[0_0_20px_rgba(129,140,248,1)]" />
-                </motion.div>
-
-                <motion.div
-                  animate={{ rotate: -360 }}
-                  transition={{
-                    duration: 18,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute h-[220px] w-[220px] rounded-full border border-violet-400/15 sm:h-[290px] sm:w-[290px] lg:h-[340px] lg:w-[340px]"
-                >
-                  <span className="absolute -bottom-1 left-1/2 h-2 w-2 rounded-full bg-violet-300 shadow-[0_0_20px_rgba(167,139,250,1)]" />
-                </motion.div>
-
-                {/* Glow behind phone */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.12, 1],
-                    opacity: [0.35, 0.55, 0.35],
-                  }}
-                  transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute h-48 w-48 rounded-full bg-indigo-500/30 blur-[70px] sm:h-64 sm:w-64"
-                />
-
-                {/* Floating phone */}
-                <motion.div
-                  animate={{
-                    y: [0, -18, 0],
-                    rotate: [-2, 2, -2],
-                  }}
-                  transition={{
-                    duration: 5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="relative z-20"
-                >
-                  {/* Phone shadow */}
-                  <div className="absolute -bottom-8 left-1/2 h-10 w-40 -translate-x-1/2 rounded-full bg-black/60 blur-2xl" />
-
-                  {/* Phone body */}
-                  <div className="relative h-[290px] w-[145px] rounded-[2.2rem] border-[5px] border-gray-700 bg-gradient-to-br from-gray-800 via-gray-950 to-black p-1 shadow-[0_30px_80px_rgba(0,0,0,0.7)] sm:h-[350px] sm:w-[175px] lg:h-[390px] lg:w-[195px]">
-                    {/* Side buttons */}
-                    <div className="absolute -right-[7px] top-20 h-12 w-1 rounded-r-full bg-gray-600" />
-                    <div className="absolute -left-[7px] top-24 h-8 w-1 rounded-l-full bg-gray-600" />
-                    <div className="absolute -left-[7px] top-36 h-8 w-1 rounded-l-full bg-gray-600" />
-
-                    {/* Screen */}
-                    <div className="relative h-full w-full overflow-hidden rounded-[1.8rem] bg-gradient-to-br from-indigo-950 via-violet-950 to-gray-950">
-                      {/* Screen glow */}
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(129,140,248,0.5),transparent_35%),radial-gradient(circle_at_80%_80%,rgba(217,70,239,0.35),transparent_40%)]" />
-
-                      {/* Dynamic wallpaper */}
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.15, 1],
-                          rotate: [0, 8, 0],
-                        }}
-                        transition={{
-                          duration: 8,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                        className="absolute -left-10 top-20 h-40 w-40 rounded-full bg-indigo-500/30 blur-2xl"
-                      />
-
-                      <motion.div
-                        animate={{
-                          scale: [1.1, 1, 1.1],
-                          x: [0, 15, 0],
-                        }}
-                        transition={{
-                          duration: 7,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                        className="absolute -bottom-10 -right-10 h-44 w-44 rounded-full bg-fuchsia-500/25 blur-2xl"
-                      />
-
-                      {/* Camera island */}
-                      <div className="absolute left-3 top-3 h-16 w-12 rounded-2xl border border-white/10 bg-black/50 p-2 shadow-lg backdrop-blur-md">
-                        <div className="grid grid-cols-2 gap-1.5">
-                          <span className="h-4 w-4 rounded-full border border-gray-600 bg-gray-900 shadow-inner" />
-                          <span className="h-4 w-4 rounded-full border border-gray-600 bg-gray-900 shadow-inner" />
-                          <span className="h-4 w-4 rounded-full border border-gray-600 bg-gray-900 shadow-inner" />
-                          <span className="h-4 w-4 rounded-full bg-indigo-400/60" />
-                        </div>
-                      </div>
-
-                      {/* Screen content */}
-                      <div className="absolute inset-x-0 bottom-0 p-4">
-                        <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-xl">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500">
-                              <RefreshCw className="h-3.5 w-3.5 text-white" />
-                            </div>
-
-                            <div>
-                              <p className="text-[7px] font-bold uppercase tracking-wider text-white/40">
-                                PhoneBhai
-                              </p>
-                              <p className="text-[9px] font-black text-white">
-                                Ready for a second life
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Home indicator */}
-                      <div className="absolute bottom-1.5 left-1/2 h-1 w-14 -translate-x-1/2 rounded-full bg-white/70" />
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Floating badge — inspected */}
-                <motion.div
-                  animate={{ y: [0, -10, 0], rotate: [0, 2, 0] }}
-                  transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute left-[4%] top-[18%] z-30 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 shadow-xl backdrop-blur-xl sm:left-[8%]"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-300">
-                      <ShieldCheck className="h-4 w-4" />
-                    </div>
-
-                    <div>
-                      <p className="text-[9px] font-black text-white">
-                        Quality Checked
-                      </p>
-                      <p className="text-[8px] text-white/40">Before resale</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Floating badge — value */}
-                <motion.div
-                  animate={{ y: [0, 12, 0], rotate: [0, -2, 0] }}
-                  transition={{
-                    duration: 4.5,
-                    repeat: Infinity,
-                    delay: 0.5,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute bottom-[17%] right-[2%] z-30 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 shadow-xl backdrop-blur-xl sm:right-[8%]"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-500/20 text-violet-300">
-                      <RefreshCw className="h-4 w-4" />
-                    </div>
-
-                    <div>
-                      <p className="text-[9px] font-black text-white">
-                        Second Life
-                      </p>
-                      <p className="text-[8px] text-white/40">Better value</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Tiny orbit dots */}
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 12,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute h-[300px] w-[300px] sm:h-[380px] sm:w-[380px]"
-                >
-                  <span className="absolute right-2 top-1/2 h-2 w-2 rounded-full bg-fuchsia-400 shadow-[0_0_18px_rgba(232,121,249,0.9)]" />
-                </motion.div>
-              </div>
-            </div>
-
-            {/* Bottom brand line */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-white/[0.03] px-6 py-4 backdrop-blur-md sm:px-10">
-              <div className="flex items-center justify-between">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/30 sm:text-[10px]">
-                  Buy • Sell • Refurbish • Repeat
-                </p>
-
-                <div className="flex items-center gap-2 text-[9px] font-bold text-white/40 sm:text-[10px]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Smartphones, reimagined
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-      {/* Refurbished Phone Value Section */}
-      <section className="bg-gradient-to-b from-white via-indigo-50/30 to-white px-5 py-16 lg:px-8 lg:py-20">
-        <div className="mx-auto max-w-7xl">
-          {/* Heading */}
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-xs font-black text-indigo-600">
-              <Smartphone className="h-4 w-4" />
-              The PhoneBhai way
-            </div>
-
-            <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-gray-950 sm:text-4xl lg:text-5xl">
-              Refurbished phones
-              <span className="block bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-                Better value
-              </span>
-            </h2>
-
-            <p className="mt-4 text-sm leading-7 text-gray-600 sm:text-base">
-              We give pre-owned smartphones a second life by putting them
-              through a quality-focused process before they reach their next
-              owner
-            </p>
-          </div>
-
-          {/* Feature cards */}
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="group rounded-3xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:border-indigo-200 hover:shadow-[0_20px_50px_rgba(79,70,229,0.12)]">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition-transform duration-300 group-hover:scale-110">
-                <ShieldCheck className="h-6 w-6" />
-              </div>
-
-              <h3 className="mt-5 text-lg font-black text-gray-950">
-                Quality checked
-              </h3>
-
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                Devices are checked for functionality and overall condition
-                before being listed
-              </p>
-            </div>
-
-            <div className="group rounded-3xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:border-violet-200 hover:shadow-[0_20px_50px_rgba(124,58,237,0.12)]">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-600 transition-transform duration-300 group-hover:scale-110">
-                <BadgeCheck className="h-6 w-6" />
-              </div>
-
-              <h3 className="mt-5 text-lg font-black text-gray-950">
-                Honest condition
-              </h3>
-
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                See the device condition, rating, warranty and important details
-                before buying
-              </p>
-            </div>
-
-            <div className="group rounded-3xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:border-emerald-200 hover:shadow-[0_20px_50px_rgba(16,185,129,0.12)]">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-110">
-                <Wallet className="h-6 w-6" />
-              </div>
-
-              <h3 className="mt-5 text-lg font-black text-gray-950">
-                Better prices
-              </h3>
-
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                Get access to premium smartphones at prices that make upgrading
-                easier
-              </p>
-            </div>
-
-            <div className="group rounded-3xl border border-gray-200 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:border-orange-200 hover:shadow-[0_20px_50px_rgba(249,115,22,0.12)]">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 transition-transform duration-300 group-hover:scale-110">
-                <RefreshCw className="h-6 w-6" />
-              </div>
-
-              <h3 className="mt-5 text-lg font-black text-gray-950">
-                Second life
-              </h3>
-
-              <p className="mt-2 text-sm leading-6 text-gray-500">
-                Your old smartphone can become someone else's next great phone
-                instead of sitting unused
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-      {/* PhoneBhai Cycle */}
-      <section className="px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6">
-        {" "}
-        <div className="mx-auto max-w-7xl">
-          <div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-4 shadow-[0_20px_60px_rgba(79,70,229,0.08)] sm:rounded-3xl sm:p-5 lg:p-6">
-            {" "}
-            {/* Decorative glow */}
-            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-indigo-300/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-violet-300/20 blur-3xl" />
-            <div className="relative z-10 grid gap-5 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-6">
-              {" "}
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600">
-                  The PhoneBhai cycle
-                </p>
-
-                <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-gray-950 sm:text-4xl">
-                  From your old phone
-                  <span className="block text-indigo-600">
-                    to someone's next phone
-                  </span>
-                </h2>
-
-                <p className="mt-4 max-w-xl text-sm leading-7 text-gray-600 sm:text-base">
-                  We believe good smartphones deserve a second chance. PhoneBhai
-                  connects sellers and buyers through a smarter
-                  refurbished-phone ecosystem
-                </p>
-
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm">
-                    Sell
-                  </span>
-
-                  <span className="text-gray-300">→</span>
-
-                  <span className="rounded-full bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm">
-                    Inspect
-                  </span>
-
-                  <span className="text-gray-300">→</span>
-
-                  <span className="rounded-full bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-sm">
-                    Refurbish
-                  </span>
-
-                  <span className="text-gray-300">→</span>
-
-                  <span className="rounded-full bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md">
-                    Resell
-                  </span>
-                </div>
-              </div>
-              {/* Right side highlight */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl border border-white bg-white/80 p-6 shadow-sm backdrop-blur-sm">
-                  <div className="text-3xl font-black text-indigo-600">♻</div>
-                  <h3 className="mt-4 text-base font-black text-gray-950">
-                    Less waste
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-500">
-                    Extend the useful life of smartphones instead of letting
-                    perfectly usable devices go to waste
-                  </p>
-                </div>
-
-                <div className="rounded-3xl border border-white bg-white/80 p-6 shadow-sm backdrop-blur-sm">
-                  <div className="text-3xl font-black text-violet-600">₹</div>
-                  <h3 className="mt-4 text-base font-black text-gray-950">
-                    More value
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-gray-500">
-                    Sellers unlock value from their old phones while buyers get
-                    better devices at better prices
-                  </p>
-                </div>
-
-                <div className="rounded-3xl border border-white bg-white/80 p-6 shadow-sm backdrop-blur-sm sm:col-span-2">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg">
-                      <Smartphone className="h-6 w-6" />
-                    </div>
-
-                    <div>
-                      <h3 className="text-base font-black text-gray-950">
-                        Smartphones, and only smartphones
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        No laptops. No tablets. No unrelated categories. Just
-                        phones — bought, checked, refurbished and resold
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
   );
 }

@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -35,38 +36,18 @@ type WishlistContextType = {
   wishlist: WishlistPhone[];
   wishlistCount: number;
   loading: boolean;
-
   isWishlisted: (id: string) => boolean;
-
-  addToWishlist: (
-    phone: WishlistPhone,
-  ) => Promise<void>;
-
-  removeFromWishlist: (
-    id: string,
-  ) => Promise<void>;
-
-  toggleWishlist: (
-    phone: WishlistPhone,
-  ) => Promise<void>;
-
+  addToWishlist: (phone: WishlistPhone) => Promise<void>;
+  removeFromWishlist: (id: string) => Promise<void>;
+  toggleWishlist: (phone: WishlistPhone) => Promise<void>;
   clearWishlist: () => Promise<void>;
-
   refreshWishlist: () => Promise<void>;
 };
 
 const WishlistContext =
-  createContext<WishlistContextType | undefined>(
-    undefined,
-  );
+  createContext<WishlistContextType | undefined>(undefined);
 
-/**
- * Convert backend wishlist item into
- * the existing frontend WishlistPhone shape.
- */
-function mapWishlistItem(
-  item: WishlistItem,
-): WishlistPhone {
+function mapWishlistItem(item: WishlistItem): WishlistPhone {
   return {
     id: String(item.productId),
     name: item.name,
@@ -76,310 +57,255 @@ function mapWishlistItem(
   };
 }
 
+function getNumericProductId(id: string): number {
+  const productId = Number(id);
+
+  if (!Number.isSafeInteger(productId) || productId <= 0) {
+    throw new Error(`Invalid wishlist product ID: ${id}`);
+  }
+
+  return productId;
+}
+
 export function WishlistProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const {
-    user,
-    loading: authLoading,
-  } = useAuth();
-
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [wishlist, setWishlist] =
-    useState<WishlistPhone[]>([]);
+  const [wishlist, setWishlist] = useState<WishlistPhone[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [loading, setLoading] =
-    useState(false);
+  // Prevent concurrent add/remove requests for the same product.
+  const pendingIds = useRef<Set<string>>(new Set());
 
-  /**
-   * Load wishlist from backend.
-   */
-  const refreshWishlist =
-    useCallback(async () => {
-      if (authLoading) {
-        return;
-      }
+  const refreshWishlist = useCallback(async () => {
+    if (authLoading) return;
 
-      /**
-       * Logged-out users have no server wishlist.
-       */
-      if (!user) {
-        setWishlist([]);
-        return;
-      }
+    if (!user) {
+      setWishlist([]);
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
+    setLoading(true);
 
-      try {
-        const response = await getWishlist();
+    try {
+      const response = await getWishlist();
 
-        if (
-          !response.success ||
-          !response.data
-        ) {
-          setWishlist([]);
-          return;
-        }
-
-        setWishlist(
-          response.data.map(mapWishlistItem),
-        );
-      } catch (error) {
+      if (!response.success || !response.data) {
         console.error(
-          "Failed to load wishlist:",
-          error,
+          "Failed to refresh wishlist:",
+          response.message || "Invalid wishlist response",
         );
-
-        setWishlist([]);
-      } finally {
-        setLoading(false);
+        return;
       }
-    }, [user, authLoading]);
 
-  /**
-   * Load wishlist whenever authentication changes.
-   */
+      setWishlist(response.data.map(mapWishlistItem));
+    } catch (error) {
+      console.error("Failed to load wishlist:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, authLoading]);
+
   useEffect(() => {
-    refreshWishlist();
+    void refreshWishlist();
   }, [refreshWishlist]);
 
-  /**
-   * Check whether product is wishlisted.
-   */
   const isWishlisted = useCallback(
     (id: string) => {
-      return wishlist.some(
-        (phone) => phone.id === id,
-      );
+      return wishlist.some((phone) => phone.id === String(id));
     },
     [wishlist],
   );
 
-  /**
-   * Add product to backend wishlist.
-   */
   const addToWishlist = useCallback(
     async (phone: WishlistPhone) => {
-      /**
-       * Redirect unauthenticated users.
-       * Never throw LOGIN_REQUIRED into
-       * the React event handler.
-       */
       if (!user) {
         router.push("/login");
         return;
       }
 
-      /**
-       * Prevent duplicate request.
-       */
-      if (isWishlisted(phone.id)) {
+      const id = String(phone.id);
+
+      if (pendingIds.current.has(id) || isWishlisted(id)) {
         return;
       }
 
-      /**
-       * Optimistic UI update.
-       */
-      setWishlist((current) => [
-        ...current,
-        phone,
-      ]);
+      const productId = getNumericProductId(id);
+
+      // Lock this product before updating the UI.
+      pendingIds.current.add(id);
+
+      setWishlist((current) => {
+        if (current.some((item) => item.id === id)) {
+          return current;
+        }
+
+        return [...current, phone];
+      });
 
       try {
-        await addWishlistItem(
-          Number(phone.id),
-        );
+        const response = await addWishlistItem(productId);
+
+        if (!response.success) {
+          throw new Error(
+            response.message || "Unable to add product to wishlist",
+          );
+        }
       } catch (error) {
-        /**
-         * Roll back UI if backend fails.
-         */
+        // Roll back only this product; preserve other wishlist changes.
         setWishlist((current) =>
-          current.filter(
-            (item) =>
-              item.id !== phone.id,
-          ),
+          current.filter((item) => item.id !== id),
         );
 
-        console.error(
-          "Failed to add wishlist item:",
-          error,
-        );
+        console.error("Failed to add wishlist item:", error);
+      } finally {
+        pendingIds.current.delete(id);
       }
     },
-    [
-      user,
-      router,
-      isWishlisted,
-    ],
+    [user, router, isWishlisted],
   );
 
-  /**
-   * Remove product from backend wishlist.
-   */
-  const removeFromWishlist =
-    useCallback(
-      async (id: string) => {
-        /**
-         * Redirect unauthenticated users.
-         */
-        if (!user) {
-          router.push("/login");
-          return;
-        }
-
-        const previousWishlist =
-          wishlist;
-
-        /**
-         * Optimistic removal.
-         */
-        setWishlist((current) =>
-          current.filter(
-            (phone) => phone.id !== id,
-          ),
-        );
-
-        try {
-          await removeWishlistItem(
-            Number(id),
-          );
-        } catch (error) {
-          /**
-           * Roll back if API fails.
-           */
-          setWishlist(
-            previousWishlist,
-          );
-
-          console.error(
-            "Failed to remove wishlist item:",
-            error,
-          );
-        }
-      },
-      [
-        user,
-        router,
-        wishlist,
-      ],
-    );
-
-  /**
-   * Toggle wishlist state.
-   */
-  const toggleWishlist = useCallback(
-    async (phone: WishlistPhone) => {
-      /**
-       * IMPORTANT:
-       * Never throw LOGIN_REQUIRED here.
-       * This function is called directly by
-       * button onClick handlers.
-       */
+  const removeFromWishlist = useCallback(
+    async (id: string) => {
       if (!user) {
         router.push("/login");
         return;
       }
 
-      if (isWishlisted(phone.id)) {
-        await removeFromWishlist(
-          phone.id,
-        );
+      const productIdString = String(id);
+
+      if (pendingIds.current.has(productIdString)) {
+        return;
+      }
+
+      const productId = getNumericProductId(productIdString);
+      const previousItem = wishlist.find(
+        (item) => item.id === productIdString,
+      );
+
+      if (!previousItem) return;
+
+      pendingIds.current.add(productIdString);
+
+      // Optimistic removal.
+      setWishlist((current) =>
+        current.filter((phone) => phone.id !== productIdString),
+      );
+
+      try {
+        const response = await removeWishlistItem(productId);
+
+        if (!response.success) {
+          throw new Error(
+            response.message || "Unable to remove product from wishlist",
+          );
+        }
+      } catch (error) {
+        // Restore the removed item without overwriting other changes.
+        setWishlist((current) => {
+          if (current.some((item) => item.id === productIdString)) {
+            return current;
+          }
+
+          return [...current, previousItem];
+        });
+
+        console.error("Failed to remove wishlist item:", error);
+      } finally {
+        pendingIds.current.delete(productIdString);
+      }
+    },
+    [user, router, wishlist],
+  );
+
+  const toggleWishlist = useCallback(
+    async (phone: WishlistPhone) => {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const id = String(phone.id);
+
+      // Ignore repeated clicks while this product is being saved/removed.
+      if (pendingIds.current.has(id)) {
+        return;
+      }
+
+      if (isWishlisted(id)) {
+        await removeFromWishlist(id);
       } else {
         await addToWishlist(phone);
       }
     },
-    [
-      user,
-      router,
+    [user, router, isWishlisted, addToWishlist, removeFromWishlist],
+  );
+
+  const clearWishlist = useCallback(async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    if (pendingIds.current.size > 0) {
+      return;
+    }
+
+    const previousWishlist = wishlist;
+    setWishlist([]);
+
+    try {
+      const response = await clearWishlistApi();
+
+      if (!response.success) {
+        throw new Error(
+          response.message || "Unable to clear wishlist",
+        );
+      }
+    } catch (error) {
+      setWishlist(previousWishlist);
+      console.error("Failed to clear wishlist:", error);
+    }
+  }, [user, router, wishlist]);
+
+  const value = useMemo<WishlistContextType>(
+    () => ({
+      wishlist,
+      wishlistCount: wishlist.length,
+      loading,
       isWishlisted,
-      removeFromWishlist,
       addToWishlist,
+      removeFromWishlist,
+      toggleWishlist,
+      clearWishlist,
+      refreshWishlist,
+    }),
+    [
+      wishlist,
+      loading,
+      isWishlisted,
+      addToWishlist,
+      removeFromWishlist,
+      toggleWishlist,
+      clearWishlist,
+      refreshWishlist,
     ],
   );
 
-  /**
-   * Clear entire backend wishlist.
-   */
-  const clearWishlist =
-    useCallback(async () => {
-      /**
-       * Redirect unauthenticated users.
-       */
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      const previousWishlist =
-        wishlist;
-
-      /**
-       * Optimistic clear.
-       */
-      setWishlist([]);
-
-      try {
-        await clearWishlistApi();
-      } catch (error) {
-        /**
-         * Roll back if API fails.
-         */
-        setWishlist(
-          previousWishlist,
-        );
-
-        console.error(
-          "Failed to clear wishlist:",
-          error,
-        );
-      }
-    }, [
-      user,
-      router,
-      wishlist,
-    ]);
-
-  const value =
-    useMemo<WishlistContextType>(
-      () => ({
-        wishlist,
-        wishlistCount:
-          wishlist.length,
-        loading,
-        isWishlisted,
-        addToWishlist,
-        removeFromWishlist,
-        toggleWishlist,
-        clearWishlist,
-        refreshWishlist,
-      }),
-      [
-        wishlist,
-        loading,
-        isWishlisted,
-        addToWishlist,
-        removeFromWishlist,
-        toggleWishlist,
-        clearWishlist,
-        refreshWishlist,
-      ],
-    );
-
   return (
-    <WishlistContext.Provider
-      value={value}
-    >
+    <WishlistContext.Provider value={value}>
       {children}
     </WishlistContext.Provider>
   );
 }
 
 export function useWishlist() {
-  const context =
-    useContext(WishlistContext);
+  const context = useContext(WishlistContext);
 
   if (!context) {
     throw new Error(

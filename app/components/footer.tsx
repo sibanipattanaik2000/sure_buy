@@ -2,10 +2,53 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { ArrowUpRight, Mail, MapPin, Phone, Zap } from "lucide-react";
+import {
+  ArrowUpRight,
+  Mail,
+  MapPin,
+  Phone,
+  Store,
+} from "lucide-react";
 import { FaFacebook, FaInstagram, FaWhatsapp } from "react-icons/fa";
-import { subscribeNewsletter } from "@/app/lib/newsletter";
 import { BsYoutube } from "react-icons/bs";
+import { subscribeNewsletter } from "@/app/lib/newsletter";
+
+/* =========================================================
+   STORE LOCATIONS (real maps)
+========================================================= */
+
+const storeLocations = [
+  {
+    name: "Surebuy Signature",
+    area: "Siripur, Bhubaneswar",
+    mapUrl: "https://maps.app.goo.gl/Qijmns34eynvkARU9",
+  },
+  {
+    name: "Surebuy Premium",
+    area: "Bapuji Nagar, Bhubaneswar",
+    mapUrl: "https://maps.app.goo.gl/26h98if3pWk8iV5C6",
+  },
+  {
+    name: "Surebuy Store – Saheed Nagar",
+    area: "Saheed Nagar, Bhubaneswar",
+    mapUrl: "https://maps.app.goo.gl/c7Bh37SePrEBUpxH6",
+  },
+  {
+    name: "Surebuy Store – Cuttack",
+    area: "Cuttack, Odisha",
+    mapUrl: "https://maps.app.goo.gl/BgBpQ1MZ2BgCbjKF7",
+  },
+  {
+    name: "Surebuy Store – Puri Mobile",
+    area: "Puri, Odisha",
+    mapUrl: "https://maps.app.goo.gl/S6Sxcoeu9oBrSUJz5",
+  },
+  {
+    name: "Surebuy Store – Puri",
+    area: "Puri, Odisha",
+    mapUrl: "https://maps.app.goo.gl/Vsy6Ds4ZU1re4fr2A",
+  },
+];
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -38,14 +81,12 @@ export default function Footer() {
         response.message ||
           "You're successfully subscribed to PhoneBhai updates.",
       );
-
       setEmail("");
-    } catch (error) {
-      console.error("NEWSLETTER SUBSCRIBE ERROR:", error);
-
+    } catch (err) {
+      console.error("NEWSLETTER SUBSCRIBE ERROR:", err);
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Unable to subscribe right now. Please try again.",
       );
     } finally {
@@ -54,39 +95,32 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-[#0b0f19] text-white overflow-hidden backdrop-blur" >
-            {/* Background accents */}
-      <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-200/30 blur-3xl" />
-        <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-violet-200/25 blur-3xl" />
-      </div>
-      {/* NEWSLETTER */}{" "}
+    <footer className="bg-[#0b0f19] text-white">
+      {/* ========== NEWSLETTER ========== */}
       <div className="border-b border-white/10">
-        {" "}
-        <div className="mx-auto flex max-w-7xl flex-col gap-7 px-5 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          {" "}
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-7 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
           <div>
-            {" "}
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-400">
-              Stay updated{" "}
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-400">
+              Stay updated
             </p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight">
+            <h2 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">
               Get the latest tech deals.
             </h2>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-1 text-sm text-gray-400">
               New arrivals, offers and useful device tips.
             </p>
           </div>
+
           <div className="w-full max-w-md">
             <form
               onSubmit={handleSubscribe}
-              className="flex w-full rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 transition focus-within:border-indigo-400/40"
+              className="flex w-full rounded-xl border border-white/10 bg-white/[0.04] p-1 transition focus-within:border-indigo-400/40"
             >
               <input
                 type="email"
                 value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
+                onChange={(e) => {
+                  setEmail(e.target.value);
                   setError("");
                   setMessage("");
                 }}
@@ -95,82 +129,79 @@ export default function Footer() {
                 autoComplete="email"
                 disabled={submitting}
                 required
-                className="min-w-0 flex-1 bg-transparent px-4 text-sm text-white outline-none placeholder:text-gray-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="min-w-0 flex-1 bg-transparent px-3.5 text-sm text-white outline-none placeholder:text-gray-500 disabled:opacity-60"
               />
-
               <button
                 type="submit"
                 disabled={submitting}
-                className="rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-lg bg-white px-4 py-2 text-xs font-bold text-black transition hover:bg-gray-200 disabled:opacity-60"
               >
-                {submitting ? "Subscribing..." : "Subscribe"}
+                {submitting ? "..." : "Subscribe"}
               </button>
             </form>
 
             {message && (
-              <p
-                role="status"
-                className="mt-2 px-1 text-xs font-medium text-green-400"
-              >
+              <p className="mt-1.5 px-1 text-xs font-medium text-green-400">
                 {message}
               </p>
             )}
-
             {error && (
-              <p
-                role="alert"
-                className="mt-2 px-1 text-xs font-medium text-red-400"
-              >
+              <p className="mt-1.5 px-1 text-xs font-medium text-red-400">
                 {error}
               </p>
             )}
           </div>
         </div>
       </div>
-      {/* MAIN FOOTER */}
-      <div className="mx-auto max-w-7xl px-5 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
-          {/* BRAND */}
-          <div>
-            <Link href="/" className="group inline-flex items-center gap-2.5">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black transition duration-200 group-hover:scale-105">
-                <Zap size={18} />
-              </div>
 
-              <span className="text-2xl font-black tracking-tight">
-                Phone<span className="text-indigo-400">Bhai</span>
+      {/* ========== MAIN FOOTER ========== */}
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {/* BRAND + CONTACT */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                  <line x1="12" y1="18" x2="12.01" y2="18" />
+                </svg>
+              </div>
+              <span className="text-lg font-bold tracking-tight">
+                PhoneBhai
               </span>
             </Link>
 
-            <p className="mt-5 max-w-sm text-sm leading-7 text-gray-400">
-              A smarter way to buy quality smartphones. Transparent pricing,
-              quality checked devices and a simple digital experience.
+            <p className="mt-3 max-w-xs text-sm leading-6 text-gray-400">
+              A smarter way to buy quality smartphones. Transparent pricing &
+              quality checked devices.
             </p>
 
-            {/* CONTACT */}
-            <div className="mt-6 space-y-3">
+            <div className="mt-4 space-y-2">
               <a
                 href="https://mail.google.com/mail/?view=cm&fs=1&to=support@phonebhai.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 text-xs text-gray-400 transition hover:text-white"
+                className="flex items-center gap-2 text-xs text-gray-400 transition hover:text-white"
               >
-                <Mail size={15} className="text-indigo-400" />
+                <Mail size={13} className="text-indigo-400" />
                 support@PhoneBhai.com
               </a>
-
               <a
                 href="tel:+918079979945"
-                className="flex items-center gap-3 text-xs text-gray-400 transition hover:text-white"
+                className="flex items-center gap-2 text-xs text-gray-400 transition hover:text-white"
               >
-                <Phone size={15} className="text-indigo-400" />
+                <Phone size={13} className="text-indigo-400" />
                 +91 8079979945
               </a>
-
-              <div className="flex items-center gap-3 text-xs text-gray-400">
-                <MapPin size={15} className="text-indigo-400" />
-                Odisha, India
-              </div>
             </div>
           </div>
 
@@ -181,141 +212,155 @@ export default function Footer() {
               ["About PhoneBhai", "/about"],
               ["How it works", "/how-it-works"],
               ["Buy devices", "/buy"],
-            ]}
-          />
-
-          {/* SHOP */}
-          <FooterColumn
-            title="Shop"
-            links={[
-              ["Browse phones", "/buy"],
-              ["Track order", "/orders"],
+              ["Sell your phone", "/sell"],
             ]}
           />
 
           {/* SUPPORT */}
           <FooterColumn
-            title="Support & Policies"
+            title="Support"
             links={[
+              ["Warranty Policy", "/warranty-policy"],
               ["Privacy Policy", "/privacy-policy"],
+              ["Return & Replace", "/return-refund-policy"],
               ["Cancellation Policy", "/cancellation-policy"],
-              ["Inspection Policy", "/inspection-policy"],
-              ["Device Handover Policy", "/device-handover-policy"],
-              ["Cookie Policy", "/cookie-policy"],
               ["Terms & Conditions", "/terms-and-conditions"],
-              ["Return & Replace", "return-refund-policy"],
+            ]}
+          />
+
+          {/* QUICK LINKS */}
+          <FooterColumn
+            title="Quick Links"
+            links={[
+              ["Browse phones", "/buy"],
+              ["Track order", "/orders"],
+              ["Inspection Policy", "/inspection-policy"],
+              ["Device Handover", "/device-handover-policy"],
+              ["Cookie Policy", "/cookie-policy"],
             ]}
           />
         </div>
 
-        {/* TRUST */}
-        <div className="mt-14 grid gap-4 border-t border-white/10 pt-8 md:grid-cols-3">
+        {/* ========== STORE LOCATIONS ========== */}
+        <div className="mt-8 border-t border-white/10 pt-7">
+          <div className="mb-4 flex items-center gap-2">
+            <Store size={16} className="text-indigo-400" />
+            <h3 className="text-sm font-bold text-white">Our Store Locations</h3>
+          </div>
+
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {storeLocations.map((store) => (
+              <a
+                key={store.name}
+                href={store.mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 transition hover:border-indigo-400/30 hover:bg-white/[0.06]"
+              >
+                {/* Location pin icon box */}
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 transition group-hover:bg-indigo-500/20">
+                  <MapPin size={16} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-white group-hover:text-indigo-300">
+                    {store.name}
+                  </p>
+                  <p className="mt-0.5 truncate text-[11px] text-gray-500">
+                    {store.area}
+                  </p>
+                </div>
+
+                <ArrowUpRight
+                  size={13}
+                  className="mt-1 shrink-0 text-gray-600 opacity-0 transition group-hover:opacity-100 group-hover:text-indigo-400"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* ========== TRUST STRIP ========== */}
+        <div className="mt-7 grid gap-2.5 border-t border-white/10 pt-6 sm:grid-cols-3">
           <TrustItem
             title="Secure payments"
             text="Protected payment processing."
           />
-
           <TrustItem
             title="Quality checked"
             text="Every device is carefully inspected."
           />
-
           <TrustItem
             title="Reliable support"
             text="We're here when you need us."
           />
         </div>
 
-        {/* SOCIAL */}
-        <div className="mt-10 flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-              Follow PhoneBhai
-            </p>
-
-            <div className="mt-3 flex items-center gap-2">
-              {/* INSTAGRAM */}
-              <a
-                href="https://www.instagram.com/surebuystore_?stkn=NHVlM2s0NTR2ejg3"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
-              >
-                <FaInstagram size={16} />
-              </a>
-
-              {/* FACEBOOK */}
-              <a
-                href="https://www.facebook.com/share/1BmWF5KqYP/?mibextid=wwXIfr"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
-              >
-                <FaFacebook size={16} />
-              </a>
-
-              {/* YOUTUBE */}
-              <a
-                href="https://youtube.com/@surebuystore?si=2yYLldp6qgrbiWxA"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="YouTube"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
-              >
-                <BsYoutube size={17} />
-              </a>
-              {/*Whatsapp */}
-              <a
-                href="https://wa.me/7853976501"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="WhatsApp"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
-              >
-                <FaWhatsapp size={16} />
-              </a>
-            </div>
+        {/* ========== SOCIAL + LEGAL ========== */}
+        <div className="mt-7 flex flex-col gap-5 border-t border-white/10 pt-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <SocialLink
+              href="https://www.instagram.com/surebuystore_?stkn=NHVlM2s0NTR2ejg3"
+              label="Instagram"
+            >
+              <FaInstagram size={14} />
+            </SocialLink>
+            <SocialLink
+              href="https://www.facebook.com/share/1BmWF5KqYP/?mibextid=wwXIfr"
+              label="Facebook"
+            >
+              <FaFacebook size={14} />
+            </SocialLink>
+            <SocialLink
+              href="https://youtube.com/@surebuystore?si=2yYLldp6qgrbiWxA"
+              label="YouTube"
+            >
+              <BsYoutube size={15} />
+            </SocialLink>
+            <SocialLink href="https://wa.me/7853976501" label="WhatsApp">
+              <FaWhatsapp size={14} />
+            </SocialLink>
           </div>
 
-          {/* LEGAL LINKS */}
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-gray-500">
+            <Link href="/about" className="transition hover:text-white">
+              About
+            </Link>
+            <Link
+              href="/warranty-policy"
+              className="transition hover:text-white"
+            >
+              Warranty
+            </Link>
             <Link
               href="/privacy-policy"
               className="transition hover:text-white"
             >
-              Privacy Policy
+              Privacy
             </Link>
-
             <Link
               href="/terms-and-conditions"
               className="transition hover:text-white"
             >
-              Terms & Conditions
+              Terms
             </Link>
-
             <Link
               href="/cancellation-policy"
               className="transition hover:text-white"
             >
               Cancellation
             </Link>
-
-            <Link href="/cookie-policy" className="transition hover:text-white">
-              Cookies
-            </Link>
           </div>
         </div>
       </div>
-      {/* COPYRIGHT */}
+
+      {/* ========== COPYRIGHT ========== */}
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-xs text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4 text-xs text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>
             © {new Date().getFullYear()} PhoneBhai Technologies. All rights
             reserved.
           </p>
-
           <p>Built for a smarter way to buy tech.</p>
         </div>
       </div>
@@ -323,7 +368,9 @@ export default function Footer() {
   );
 }
 
-/* FOOTER COLUMN */
+/* =========================================================
+   HELPERS
+========================================================= */
 
 function FooterColumn({
   title,
@@ -334,20 +381,18 @@ function FooterColumn({
 }) {
   return (
     <div>
-      {" "}
       <h3 className="text-sm font-bold text-white">{title}</h3>
-      <ul className="mt-5 space-y-3.5">
+      <ul className="mt-3 space-y-2.5">
         {links.map(([label, href]) => (
-          <li key={href}>
+          <li key={href + label}>
             <Link
               href={href}
               className="group inline-flex items-center gap-1 text-sm text-gray-400 transition hover:text-white"
             >
               {label}
-
               <ArrowUpRight
-                size={12}
-                className="opacity-0 transition duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
+                size={11}
+                className="opacity-0 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
               />
             </Link>
           </li>
@@ -357,14 +402,33 @@ function FooterColumn({
   );
 }
 
-/* TRUST */
-
 function TrustItem({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-2xl border border-white/5 bg-white/[0.025] p-5 transition duration-200 hover:border-white/10 hover:bg-white/[0.04]">
-      {" "}
-      <p className="text-sm font-bold">{title}</p>
-      <p className="mt-1 text-xs leading-5 text-gray-500">{text}</p>
+    <div className="rounded-xl border border-white/5 bg-white/[0.025] px-4 py-3 transition hover:border-white/10">
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="mt-0.5 text-xs text-gray-500">{text}</p>
     </div>
+  );
+}
+
+function SocialLink({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white hover:text-black"
+    >
+      {children}
+    </a>
   );
 }

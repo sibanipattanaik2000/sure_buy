@@ -3,7 +3,7 @@ import "./globals.css";
 
 import Header from "./components/header";
 import Footer from "./components/footer";
-
+import MobileBackButton from "./components/MobileBackButton";
 import { WishlistProvider } from "./context/WishlistContext";
 import { CheckoutProvider } from "./context/CheckoutContext";
 import { CartProvider } from "./context/CartContext";
@@ -60,13 +60,14 @@ export const metadata: Metadata = {
     title: "PhoneBhai | Buy Refurbished & Used Phones Online",
     description:
       "Shop quality-checked refurbished, used and new smartphones at PhoneBhai.",
-      images: [
+    images: [
       {
-        url: "/logo-img.png",         
+        url: "/logo-img.png",
         width: 512,
         height: 512,
         alt: "PhoneBhai Logo",
-      },]
+      },
+    ],
   },
 
   twitter: {
@@ -74,7 +75,7 @@ export const metadata: Metadata = {
     title: "PhoneBhai | Buy Refurbished & Used Phones Online",
     description:
       "Shop quality-checked refurbished, used and new smartphones at PhoneBhai.",
-      images: ["/logo-img.png"],
+    images: ["/logo-img.png"],
   },
 };
 
@@ -144,6 +145,7 @@ export default function RootLayout({
               <Header />
 
               <CheckoutProvider>
+                <MobileBackButton />
                 {children}
               </CheckoutProvider>
 
