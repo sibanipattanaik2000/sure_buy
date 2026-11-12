@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import {
   ShieldCheck,
@@ -53,24 +54,22 @@ export default function WarrantyPage() {
   return (
     <div className="min-h-screen bg-white py-10 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
+
         {/* HERO HEADER */}
         <div className="relative overflow-hidden rounded-3xl bg-gray-950 p-8 text-white shadow-2xl sm:p-12">
-          {/* Vibrant Top Border Accent */}
-          {/* <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-400 via-indigo-600 to-violet-600" /> */}
 
-          {/* Ambient Lighting Gradients */}
-          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-indigo-600/30 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-violet-600/30 blur-3xl pointer-events-none" />
+          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-white/10 blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col items-start gap-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3.5 py-1 text-xs font-extrabold text-indigo-300 ring-1 ring-indigo-500/30">
-              <ShieldCheck className="h-4 w-4 text-indigo-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1 text-xs font-extrabold text-gray-200 ring-1 ring-white/20">
+              <ShieldCheck className="h-4 w-4 text-gray-300" />
               Phone Bhai Certified Protection
             </span>
 
             <h1 className="text-3xl font-black tracking-tight sm:text-5xl">
               Buy With Confidence{" "}
-              <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-gray-200 via-gray-300 to-white bg-clip-text text-transparent">
                 Fully Covered
               </span>
             </h1>
@@ -82,11 +81,12 @@ export default function WarrantyPage() {
             <div className="mt-2 flex flex-wrap gap-3">
               <a
                 href="#claim-process"
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-indigo-500"
+                className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-gray-800"
               >
                 <Wrench size={15} />
                 Claim Warranty Now
               </a>
+
               <a
                 href="#check-coverage"
                 className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-5 py-2.5 text-xs font-bold text-white backdrop-blur-md transition hover:bg-white/20"
@@ -100,8 +100,8 @@ export default function WarrantyPage() {
 
         {/* TOP STATS BADGES */}
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="flex items-center gap-4 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:border-indigo-200">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+          <div className="flex items-center gap-4 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:border-gray-400">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <ShieldCheck size={24} />
             </div>
             <div>
@@ -112,8 +112,8 @@ export default function WarrantyPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:border-indigo-200">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+          <div className="flex items-center gap-4 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:border-gray-400">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <RotateCcw size={24} />
             </div>
             <div>
@@ -124,8 +124,8 @@ export default function WarrantyPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:border-indigo-200">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+          <div className="flex items-center gap-4 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs transition hover:border-gray-400">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-900">
               <Truck size={24} />
             </div>
             <div>
@@ -137,14 +137,14 @@ export default function WarrantyPage() {
           </div>
         </div>
 
-        {/* WARRANTY STATUS CHECKER TOOL */}
+        {/* WARRANTY STATUS CHECKER */}
         <section
           id="check-coverage"
-          className="mt-10 rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/60 to-white p-6 shadow-xs sm:p-8"
+          className="mt-10 rounded-2xl border border-gray-200 bg-gradient-to-b from-gray-50 to-white p-6 shadow-xs sm:p-8"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-600">
+              <span className="text-xs font-extrabold uppercase tracking-widest text-gray-900">
                 Quick Lookup
               </span>
               <h2 className="text-xl font-bold text-gray-950">
@@ -160,7 +160,7 @@ export default function WarrantyPage() {
                 <input
                   type="text"
                   placeholder="Enter 15-digit IMEI..."
-                  className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-medium text-gray-900 placeholder-gray-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-medium text-gray-900 placeholder-gray-400 focus:border-black focus:outline-none focus:ring-2 focus:ring-black/10"
                 />
               </div>
               <button
@@ -173,17 +173,19 @@ export default function WarrantyPage() {
           </div>
         </section>
 
-        {/* 52-POINT QUALITY GUARANTEE */}
+        {/* QUALITY GUARANTEE */}
         <section className="mt-10 rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs sm:p-8">
           <div className="flex items-center gap-2">
-            <Sparkles className="text-indigo-600" size={20} />
-            <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-600">
+            <Sparkles className="text-gray-900" size={20} />
+            <span className="text-xs font-extrabold uppercase tracking-widest text-gray-900">
               Quality Assurance
             </span>
           </div>
+
           <h2 className="mt-1 text-2xl font-extrabold text-gray-950">
             Tested & Verified: The 52-Point Inspection
           </h2>
+
           <p className="mt-2 text-xs leading-relaxed text-gray-600 sm:text-sm">
             Before any refurbished device is listed on Phone Bhai, our certified engineers run diagnostic software and hardware stress tests to guarantee 100% functionality.
           </p>
@@ -194,12 +196,14 @@ export default function WarrantyPage() {
                 key={idx}
                 className="flex flex-col items-start rounded-xl border border-gray-100 bg-gray-50/70 p-4 transition hover:bg-gray-50"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-indigo-600 shadow-xs">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-gray-900 shadow-xs">
                   <item.icon size={20} />
                 </div>
+
                 <p className="mt-3 text-xs font-bold text-gray-900">
                   {item.label}
                 </p>
+
                 <span className="mt-1 flex items-center gap-1 text-[10px] font-bold text-emerald-600">
                   <Check size={12} /> Verified Passed
                 </span>
@@ -208,9 +212,8 @@ export default function WarrantyPage() {
           </div>
         </section>
 
-        {/* COVERAGE COMPARISON TABLE */}
+        {/* COVERAGE COMPARISON */}
         <section className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* WHAT IS COVERED */}
           <div className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-xs sm:p-8">
             <div className="flex items-center gap-2 text-emerald-600">
               <CheckCircle2 size={22} />
@@ -218,6 +221,7 @@ export default function WarrantyPage() {
                 What IS Covered
               </h3>
             </div>
+
             <ul className="mt-4 space-y-3 text-xs text-gray-600 sm:text-sm">
               <li className="flex items-start gap-2.5">
                 <span className="mt-1 h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
@@ -246,7 +250,6 @@ export default function WarrantyPage() {
             </ul>
           </div>
 
-          {/* WHAT IS NOT COVERED */}
           <div className="rounded-2xl border border-rose-100 bg-white p-6 shadow-xs sm:p-8">
             <div className="flex items-center gap-2 text-rose-500">
               <XCircle size={22} />
@@ -254,6 +257,7 @@ export default function WarrantyPage() {
                 What IS NOT Covered
               </h3>
             </div>
+
             <ul className="mt-4 space-y-3 text-xs text-gray-600 sm:text-sm">
               <li className="flex items-start gap-2.5">
                 <span className="mt-1 h-2 w-2 rounded-full bg-rose-400 shrink-0" />
@@ -283,13 +287,13 @@ export default function WarrantyPage() {
           </div>
         </section>
 
-        {/* 3-STEP CLAIM PROCESS */}
+        {/* CLAIM PROCESS */}
         <section
           id="claim-process"
           className="mt-10 rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs sm:p-8"
         >
           <div className="text-center max-w-xl mx-auto">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-indigo-600">
+            <span className="text-xs font-extrabold uppercase tracking-widest text-gray-900">
               Simple & Fast
             </span>
             <h2 className="text-2xl font-extrabold text-gray-950">
@@ -301,48 +305,49 @@ export default function WarrantyPage() {
           </div>
 
           <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <div className="relative rounded-2xl bg-gray-50 p-5 text-center">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white">
-                1
-              </div>
-              <p className="mt-3 font-bold text-gray-950 text-sm">
-                Submit Request
-              </p>
-              <p className="mt-1 text-xs text-gray-500 leading-relaxed">
-                Go to <strong>My Account &gt; Orders</strong>, select your device and click "Claim Warranty".
-              </p>
-            </div>
+            {[1, 2, 3].map((step) => {
+              const steps = [
+                {
+                  title: "Submit Request",
+                  description:
+                    'Go to My Account > Orders, select your device and click "Claim Warranty".',
+                },
+                {
+                  title: "Doorstep Pickup",
+                  description:
+                    "Our logistics executive arrives at your location to collect the packaged device for free.",
+                },
+                {
+                  title: "Repair & Delivery",
+                  description:
+                    "Our certified team fixes the phone with genuine parts and delivers it back to you within 48–72 hours.",
+                },
+              ];
 
-            <div className="relative rounded-2xl bg-gray-50 p-5 text-center">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white">
-                2
-              </div>
-              <p className="mt-3 font-bold text-gray-950 text-sm">
-                Doorstep Pickup
-              </p>
-              <p className="mt-1 text-xs text-gray-500 leading-relaxed">
-                Our logistics executive arrives at your location to collect the packaged device for free.
-              </p>
-            </div>
-
-            <div className="relative rounded-2xl bg-gray-50 p-5 text-center">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white">
-                3
-              </div>
-              <p className="mt-3 font-bold text-gray-950 text-sm">
-                Repair & Delivery
-              </p>
-              <p className="mt-1 text-xs text-gray-500 leading-relaxed">
-                Our certified team fixes the phone with genuine parts and delivers it back to you within 48–72 hours.
-              </p>
-            </div>
+              return (
+                <div
+                  key={step}
+                  className="relative rounded-2xl bg-gray-50 p-5 text-center"
+                >
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-black text-xs font-black text-white">
+                    {step}
+                  </div>
+                  <p className="mt-3 font-bold text-gray-950 text-sm">
+                    {steps[step - 1].title}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+                    {steps[step - 1].description}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        {/* FREQUENTLY ASKED QUESTIONS */}
+        {/* FAQS */}
         <section className="mt-10 rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs sm:p-8">
           <h2 className="flex items-center gap-2 text-xl font-bold text-gray-950">
-            <HelpCircle className="text-indigo-600" size={22} />
+            <HelpCircle className="text-gray-900" size={22} />
             Warranty FAQs
           </h2>
 
@@ -358,12 +363,12 @@ export default function WarrantyPage() {
           </div>
         </section>
 
-        {/* SUPPORT FOOTER CTA */}
-        <div className="mt-10 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-white p-8 text-center sm:p-10">
-          {/* <Clock className="mx-auto h-8 w-8 text-indigo-600" /> */}
+        {/* SUPPORT CTA */}
+        <div className="mt-10 rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-100 via-gray-500/5 to-white p-8 text-center sm:p-10">
           <h3 className="mt-3 text-xl font-extrabold text-gray-950">
             Have Questions About a Repair or Claim?
           </h3>
+
           <p className="mt-1 text-xs text-gray-600 sm:text-sm">
             Our technical support team is standing by to help you resolve hardware issues.
           </p>
@@ -371,10 +376,11 @@ export default function WarrantyPage() {
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link
               href="/account"
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-gray-800 transition"
             >
               Go to Account Orders
             </Link>
+
             <a
               href="tel:+918079979945"
               className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-xs font-bold text-gray-800 hover:bg-gray-50 transition"
@@ -384,6 +390,7 @@ export default function WarrantyPage() {
             </a>
           </div>
         </div>
+
       </div>
     </div>
   );

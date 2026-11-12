@@ -1,6 +1,6 @@
+
 import Link from "next/link";
 import {
-  ArrowLeft,
   Ban,
   ShieldCheck,
   CalendarClock,
@@ -60,7 +60,7 @@ const sections = [
         For cancellation or rescheduling assistance, contact
         <a
           href="mailto:support@PhoneBhai.com"
-          className="font-bold text-indigo-600 transition hover:text-indigo-700"
+          className="font-bold text-black transition hover:text-gray-600"
         >
           {" "}
           support@PhoneBhai.com
@@ -68,7 +68,7 @@ const sections = [
         or call
         <a
           href="tel:+918079979945"
-          className="font-bold text-indigo-600 transition hover:text-indigo-700"
+          className="font-bold text-black transition hover:text-gray-600"
         >
           {" "}
           +91 80799 79945
@@ -81,34 +81,34 @@ const sections = [
 
 export default function CancellationPolicyPage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f6f7fb] text-gray-900">
+    <main className="min-h-screen overflow-hidden bg-[#f7f7f7] text-gray-900">
       {/* Background accents */}
       <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-200/30 blur-3xl" />
-        <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-violet-200/25 blur-3xl" />
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-gray-200/40 blur-3xl" />
+        <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-gray-300/20 blur-3xl" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         {/* Hero */}
         <header className="relative overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.25)]">
-          {/* Gradient top line */}
-          <div className="h-1.5 w-full bg-gradient-to-r from-cyan-400 via-indigo-600 to-violet-600" />
+          {/* Top line */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-gray-400 via-black to-gray-600" />
 
           <div className="relative p-6 sm:p-9 lg:p-10">
             {/* Decorative glow */}
-            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-100/60 blur-3xl" />
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gray-200/60 blur-3xl" />
 
             <div className="relative flex flex-col gap-7 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 {/* Icon */}
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-100 text-indigo-600 shadow-sm ring-1 ring-indigo-100">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 text-gray-900 shadow-sm ring-1 ring-gray-200">
                   <Ban size={25} strokeWidth={2.2} />
                 </div>
 
                 <div className="mt-7">
                   {/* Label */}
-                  <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">
-                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-gray-800">
+                    <span className="h-1.5 w-1.5 rounded-full bg-black" />
                     Legal & Service
                   </div>
 
@@ -124,9 +124,9 @@ export default function CancellationPolicyPage() {
               </div>
 
               {/* Policy badge */}
-              <div className="shrink-0 rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3 sm:mt-1">
+              <div className="shrink-0 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 sm:mt-1">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-indigo-600" />
+                  <ShieldCheck size={16} className="text-gray-900" />
 
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-wider text-gray-400">
@@ -142,13 +142,13 @@ export default function CancellationPolicyPage() {
             </div>
 
             {/* Intro callout */}
-            <div className="relative mt-8 rounded-2xl border border-indigo-100/80 bg-gradient-to-r from-indigo-50/70 via-white to-violet-50/50 p-5 sm:p-6">
-              <div className="absolute left-0 top-5 h-10 w-1 rounded-r-full bg-gradient-to-b from-indigo-500 to-violet-500" />
+            <div className="relative mt-8 rounded-2xl border border-gray-200 bg-gradient-to-r from-gray-100/70 via-white to-gray-50 p-5 sm:p-6">
+              <div className="absolute left-0 top-5 h-10 w-1 rounded-r-full bg-gradient-to-b from-gray-900 to-gray-500" />
 
               <div className="flex gap-3">
                 <RefreshCw
                   size={18}
-                  className="mt-1 shrink-0 text-indigo-500"
+                  className="mt-1 shrink-0 text-gray-900"
                 />
 
                 <p className="text-sm leading-7 text-gray-600">
@@ -164,7 +164,7 @@ export default function CancellationPolicyPage() {
         {/* Quick overview */}
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <Ban size={18} />
             </div>
 
@@ -179,7 +179,7 @@ export default function CancellationPolicyPage() {
           </div>
 
           <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <CalendarClock size={18} />
             </div>
 
@@ -193,7 +193,7 @@ export default function CancellationPolicyPage() {
           </div>
 
           <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <RefreshCw size={18} />
             </div>
 
@@ -214,7 +214,7 @@ export default function CancellationPolicyPage() {
             {/* Heading */}
             <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-5">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-600">
                   Please read carefully
                 </p>
 
@@ -223,7 +223,7 @@ export default function CancellationPolicyPage() {
                 </h2>
               </div>
 
-              <div className="hidden h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-400 sm:flex">
+              <div className="hidden h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-500 sm:flex">
                 <Ban size={18} />
               </div>
             </div>
@@ -245,7 +245,7 @@ export default function CancellationPolicyPage() {
                     <div className="flex gap-4 sm:gap-6">
                       {/* Number */}
                       <div className="shrink-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 text-[10px] font-black tracking-wider text-indigo-500 ring-1 ring-gray-100 transition-all duration-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:ring-indigo-600">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 text-[10px] font-black tracking-wider text-gray-600 ring-1 ring-gray-100 transition-all duration-300 group-hover:bg-black group-hover:text-white group-hover:ring-black">
                           {section.number}
                         </div>
                       </div>
@@ -255,7 +255,7 @@ export default function CancellationPolicyPage() {
                         <div className="flex items-center gap-2">
                           <Icon
                             size={16}
-                            className="text-indigo-500 transition-colors group-hover:text-indigo-600"
+                            className="text-gray-700 transition-colors group-hover:text-black"
                           />
 
                           <h2 className="text-[17px] font-black tracking-tight text-gray-950 sm:text-lg">
@@ -276,10 +276,10 @@ export default function CancellationPolicyPage() {
         </div>
 
         {/* Contact card */}
-        <div className="mt-5 overflow-hidden rounded-[24px] border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 shadow-sm">
+        <div className="mt-5 overflow-hidden rounded-[24px] border border-gray-200 bg-gradient-to-r from-gray-100 via-white to-gray-50 shadow-sm">
           <div className="p-5 sm:p-6">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-gray-900 shadow-sm ring-1 ring-gray-200">
                 <Phone size={18} />
               </div>
 
@@ -298,9 +298,9 @@ export default function CancellationPolicyPage() {
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <a
                 href="mailto:support@PhoneBhai.com"
-                className="group flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                className="group flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-gray-400 hover:shadow-md"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-900 transition group-hover:bg-black group-hover:text-white">
                   <Mail size={16} />
                 </div>
 
@@ -316,15 +316,15 @@ export default function CancellationPolicyPage() {
 
                 <ChevronRight
                   size={15}
-                  className="ml-auto text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500"
+                  className="ml-auto text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-black"
                 />
               </a>
 
               <a
                 href="tel:+918079979945"
-                className="group flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md"
+                className="group flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-gray-400 hover:shadow-md"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-900 transition group-hover:bg-black group-hover:text-white">
                   <Phone size={16} />
                 </div>
 
@@ -340,7 +340,7 @@ export default function CancellationPolicyPage() {
 
                 <ChevronRight
                   size={15}
-                  className="ml-auto text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500"
+                  className="ml-auto text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-black"
                 />
               </a>
             </div>
@@ -350,7 +350,7 @@ export default function CancellationPolicyPage() {
         {/* Bottom strip */}
         <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-gray-200/80 bg-white/80 p-5 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <ShieldCheck size={17} />
             </div>
 
@@ -367,7 +367,7 @@ export default function CancellationPolicyPage() {
 
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gray-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-600"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gray-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-gray-700"
           >
             Visit PhoneBhai
             <ChevronRight size={14} />
