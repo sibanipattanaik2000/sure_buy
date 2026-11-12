@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -19,16 +20,13 @@ type TrackOrderItem = {
   id: string;
   productId: number;
   variantId?: number | null;
-
   productName?: string | null;
   brand?: string | null;
   category?: string | null;
   condition?: string | null;
-
   storage?: string | null;
   color?: string | null;
   imageUrl?: string | null;
-
   unitPrice?: number | string | null;
   quantity?: number | null;
   subtotal?: number | string | null;
@@ -37,16 +35,12 @@ type TrackOrderItem = {
 type TrackOrder = {
   id: string;
   orderNumber?: string | null;
-
   status: string;
   paymentStatus: string;
   paymentMethod: string;
-
   totalAmount: number | string;
-
   createdAt: string;
   updatedAt: string;
-
   shippingAddress?: {
     fullName?: string | null;
     phone?: string | null;
@@ -59,7 +53,6 @@ type TrackOrder = {
     country?: string | null;
     landmark?: string | null;
   } | null;
-
   items: TrackOrderItem[];
 };
 
@@ -113,7 +106,6 @@ function isApiError(error: unknown): error is ApiErrorLike {
 
 function formatCurrency(value: number | string | null | undefined) {
   const amount = Number(value ?? 0);
-
   return `₹${amount.toLocaleString("en-IN")}`;
 }
 
@@ -125,15 +117,11 @@ function formatStatus(status: string) {
 }
 
 function formatDate(date: string) {
-  if (!date) {
-    return "";
-  }
+  if (!date) return "";
 
   const parsed = new Date(date);
 
-  if (Number.isNaN(parsed.getTime())) {
-    return "";
-  }
+  if (Number.isNaN(parsed.getTime())) return "";
 
   return parsed.toLocaleDateString("en-IN", {
     day: "numeric",
@@ -144,7 +132,6 @@ function formatDate(date: string) {
 
 export default function TrackOrderPage() {
   const params = useParams<{ id: string }>();
-
   const orderId = params?.id;
 
   const [order, setOrder] = useState<TrackOrder | null>(null);
@@ -167,9 +154,7 @@ export default function TrackOrderPage() {
 
         const response = await getOrder(String(orderId));
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         if (!response.success || !response.data) {
           throw new Error(response.message || "Unable to load order details.");
@@ -177,9 +162,7 @@ export default function TrackOrderPage() {
 
         setOrder(response.data as TrackOrder);
       } catch (error: unknown) {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         console.error("TRACK ORDER LOAD ERROR:", error);
 
@@ -199,9 +182,7 @@ export default function TrackOrderPage() {
 
         setOrder(null);
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
 
@@ -213,56 +194,39 @@ export default function TrackOrderPage() {
   }, [orderId]);
 
   const currentStep = useMemo(() => {
-    if (!order) {
-      return 0;
-    }
+    if (!order) return 0;
 
     const status = order.status.toUpperCase();
     const paymentStatus = order.paymentStatus.toUpperCase();
 
-    if (status === "CANCELLED" || status === "REFUNDED") {
-      return -1;
-    }
+    if (status === "CANCELLED" || status === "REFUNDED") return -1;
+    if (status === "DELIVERED") return 5;
 
-    if (status === "DELIVERED") {
-      return 5;
-    }
+    if (
+      status === "OUT_FOR_DELIVERY" ||
+      status === "OUT FOR DELIVERY"
+    ) return 4;
 
-    if (status === "OUT_FOR_DELIVERY" || status === "OUT FOR DELIVERY") {
-      return 4;
-    }
+    if (status === "SHIPPED") return 3;
 
-    if (status === "SHIPPED") {
-      return 3;
-    }
+    if (status === "PROCESSING" || status === "PACKED") return 2;
 
-    if (status === "PROCESSING" || status === "PACKED") {
-      return 2;
-    }
+    if (status === "CONFIRMED" && paymentStatus === "PAID") return 1;
 
-    if (status === "CONFIRMED" && paymentStatus === "PAID") {
-      return 1;
-    }
-
-    if (status === "CONFIRMED") {
-      return 0;
-    }
+    if (status === "CONFIRMED") return 0;
 
     return 0;
   }, [order]);
 
   const primaryItem = order?.items?.[0] ?? null;
-
   const displayOrderId = order?.orderNumber || order?.id || String(orderId);
-
   const expectedDelivery = undefined;
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa]">
+      <main className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-indigo-600" />
-
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-black" />
           <p className="mt-4 text-sm font-semibold text-gray-500">
             Loading tracking details...
           </p>
@@ -273,13 +237,15 @@ export default function TrackOrderPage() {
 
   if (!order) {
     return (
-      <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
+      <main className="min-h-screen bg-white px-5 py-20">
         <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50">
-            <Package size={28} className="text-red-500" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
+            <Package size={28} className="text-black" />
           </div>
 
-          <h1 className="mt-6 text-2xl font-black">Order not found</h1>
+          <h1 className="mt-6 text-2xl font-black text-black">
+            Order not found
+          </h1>
 
           <p className="mt-2 text-sm leading-6 text-gray-500">
             {error || "We couldn't find tracking information for this order."}
@@ -287,7 +253,7 @@ export default function TrackOrderPage() {
 
           <Link
             href="/buy"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-black px-6 py-3 text-sm font-bold text-white transition hover:bg-gray-800"
           >
             <ArrowLeft size={16} />
             Continue shopping
@@ -300,31 +266,30 @@ export default function TrackOrderPage() {
   const address = order.shippingAddress;
 
   return (
-    <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
-      <section className="mx-auto max-w-5xl px-5 py-8 lg:px-8">
-        {/* TITLE */}
+    <main className="min-h-screen bg-white text-black">
+      <section className="mx-auto max-w-5xl px-5 py-8 lg:px-8 lg:py-12">
 
+        {/* TITLE */}
         <div className="text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
-            Order tracking
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">
+            PhoneBhai / Order tracking
           </p>
 
-          <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-black sm:text-4xl">
             Track your order
           </h1>
 
           <p className="mt-3 text-sm text-gray-500">
             Order ID:{" "}
-            <span className="font-bold text-gray-900">{displayOrderId}</span>
+            <span className="font-bold text-black">{displayOrderId}</span>
           </p>
         </div>
 
         {/* CURRENT STATUS */}
-
         <div className="mt-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white">
                 <Truck size={27} />
               </div>
 
@@ -333,19 +298,19 @@ export default function TrackOrderPage() {
                   Current status
                 </p>
 
-                <h2 className="mt-1 text-xl font-black">
+                <h2 className="mt-1 text-xl font-black text-black">
                   {formatStatus(order.status)}
                 </h2>
               </div>
             </div>
 
             {expectedDelivery && (
-              <div className="rounded-2xl bg-green-50 px-5 py-4">
-                <p className="text-xs font-bold text-green-700">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 px-5 py-4">
+                <p className="text-xs font-bold text-gray-500">
                   Expected delivery
                 </p>
 
-                <p className="mt-1 text-sm font-black text-green-800">
+                <p className="mt-1 text-sm font-black text-black">
                   {expectedDelivery}
                 </p>
               </div>
@@ -356,21 +321,21 @@ export default function TrackOrderPage() {
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500">
               <span>
                 Payment:{" "}
-                <strong className="text-gray-800">
+                <strong className="text-black">
                   {formatStatus(order.paymentStatus)}
                 </strong>
               </span>
 
               <span>
                 Method:{" "}
-                <strong className="text-gray-800">
+                <strong className="text-black">
                   {formatStatus(order.paymentMethod)}
                 </strong>
               </span>
 
               <span>
                 Placed:{" "}
-                <strong className="text-gray-800">
+                <strong className="text-black">
                   {formatDate(order.createdAt)}
                 </strong>
               </span>
@@ -379,16 +344,17 @@ export default function TrackOrderPage() {
         </div>
 
         {/* TIMELINE */}
-
         <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-          <h2 className="text-xl font-black">Delivery progress</h2>
+          <h2 className="text-xl font-black text-black">
+            Delivery progress
+          </h2>
 
           <p className="mt-2 text-sm text-gray-500">
             Follow your order from confirmation to delivery.
           </p>
 
           {currentStep === -1 ? (
-            <div className="mt-6 rounded-2xl bg-red-50 p-5">
+            <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5">
               <p className="text-sm font-black text-red-700">
                 {formatStatus(order.status)}
               </p>
@@ -402,7 +368,6 @@ export default function TrackOrderPage() {
             <div className="mt-8">
               {trackingSteps.map((step, index) => {
                 const Icon = step.icon;
-
                 const completed = index <= currentStep;
                 const active = index === currentStep;
 
@@ -412,21 +377,19 @@ export default function TrackOrderPage() {
                     className="relative flex gap-4 pb-8 last:pb-0"
                   >
                     {/* LINE */}
-
                     {index < trackingSteps.length - 1 && (
                       <div
                         className={`absolute left-5 top-11 h-[calc(100%-20px)] w-px ${
-                          index < currentStep ? "bg-indigo-600" : "bg-gray-200"
+                          index < currentStep ? "bg-black" : "bg-gray-200"
                         }`}
                       />
                     )}
 
                     {/* ICON */}
-
                     <div
                       className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
                         completed
-                          ? "bg-indigo-600 text-white"
+                          ? "bg-black text-white"
                           : "border border-gray-200 bg-white text-gray-400"
                       }`}
                     >
@@ -438,19 +401,18 @@ export default function TrackOrderPage() {
                     </div>
 
                     {/* CONTENT */}
-
                     <div className="flex-1 pt-0.5">
                       <div className="flex flex-col justify-between gap-1 sm:flex-row">
                         <h3
                           className={`text-sm font-black ${
-                            completed ? "text-gray-950" : "text-gray-400"
+                            completed ? "text-black" : "text-gray-400"
                           }`}
                         >
                           {step.title}
                         </h3>
 
                         {active && (
-                          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-600">
+                          <span className="inline-flex w-fit items-center gap-1 rounded-full border border-gray-300 bg-gray-100 px-2.5 py-1 text-[10px] font-bold text-black">
                             <Clock3 size={11} />
                             Current
                           </span>
@@ -469,12 +431,11 @@ export default function TrackOrderPage() {
         </div>
 
         {/* PRODUCT + ADDRESS */}
-
         <div className="mt-6 grid gap-6 md:grid-cols-2">
-          {/* PRODUCT */}
 
+          {/* PRODUCT */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-black">Your item</h2>
+            <h2 className="text-lg font-black text-black">Your item</h2>
 
             {!primaryItem ? (
               <p className="mt-5 text-sm text-gray-500">
@@ -501,7 +462,7 @@ export default function TrackOrderPage() {
                     </p>
                   )}
 
-                  <h3 className="mt-1 font-black">
+                  <h3 className="mt-1 font-black text-black">
                     {primaryItem.productName || "Product"}
                   </h3>
 
@@ -523,7 +484,7 @@ export default function TrackOrderPage() {
                     </p>
                   )}
 
-                  <p className="mt-3 text-sm font-black">
+                  <p className="mt-3 text-sm font-black text-black">
                     {formatCurrency(
                       primaryItem.subtotal ?? primaryItem.unitPrice,
                     )}
@@ -539,14 +500,13 @@ export default function TrackOrderPage() {
             )}
 
             {/* ORDER TOTAL */}
-
             <div className="mt-6 border-t border-gray-100 pt-5">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-500">
                   Order total
                 </span>
 
-                <span className="text-lg font-black">
+                <span className="text-lg font-black text-black">
                   {formatCurrency(order.totalAmount)}
                 </span>
               </div>
@@ -554,9 +514,10 @@ export default function TrackOrderPage() {
           </div>
 
           {/* ADDRESS */}
-
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-black">Delivery address</h2>
+            <h2 className="text-lg font-black text-black">
+              Delivery address
+            </h2>
 
             {!address ? (
               <p className="mt-5 text-sm text-gray-500">
@@ -564,11 +525,13 @@ export default function TrackOrderPage() {
               </p>
             ) : (
               <div className="mt-5 flex gap-3">
-                <MapPin size={19} className="mt-0.5 shrink-0 text-indigo-600" />
+                <MapPin size={19} className="mt-0.5 shrink-0 text-black" />
 
                 <div>
                   {address.fullName && (
-                    <p className="text-sm font-black">{address.fullName}</p>
+                    <p className="text-sm font-black text-black">
+                      {address.fullName}
+                    </p>
                   )}
 
                   <p className="mt-2 text-sm leading-6 text-gray-500">
@@ -594,7 +557,6 @@ export default function TrackOrderPage() {
                         {address.city}
                         {address.city && address.state ? ", " : ""}
                         {address.state}
-
                         {address.postalCode ? ` - ${address.postalCode}` : ""}
                       </>
                     )}
@@ -626,11 +588,10 @@ export default function TrackOrderPage() {
         </div>
 
         {/* FOOTER ACTIONS */}
-
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
             href={`/orders/${encodeURIComponent(order.id)}`}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3.5 text-sm font-bold text-black transition hover:border-black hover:bg-gray-50"
           >
             <Package size={17} />
             View order details
@@ -638,7 +599,7 @@ export default function TrackOrderPage() {
 
           <Link
             href="/buy"
-            className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white transition hover:bg-indigo-700"
+            className="inline-flex items-center justify-center rounded-xl bg-black px-6 py-3.5 text-sm font-bold text-white transition hover:bg-gray-800"
           >
             Continue shopping
           </Link>

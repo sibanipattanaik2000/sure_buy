@@ -557,7 +557,10 @@ export default function CheckoutPage() {
       let paymentCancelled = false;
 
       const expectedPaymentStatus =
-        backendPaymentMethod === "COD" ? "PARTIALLY_PAID" : "PAID";
+        paymentOrder.paymentPurpose === "COD_ADVANCE" &&
+        paymentOrder.amount < order.totalAmount
+          ? "PARTIALLY_PAID"
+          : "PAID";
 
       await new Promise<void>((resolve, reject) => {
         let settled = false;

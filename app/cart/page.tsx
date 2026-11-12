@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -461,7 +460,7 @@ export default function CartPage() {
                 onClick={() => {
                   void handleCheckout();
                 }}
-                className="group mt-6 flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition hover:-translate-y-0.5 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none"
+                className="group mt-6 flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-black px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition hover:-translate-y-0.5 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none"
               >
                 {syncing ? (
                   <>
@@ -495,14 +494,15 @@ export default function CartPage() {
    TRUST ITEM
 ========================================================= */
 
+
 function TrustItem({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+    <div className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-black">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black text-white">
         {icon}
       </div>
 
-      <p className="text-xs font-bold text-gray-600">{title}</p>
+      <p className="text-xs font-bold text-black">{title}</p>
     </div>
   );
 }

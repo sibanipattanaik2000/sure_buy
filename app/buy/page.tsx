@@ -279,7 +279,7 @@ function ProductCard({
           </div>
 
           <div className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-black px-2 py-2.5 text-[10px] font-bold text-white transition group-hover:bg-gray-800 sm:mt-4 sm:rounded-xl sm:py-3 sm:text-xs">
-            View details
+            Shop Now
             <ArrowRight size={13} />
           </div>
         </div>
