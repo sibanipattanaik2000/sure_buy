@@ -121,19 +121,16 @@ export default function EditProfilePage() {
     const phone = form.phone.trim();
     const email = form.email.trim();
 
-    // Validate name
     if (!fullName) {
       setError("Please enter your full name.");
       return;
     }
 
-    // Validate phone
     if (phone && !/^\d{10}$/.test(phone)) {
       setError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    // Validate email
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Please enter a valid email address.");
       return;
@@ -192,26 +189,26 @@ export default function EditProfilePage() {
   // --------------------------------------------------
 
   return (
-    <main className="min-h-screen bg-[#f6f7fb] px-4 py-8 sm:px-6 sm:py-10">
+    <main className="min-h-screen bg-[#f7f7f7] px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto max-w-3xl">
+
         {/* HEADER */}
-        <div className="relative overflow-hidden rounded-[28px] border border-indigo-100 bg-white px-6 py-7 shadow-sm sm:px-8">
-          <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-indigo-200/30 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-purple-200/20 blur-3xl" />
+        <div className="relative overflow-hidden rounded-[24px] border border-gray-200 bg-white px-6 py-7 shadow-sm sm:px-8">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-gray-100 blur-3xl" />
 
           <div className="relative">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-600">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-700">
               <UserRound size={13} />
-              Account settings
+              Account Settings
             </div>
 
-            <h1 className="text-3xl font-black tracking-tight text-gray-950 sm:text-4xl">
+            <h1 className="text-3xl font-black tracking-tight text-black sm:text-4xl">
               Edit Profile
             </h1>
 
             <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
               Keep your personal information up to date for a smoother PhoneBhai
-              experience
+              experience.
             </p>
           </div>
         </div>
@@ -219,24 +216,20 @@ export default function EditProfilePage() {
         {/* FORM */}
         <form
           onSubmit={handleSubmit}
-          className="relative mt-6 overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-sm transition duration-300 hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-100/20"
+          className="relative mt-6 overflow-hidden rounded-[24px] border border-gray-200 bg-white shadow-sm transition duration-300 hover:border-gray-300 hover:shadow-md"
         >
-          {/* TOP GRADIENT */}
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-black" />
 
           <div className="p-6 sm:p-8">
+
             {/* AVATAR */}
             <div className="flex items-center gap-4 border-b border-gray-100 pb-7">
-              <div className="relative">
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-20 blur-md" />
-
-                <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-50 to-purple-100 text-indigo-600 ring-4 ring-white">
-                  <UserRound size={25} strokeWidth={2.2} />
-                </div>
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black text-white ring-4 ring-gray-100">
+                <UserRound size={25} strokeWidth={2.2} />
               </div>
 
               <div>
-                <h2 className="font-black tracking-tight text-gray-950">
+                <h2 className="font-black tracking-tight text-black">
                   Personal Information
                 </h2>
 
@@ -272,6 +265,7 @@ export default function EditProfilePage() {
             ) : (
               <>
                 <div className="mt-7 space-y-5">
+
                   {/* NAME */}
                   <div>
                     <label
@@ -284,7 +278,7 @@ export default function EditProfilePage() {
                     <div className="group relative mt-2">
                       <UserRound
                         size={17}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-indigo-500"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-black"
                       />
 
                       <input
@@ -297,7 +291,7 @@ export default function EditProfilePage() {
                         placeholder="Enter your full name"
                         autoComplete="name"
                         disabled={saving}
-                        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm text-gray-900 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm text-gray-900 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-black focus:bg-white focus:ring-4 focus:ring-black/5 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </div>
                   </div>
@@ -314,7 +308,7 @@ export default function EditProfilePage() {
                     <div className="group relative mt-2">
                       <Phone
                         size={17}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-indigo-500"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-black"
                       />
 
                       <input
@@ -332,7 +326,7 @@ export default function EditProfilePage() {
                         placeholder="10-digit mobile number"
                         autoComplete="tel"
                         disabled={saving}
-                        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm text-gray-900 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm text-gray-900 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-black focus:bg-white focus:ring-4 focus:ring-black/5 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </div>
                   </div>
@@ -349,7 +343,7 @@ export default function EditProfilePage() {
                     <div className="group relative mt-2">
                       <Mail
                         size={17}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-indigo-500"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition group-focus-within:text-black"
                       />
 
                       <input
@@ -362,15 +356,15 @@ export default function EditProfilePage() {
                         placeholder="Enter your email"
                         autoComplete="email"
                         disabled={saving}
-                        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm text-gray-900 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="h-12 w-full rounded-xl border border-gray-200 bg-gray-50 pl-11 pr-4 text-sm text-gray-900 outline-none transition duration-200 placeholder:text-gray-400 hover:border-gray-300 focus:border-black focus:bg-white focus:ring-4 focus:ring-black/5 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* SECURITY NOTE */}
-                <div className="mt-7 flex items-center gap-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/70 to-purple-50/50 px-4 py-3.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+                <div className="mt-7 flex items-center gap-3 rounded-2xl border border-green-100 bg-green-50/70 px-4 py-3.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-green-600 shadow-sm">
                     <ShieldCheck size={18} />
                   </div>
 
@@ -390,7 +384,7 @@ export default function EditProfilePage() {
                 <div className="mt-8 flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end">
                   <Link
                     href="/account"
-                    className="inline-flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white px-6 text-sm font-bold text-gray-700 shadow-sm transition duration-200 hover:border-gray-300 hover:bg-gray-50"
+                    className="inline-flex h-12 items-center justify-center rounded-xl border border-gray-200 bg-white px-6 text-sm font-bold text-gray-700 shadow-sm transition duration-200 hover:border-black hover:bg-gray-50"
                   >
                     Cancel
                   </Link>
@@ -398,7 +392,7 @@ export default function EditProfilePage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-7 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition duration-200 hover:-translate-y-0.5 hover:from-indigo-700 hover:to-indigo-600 hover:shadow-xl hover:shadow-indigo-600/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-black px-7 text-sm font-black text-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                   >
                     <Check size={17} />
                     {saving ? "Saving..." : "Save changes"}

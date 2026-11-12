@@ -1608,7 +1608,7 @@ export default function ProductDetailsPage() {
                       ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
                       : currentVariantInCart
                         ? "border-green-200 bg-green-50 text-green-700"
-                        : "border-indigo-200 bg-white text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50"
+                        : "border-black bg-white text-black hover:border-black hover:bg-gray-100"
                   }`}
                 >
                   {isOutOfStock ? (
@@ -1623,7 +1623,7 @@ export default function ProductDetailsPage() {
                       <ShoppingCart size={18} />
                       {currentVariantInCart
                         ? "Add more to cart"
-                        : "Add to cart"}
+                        : "Add To Cart"}
                     </>
                   )}
                 </button>
@@ -1635,10 +1635,10 @@ export default function ProductDetailsPage() {
                   className={`group flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white shadow-lg transition ${
                     isOutOfStock
                       ? "cursor-not-allowed bg-gray-400 shadow-none"
-                      : "bg-indigo-600 shadow-indigo-600/20 hover:-translate-y-0.5 hover:bg-indigo-700"
+                      : "bg-black shadow-indigo-600/20 hover:-translate-y-0.5 hover:bg-black"
                   }`}
                 >
-                  Buy now
+                  Buy Now
                   {!isOutOfStock && (
                     <ArrowRight
                       size={18}
@@ -1770,8 +1770,8 @@ export default function ProductDetailsPage() {
             <section className="mt-10">
               <div className="mb-5 flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
-                    Explore more
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-black/70">
+                    Explore More
                   </p>
 
                   <h2 className="mt-1 text-xl font-black sm:text-2xl">
@@ -1785,7 +1785,7 @@ export default function ProductDetailsPage() {
 
                 <Link
                   href={`/buy?search=${encodeURIComponent(product.brand)}`}
-                  className="shrink-0 text-xs font-bold text-indigo-600 transition hover:text-indigo-800 sm:text-sm"
+                  className="shrink-0 text-xs font-bold text-black/250 transition hover:text-black sm:text-sm"
                 >
                   View all
                   <ArrowRight size={14} className="ml-1 inline" />

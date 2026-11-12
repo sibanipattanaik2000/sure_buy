@@ -13,8 +13,6 @@ import {
   ShieldCheck,
   Truck,
   Wallet,
-  Minus,
-  Plus,
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
@@ -30,6 +28,7 @@ import {
   verifyPayment,
 } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -49,15 +48,12 @@ export default function CheckoutPage() {
     city: "",
     state: "",
   });
+
   useEffect(() => {
     if (authLoading) {
       return;
     }
 
-    /*
-     * No logged-in user:
-     * checkout must start with an empty address.
-     */
     if (!user) {
       setForm({
         fullName: "",
@@ -89,21 +85,11 @@ export default function CheckoutPage() {
 
         const addresses = response.data ?? [];
 
-        /*
-         * Backend is the source of truth.
-         *
-         * Prefer the user's default address.
-         * Otherwise use their first saved address.
-         */
         const selectedAddress =
           addresses.find((address) => address.isDefault) ??
           addresses[0] ??
           null;
 
-        /*
-         * This user has no saved address.
-         * Keep checkout completely empty.
-         */
         if (!selectedAddress) {
           setForm({
             fullName: "",
@@ -118,16 +104,6 @@ export default function CheckoutPage() {
           return;
         }
 
-        /*
-         * Your backend address model stores addressLine1.
-         *
-         * The checkout form has separate address + area fields.
-         * We therefore put the saved addressLine1 into
-         * the address field and leave area empty.
-         *
-         * The complete address is still preserved and sent
-         * correctly when the order is submitted.
-         */
         setForm({
           fullName: selectedAddress.fullName || "",
           phone: selectedAddress.phone || "",
@@ -150,6 +126,7 @@ export default function CheckoutPage() {
       cancelled = true;
     };
   }, [user, authLoading]);
+
   const [error, setError] = useState("");
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -157,16 +134,17 @@ export default function CheckoutPage() {
   const [couponMessageIsError, setCouponMessageIsError] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
   /*
    * EMPTY CHECKOUT
    */
 
   if (!products || products.length === 0) {
     return (
-      <main className="min-h-screen bg-[#f7f8fa] px-5 py-20">
+      <main className="min-h-screen bg-white px-5 py-20 text-gray-900">
         <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50">
-            <ShieldCheck size={25} className="text-indigo-600" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100">
+            <ShieldCheck size={25} className="text-black" />
           </div>
 
           <h1 className="mt-5 text-2xl font-black text-gray-900">
@@ -179,7 +157,7 @@ export default function CheckoutPage() {
 
           <Link
             href="/buy"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-black px-6 py-3 text-sm font-bold text-white transition hover:bg-gray-800"
           >
             Browse products
             <ArrowRight size={16} />
@@ -190,11 +168,7 @@ export default function CheckoutPage() {
   }
 
   /*
-   * =====================================================
    * TOTALS
-   * =====================================================
-   *
-   * Every calculation includes quantity.
    */
 
   const subtotal = products.reduce(
@@ -229,7 +203,7 @@ export default function CheckoutPage() {
   );
 
   /*
-   * HANDLE INPUT
+   * COUPON
    */
 
   const applyCoupon = () => {
@@ -272,18 +246,13 @@ export default function CheckoutPage() {
       [field]: value,
     }));
   };
+
   const waitForRazorpay = async (): Promise<boolean> => {
     if (typeof window !== "undefined" && window.Razorpay) {
       setRazorpayLoaded(true);
       return true;
     }
 
-    /*
-     * Razorpay may still be loading because checkout.js
-     * uses afterInteractive.
-     *
-     * Wait instead of immediately failing the order.
-     */
     for (let attempt = 0; attempt < 100; attempt++) {
       await new Promise<void>((resolve) => {
         window.setTimeout(resolve, 100);
@@ -297,6 +266,7 @@ export default function CheckoutPage() {
 
     return false;
   };
+
   /*
    * SUBMIT
    */
@@ -310,9 +280,9 @@ export default function CheckoutPage() {
       return;
     }
 
-    /* =====================================================
-     ADDRESS VALIDATION
-  ===================================================== */
+    /*
+     * ADDRESS VALIDATION
+     */
 
     const fullName = form.fullName.trim();
     const phone = form.phone.trim();
@@ -366,9 +336,9 @@ export default function CheckoutPage() {
       return;
     }
 
-    /* =====================================================
-     BUILD ADDRESS
-  ===================================================== */
+    /*
+     * BUILD ADDRESS
+     */
 
     const addressLine1 = `${address}, ${area}`.trim();
 
@@ -382,9 +352,9 @@ export default function CheckoutPage() {
       return;
     }
 
-    /* =====================================================
-     PAYMENT VALIDATION
-  ===================================================== */
+    /*
+     * PAYMENT VALIDATION
+     */
 
     if (!paymentMethod) {
       setError("Please select a payment method.");
@@ -393,10 +363,11 @@ export default function CheckoutPage() {
 
     setPlacingOrder(true);
     let createdOrderId: string | null = null;
+
     try {
-      /* =====================================================
-       GET EXISTING ADDRESSES
-    ===================================================== */
+      /*
+       * GET EXISTING ADDRESSES
+       */
 
       const addressesResponse = await getAddresses();
 
@@ -408,12 +379,13 @@ export default function CheckoutPage() {
 
       const savedAddresses = addressesResponse.data ?? [];
 
-      /* =====================================================
-       FIND EXISTING ADDRESS
-    ===================================================== */
+      /*
+       * FIND EXISTING ADDRESS
+       */
 
       const existingAddress = savedAddresses.find((savedAddress) => {
         const savedPostalCode = savedAddress.postalCode?.trim();
+
         return (
           savedAddress.fullName.trim().toLowerCase() ===
             fullName.toLowerCase() &&
@@ -428,25 +400,16 @@ export default function CheckoutPage() {
 
       let addressId: string;
 
-      /* =====================================================
-       USE EXISTING ADDRESS
-    ===================================================== */
+      /*
+       * USE EXISTING ADDRESS
+       */
 
       if (existingAddress) {
         addressId = existingAddress.id;
       } else {
-        /* ===================================================
-         CREATE ADDRESS
-
-         IMPORTANT:
-         createAddress() in api.ts expects `pincode`.
-
-         api.ts converts:
-         pincode -> postalCode
-
-         Backend expects:
-         postalCode
-         =================================================== */
+        /*
+         * CREATE ADDRESS
+         */
 
         const addressPayload = {
           fullName,
@@ -457,8 +420,6 @@ export default function CheckoutPage() {
           postalCode: pincode,
           isDefault: savedAddresses.length === 0,
         };
-
-        //console.log("Creating checkout address:", addressPayload);
 
         const addressResponse = await createAddress(addressPayload);
 
@@ -471,9 +432,9 @@ export default function CheckoutPage() {
         addressId = addressResponse.data.id;
       }
 
-      /* =====================================================
-       KEEP CHECKOUT CONTEXT IN SYNC
-    ===================================================== */
+      /*
+       * KEEP CHECKOUT CONTEXT IN SYNC
+       */
 
       setAddress({
         fullName,
@@ -485,9 +446,9 @@ export default function CheckoutPage() {
         state,
       });
 
-      /* =====================================================
-       NORMALIZE PAYMENT METHOD
-    ===================================================== */
+      /*
+       * NORMALIZE PAYMENT METHOD
+       */
 
       const backendPaymentMethod =
         paymentMethod === "cod"
@@ -498,9 +459,9 @@ export default function CheckoutPage() {
               ? "EMI"
               : "CARD";
 
-      /* =====================================================
-   ENSURE CHECKOUT PRODUCTS EXIST IN BACKEND CART
-===================================================== */
+      /*
+       * ENSURE CHECKOUT PRODUCTS EXIST IN BACKEND CART
+       */
 
       const currentCartResponse = await getCart();
 
@@ -551,9 +512,10 @@ export default function CheckoutPage() {
           );
         }
       }
-      /* =====================================================
-   CREATE BACKEND ORDER
-===================================================== */
+
+      /*
+       * CREATE BACKEND ORDER
+       */
 
       const orderResponse = await createOrder({
         addressId,
@@ -567,14 +529,12 @@ export default function CheckoutPage() {
 
       const order = orderResponse.data;
       createdOrderId = order.id;
-      /* =====================================================
-   ONLINE PAYMENT — RAZORPAY
-===================================================== */
-      /* =====================================================
-   PAYMENT — RAZORPAY
-   COD = ₹500 ADVANCE
-   UPI / CARD / EMI = FULL AMOUNT
-===================================================== */
+
+      /*
+       * PAYMENT — RAZORPAY
+       * COD = ₹500 ADVANCE
+       * UPI / CARD = FULL AMOUNT
+       */
 
       const paymentOrderResponse = await createPaymentOrder(order.id);
 
@@ -595,8 +555,10 @@ export default function CheckoutPage() {
       }
 
       let paymentCancelled = false;
+
       const expectedPaymentStatus =
         backendPaymentMethod === "COD" ? "PARTIALLY_PAID" : "PAID";
+
       await new Promise<void>((resolve, reject) => {
         let settled = false;
 
@@ -615,9 +577,6 @@ export default function CheckoutPage() {
         const razorpay = new window.Razorpay({
           key: paymentOrder.keyId,
 
-          // Backend decides the amount:
-          // COD      -> ₹500
-          // UPI/CARD -> Full order amount
           amount: paymentOrder.amountInPaise,
 
           currency: paymentOrder.currency,
@@ -643,7 +602,7 @@ export default function CheckoutPage() {
           },
 
           theme: {
-            color: "#4f46e5",
+            color: "#000000",
           },
 
           handler: async (response) => {
@@ -702,29 +661,17 @@ export default function CheckoutPage() {
         razorpay.open();
       });
 
-      // Payment was cancelled — STOP here.
+      /*
+       * PAYMENT CANCELLED
+       */
+
       if (paymentCancelled) {
         setError("Payment was cancelled. Your order has not been confirmed.");
         return;
       }
 
-      /* =====================================================
-   PAYMENT SUCCESS CONFIRMED
-   ===================================================== */
-      /* =====================================================
-       PAYMENT SUCCESS CONFIRMED
-       ===================================================== */
-
       /*
-       * For COD:
-       *   create order -> clear cart -> success
-       *
-       * For online payment:
-       *   create order -> Razorpay -> verify signature
-       *   -> clear cart -> success
-       *
-       * Therefore this section is reached only after
-       * successful payment verification for online orders.
+       * PAYMENT SUCCESS CONFIRMED
        */
 
       const firstItem = order.items?.[0];
@@ -733,41 +680,29 @@ export default function CheckoutPage() {
         "PhoneBhai-order",
         JSON.stringify({
           orderId: order.orderNumber || order.id,
-
           productName: firstItem?.productName || "",
-
           productImage: firstItem?.imageUrl || "",
-
           brand: firstItem?.brand || "",
-
           storage: firstItem?.storage || "",
-
           color: firstItem?.color || "",
-
           price: firstItem?.unitPrice || 0,
-
           paymentMethod: backendPaymentMethod,
-
           deliveryDate: "3–5 business days",
         }),
       );
 
-      /* =====================================================
-       CLEAR CLIENT STATE
-       ===================================================== */
+      /*
+       * CLEAR CLIENT STATE
+       */
 
       try {
         if (backendPaymentMethod === "COD") {
           await clearCart();
         }
       } catch (cartError) {
-        /*
-         * The order/payment has already succeeded.
-         * Cart cleanup failure must never prevent the
-         * customer from reaching the success page.
-         */
         console.warn("Cart cleanup skipped after successful order:", cartError);
       }
+
       clearCheckout();
       router.replace(`/order-success?orderId=${encodeURIComponent(order.id)}`);
     } catch (requestError) {
@@ -801,7 +736,8 @@ export default function CheckoutPage() {
           );
         }}
       />
-      <main className="min-h-screen bg-[#f7f8fa] text-gray-900">
+
+      <main className="min-h-screen bg-white text-gray-900">
         <form
           onSubmit={handleSubmit}
           className="mx-auto max-w-7xl px-5 py-8 lg:px-8"
@@ -835,7 +771,7 @@ export default function CheckoutPage() {
 
               <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-black">
                     <MapPin size={20} />
                   </div>
 
@@ -911,7 +847,7 @@ export default function CheckoutPage() {
                       }
                       placeholder="House number, building, street..."
                       rows={3}
-                      className="mt-2 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-indigo-500 focus:bg-white"
+                      className="mt-2 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm outline-none transition focus:border-black focus:bg-white"
                     />
                   </div>
                 </div>
@@ -933,7 +869,7 @@ export default function CheckoutPage() {
 
                   <Link
                     href="/cart"
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700"
+                    className="text-xs font-bold text-black underline underline-offset-4 hover:text-gray-600"
                   >
                     Change
                   </Link>
@@ -942,7 +878,6 @@ export default function CheckoutPage() {
                 <div className="mt-5 space-y-5">
                   {products.map((product) => {
                     const quantity = Math.max(1, product.quantity || 1);
-
                     const itemTotal = product.price * quantity;
 
                     return (
@@ -953,8 +888,6 @@ export default function CheckoutPage() {
                         }
                         className="flex gap-4 border-b border-gray-100 pb-5 last:border-0 last:pb-0"
                       >
-                        {/* IMAGE */}
-
                         <div className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50 p-3">
                           {product.image ? (
                             <img
@@ -968,8 +901,6 @@ export default function CheckoutPage() {
                             </div>
                           )}
                         </div>
-
-                        {/* DETAILS */}
 
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
@@ -999,7 +930,7 @@ export default function CheckoutPage() {
                               ₹{product.price.toLocaleString("en-IN")}
                             </p>
 
-                            <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">
+                            <span className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
                               Qty: {quantity}
                             </span>
 
@@ -1018,7 +949,7 @@ export default function CheckoutPage() {
 
               <section className="rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100 text-black">
                     <CreditCard size={20} />
                   </div>
 
@@ -1049,14 +980,6 @@ export default function CheckoutPage() {
                   />
 
                   <PaymentOption
-                    active={paymentMethod === "emi"}
-                    onClick={() => setPaymentMethod("emi")}
-                    icon={<CreditCard size={19} />}
-                    title="EMI"
-                    description="Pay monthly with eligible cards"
-                  />
-
-                  <PaymentOption
                     active={paymentMethod === "cod"}
                     onClick={() => setPaymentMethod("cod")}
                     icon={<Truck size={19} />}
@@ -1071,127 +994,159 @@ export default function CheckoutPage() {
 
             <aside>
               <div className="sticky top-24 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-black">Price details</h2>
-                <section className="mt-5 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
-                      <Check size={19} />
+                <h2 className="text-lg font-black">Price Details</h2>
+                <section className="relative mt-5 overflow-hidden rounded-2xl border border-black bg-white">
+                  {/* OFFER HEADER */}
+                  <div className="flex items-center justify-between bg-black px-4 py-3 text-white">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🎁</span>
+                      <span className="text-xs font-black uppercase tracking-[0.15em]">
+                        Special checkout offer
+                      </span>
                     </div>
 
-                    <div>
-                      <h3 className="text-sm font-extrabold text-gray-900">
-                        Get ₹1,000 off
-                      </h3>
-
-                      <p className="mt-1 text-xs leading-5 text-gray-500">
-                        Apply{" "}
-                        <span className="font-extrabold text-black">
-                          SUREDISCOUNT
-                        </span>{" "}
-                        to save ₹1,000 on your order.
-                      </p>
-                    </div>
+                    <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase text-black text-center">
+                      Limited Offer
+                    </span>
                   </div>
-                  {appliedCoupon ? (
-                    <div className="coupon-celebration relative mt-2 overflow-hidden rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-violet-50 p-2">
-                      <span
-                        className="coupon-confetti confetti-one"
-                        aria-hidden="true"
-                      >
-                        🎉
-                      </span>
-                      <span
-                        className="coupon-confetti confetti-two"
-                        aria-hidden="true"
-                      >
-                        ✨
-                      </span>
-                      <span
-                        className="coupon-confetti confetti-three"
-                        aria-hidden="true"
-                      >
-                        🎊
-                      </span>
 
-                      <div className="relative z-10 flex items-center gap-3">
-                        <span
-                          className="coupon-party text-3xl"
-                          aria-hidden="true"
-                        >
-                          🥳
-                        </span>
+                  <div className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100">
+                        <span className="text-2xl">🏷️</span>
+                      </div>
 
-                        <div className="min-w-0 flex-1">
-                          <p className="font-extrabold text-emerald-800">
-                            Yay! Coupon applied!
-                          </p>
-                          <p className="mt-1 text-xs leading-5 text-emerald-900">
-                            You saved ₹1,000 with{" "}
-                            <span className="font-extrabold text-black">
-                              {appliedCoupon}
-                            </span>
-                            ✨
-                          </p>
-                        </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                          Unlock an extra discount
+                        </p>
 
-                        <button
-                          type="button"
-                          onClick={removeCoupon}
-                          disabled={placingOrder}
-                          className="shrink-0 text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
-                        >
-                          Remove
-                        </button>
+                        <h3 className="mt-1 text-2xl font-black tracking-tight text-black">
+                          GET ₹1,000 OFF
+                        </h3>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          Save an additional ₹1,000 on orders above ₹1,000.
+                        </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="mt-4 flex gap-2">
-                      <input
-                        type="text"
-                        value={couponInput}
-                        onChange={(event) => {
-                          setCouponInput(event.target.value);
-                          setCouponMessage("");
-                          setCouponMessageIsError(false);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            applyCoupon();
-                          }
-                        }}
-                        placeholder="Enter coupon code"
-                        maxLength={40}
-                        autoCapitalize="characters"
-                        autoComplete="off"
-                        disabled={placingOrder}
-                        aria-label="Coupon code"
-                        className="h-11 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold uppercase outline-none transition focus:border-indigo-500 disabled:opacity-50"
-                      />
 
-                      <button
-                        type="button"
-                        onClick={applyCoupon}
-                        disabled={placingOrder || !couponInput.trim()}
-                        className="h-11 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    {appliedCoupon ? (
+                      <div className="coupon-celebration relative mt-4 overflow-hidden rounded-xl border border-green-200 bg-green-50 p-3">
+                        <span
+                          className="coupon-confetti confetti-one"
+                          aria-hidden="true"
+                        >
+                          🎉
+                        </span>
+
+                        <span
+                          className="coupon-confetti confetti-two"
+                          aria-hidden="true"
+                        >
+                          ✨
+                        </span>
+
+                        <div className="relative z-10 flex items-center gap-3">
+                          <span
+                            className="coupon-party text-3xl"
+                            aria-hidden="true"
+                          >
+                            🥳
+                          </span>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-extrabold text-green-800">
+                              Offer successfully applied!
+                            </p>
+
+                            <p className="mt-1 text-xs text-green-700">
+                              You saved ₹1,000 using {appliedCoupon}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={removeCoupon}
+                            disabled={placingOrder}
+                            className="text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* COUPON CODE HIGHLIGHT */}
+                        <div className="mt-4 rounded-xl border-2 border-dashed border-black bg-gray-50 p-3">
+                          <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                            Use this coupon code
+                          </p>
+
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-lg font-black tracking-[0.12em] text-black sm:text-xl">
+                              SUREDISCOUNT
+                            </span>
+
+                            <span className="rounded-lg bg-black px-3 py-2 text-[10px] font-black uppercase text-white text-center">
+                              ₹1,000 OFF
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* APPLY COUPON */}
+                        <div className="mt-3 flex gap-2">
+                          <input
+                            type="text"
+                            value={couponInput}
+                            onChange={(event) => {
+                              setCouponInput(event.target.value);
+                              setCouponMessage("");
+                              setCouponMessageIsError(false);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                applyCoupon();
+                              }
+                            }}
+                            placeholder="Enter offer code"
+                            maxLength={40}
+                            autoCapitalize="characters"
+                            autoComplete="off"
+                            disabled={placingOrder}
+                            aria-label="Coupon code"
+                            className="h-11 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-bold uppercase outline-none transition focus:border-black disabled:opacity-50"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={applyCoupon}
+                            disabled={placingOrder || !couponInput.trim()}
+                            className="h-11 rounded-xl bg-black px-5 text-sm font-black text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {couponMessage && (
+                      <p
+                        role="status"
+                        aria-live="polite"
+                        className={`mt-3 text-xs font-semibold ${
+                          couponMessageIsError
+                            ? "text-red-600"
+                            : "text-green-700"
+                        }`}
                       >
-                        Apply
-                      </button>
-                    </div>
-                  )}
-
-                  {couponMessage && (
-                    <p
-                      role="status"
-                      aria-live="polite"
-                      className={`mt-3 text-xs font-semibold ${
-                        couponMessageIsError ? "text-red-600" : "text-green-700"
-                      }`}
-                    >
-                      {couponMessage}
-                    </p>
-                  )}
+                        {couponMessage}
+                      </p>
+                    )}
+                  </div>
                 </section>
+
                 <div className="mt-6 space-y-4 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">MRP</span>
@@ -1208,6 +1163,7 @@ export default function CheckoutPage() {
                       - ₹{savings.toLocaleString("en-IN")}
                     </span>
                   </div>
+
                   {couponDiscount > 0 && (
                     <div className="flex justify-between gap-3">
                       <span className="text-gray-500">Coupon Applied</span>
@@ -1217,6 +1173,7 @@ export default function CheckoutPage() {
                       </span>
                     </div>
                   )}
+
                   <div className="flex justify-between">
                     <span className="text-gray-500">Delivery</span>
 
@@ -1257,7 +1214,7 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={placingOrder}
-                  className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 text-sm font-black text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-black text-sm font-black text-white shadow-lg shadow-black/10 transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {placingOrder ? "Processing..." : "Place order"}
 
@@ -1283,16 +1240,15 @@ export default function CheckoutPage() {
                   />
                 </div>
               </div>
+
               {paymentMethod === "cod" && (
-                <div className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold text-gray-700">
                       Pay now
                     </span>
 
-                    <span className="text-lg font-black text-indigo-600">
-                      ₹500
-                    </span>
+                    <span className="text-lg font-black text-black">₹500</span>
                   </div>
 
                   <div className="mt-2 flex items-center justify-between">
@@ -1305,7 +1261,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
 
-                  <p className="mt-3 text-[11px] leading-5 text-indigo-600">
+                  <p className="mt-3 text-[11px] leading-5 text-gray-600">
                     A ₹500 advance is required to confirm your COD order. The
                     remaining ₹
                     {Math.max(0, total - 500).toLocaleString("en-IN")} will be
@@ -1313,6 +1269,7 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               )}
+
               <style jsx>{`
                 .coupon-celebration {
                   animation: coupon-pop 450ms ease-out both;
@@ -1430,7 +1387,7 @@ function Input({
         maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition focus:border-indigo-500 focus:bg-white"
+        className="mt-2 h-12 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none transition focus:border-black focus:bg-white"
       />
     </div>
   );
@@ -1457,13 +1414,13 @@ function PaymentOption({
       onClick={onClick}
       className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition ${
         active
-          ? "border-indigo-600 bg-indigo-50"
-          : "border-gray-200 bg-white hover:border-gray-300"
+          ? "border-black bg-gray-50"
+          : "border-gray-200 bg-white hover:border-gray-400"
       }`}
     >
       <div
         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-          active ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500"
+          active ? "bg-black text-white" : "bg-gray-100 text-gray-500"
         }`}
       >
         {icon}
@@ -1477,7 +1434,7 @@ function PaymentOption({
 
       <div
         className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-          active ? "border-indigo-600 bg-indigo-600" : "border-gray-300"
+          active ? "border-black bg-black" : "border-gray-300"
         }`}
       >
         {active && <Check size={12} className="text-white" />}
@@ -1491,7 +1448,7 @@ function PaymentOption({
 function MiniTrust({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <div className="text-center">
-      <div className="flex justify-center text-indigo-600">{icon}</div>
+      <div className="flex justify-center text-black">{icon}</div>
 
       <p className="mt-2 text-[9px] font-bold text-gray-500">{text}</p>
     </div>
