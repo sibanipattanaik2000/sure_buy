@@ -212,7 +212,7 @@ export default function Footer() {
               ["About PhoneBhai", "/about"],
               ["How it works", "/how-it-works"],
               ["Buy devices", "/buy"],
-              ["Sell your phone", "/sell"],
+              // ["Sell your phone", "/sell"],
             ]}
           />
 

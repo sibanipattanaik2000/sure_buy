@@ -201,31 +201,63 @@ const shopButtonClass =
    BRAND LOGOS – seamless right → left infinite marquee
 ========================================================= */
 
+
 function BrandLogos() {
-  // Duplicate 3 times so the loop never shows a blank gap
   const items = [...brandLogos, ...brandLogos, ...brandLogos];
 
   return (
-    <section className="overflow-hidden border-y border-gray-100 bg-white py-4">
-      <div className="relative flex">
-        <div className="phonebhai-brand-track flex w-max items-center gap-10 sm:gap-14">
+    <section className="overflow-hidden border-y border-gray-200 bg-gray-50 py-7 sm:py-9">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mb-5 flex items-end justify-between sm:mb-7">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 sm:text-xs">
+              Shop your favourite brands
+            </p>
+            <h2 className="mt-1 text-xl font-black tracking-tight text-black sm:text-2xl">
+              Explore Top Brands
+            </h2>
+          </div>
+
+          <Link
+            href="/buy"
+            className="inline-flex shrink-0 items-center gap-1.5 text-[14px] font-bold text-black transition hover:underline sm:text-sm"
+          >
+            View all
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      </div>
+
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-gray-50 to-transparent sm:w-16" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-gray-50 to-transparent sm:w-16" />
+
+        <div className="phonebhai-brand-track flex w-max items-center gap-3 px-3 sm:gap-5 sm:px-6">
           {items.map((brand, index) => (
             <Link
               key={`${brand.name}-${index}`}
               href={`/buy?brand=${encodeURIComponent(brand.name)}`}
-              className="flex shrink-0 items-center gap-2.5 opacity-80 transition hover:opacity-100"
+              className="group flex h-[76px] min-w-[145px] shrink-0 items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-black hover:shadow-md sm:h-[90px] sm:min-w-[185px] sm:gap-4 sm:rounded-2xl sm:px-7"
             >
-              <img
-                src={`https://cdn.simpleicons.org/${brand.slug}/111111`}
-                alt={brand.name}
-                className="h-5 w-5 object-contain sm:h-6 sm:w-6"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                }}
-              />
-              <span className="whitespace-nowrap text-[13px] font-semibold text-gray-800">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 transition group-hover:bg-black sm:h-12 sm:w-12">
+                <img
+                  src={`https://cdn.simpleicons.org/${brand.slug}/111111`}
+                  alt={brand.name}
+                  className="h-5 w-5 object-contain transition group-hover:brightness-0 group-hover:invert sm:h-6 sm:w-6"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+
+              <span className="whitespace-nowrap text-sm font-black tracking-tight text-gray-900 transition group-hover:text-black sm:text-base">
                 {brand.name}
               </span>
+
+              <ArrowRight
+                size={14}
+                className="ml-auto text-gray-300 transition group-hover:translate-x-1 group-hover:text-black"
+              />
             </Link>
           ))}
         </div>
@@ -233,7 +265,11 @@ function BrandLogos() {
 
       <style jsx global>{`
         .phonebhai-brand-track {
-          animation: brand-marquee 12s linear infinite;
+          animation: brand-marquee 18s linear infinite;
+        }
+
+        .phonebhai-brand-track:hover {
+          animation-play-state: paused;
         }
 
         @keyframes brand-marquee {
@@ -244,34 +280,11 @@ function BrandLogos() {
             transform: translateX(-33.333%);
           }
         }
-
-        @keyframes vibrate {
-          0%,
-          100% {
-            transform: translate(0, 0) scale(1);
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.45);
-          }
-          20% {
-            transform: translate(-1px, 1px) scale(1.02);
-            box-shadow: 0 0 38px rgba(255, 255, 255, 0.65);
-          }
-          40% {
-            transform: translate(1px, -1px) scale(1.03);
-            box-shadow: 0 0 42px rgba(99, 102, 241, 0.5);
-          }
-          60% {
-            transform: translate(-1px, 0) scale(1.02);
-            box-shadow: 0 0 38px rgba(255, 255, 255, 0.6);
-          }
-          80% {
-            transform: translate(1px, 1px) scale(1.01);
-            box-shadow: 0 0 34px rgba(255, 255, 255, 0.5);
-          }
-        }
       `}</style>
     </section>
   );
 }
+
 
 /* =========================================================
    HERO SLIDER

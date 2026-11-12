@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -66,34 +67,34 @@ const sections = [
 
 export default function CookiePolicyPage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f6f7fb] text-gray-900">
+    <main className="min-h-screen overflow-hidden bg-[#f8f8f8] text-gray-900">
       {/* Background accents */}
       <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
-        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-indigo-200/30 blur-3xl" />
-        <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-violet-200/25 blur-3xl" />
+        <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-gray-200/50 blur-3xl" />
+        <div className="absolute -right-32 top-40 h-96 w-96 rounded-full bg-gray-300/30 blur-3xl" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         {/* Hero */}
-        <header className="relative overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_20px_60px_-30px_rgba(15,23,42,0.25)]">
-          {/* Gradient top border */}
-          <div className="h-1.5 w-full bg-gradient-to-r from-cyan-400 via-indigo-600 to-violet-600" />
+        <header className="relative overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)]">
+          {/* Monochrome top border */}
+          <div className="h-1.5 w-full bg-gradient-to-r from-gray-400 via-black to-gray-500" />
 
           <div className="relative p-6 sm:p-9 lg:p-10">
             {/* Decorative glow */}
-            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-100/60 blur-3xl" />
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-gray-100 blur-3xl" />
 
             <div className="relative flex flex-col gap-7 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 {/* Icon */}
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-100 text-indigo-600 shadow-sm ring-1 ring-indigo-100">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-950 text-white shadow-sm">
                   <Cookie size={25} strokeWidth={2.2} />
                 </div>
 
                 <div className="mt-7">
                   {/* Label */}
-                  <div className="inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">
-                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                  <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-gray-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-black" />
                     Legal & Privacy
                   </div>
 
@@ -109,9 +110,9 @@ export default function CookiePolicyPage() {
               </div>
 
               {/* Privacy badge */}
-              <div className="shrink-0 rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3 sm:mt-1">
+              <div className="shrink-0 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 sm:mt-1">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-indigo-600" />
+                  <ShieldCheck size={16} className="text-gray-800" />
 
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-wider text-gray-400">
@@ -127,13 +128,13 @@ export default function CookiePolicyPage() {
             </div>
 
             {/* Intro callout */}
-            <div className="relative mt-8 rounded-2xl border border-indigo-100/80 bg-gradient-to-r from-indigo-50/70 via-white to-violet-50/50 p-5 sm:p-6">
-              <div className="absolute left-0 top-5 h-10 w-1 rounded-r-full bg-gradient-to-b from-indigo-500 to-violet-500" />
+            <div className="relative mt-8 rounded-2xl border border-gray-200 bg-gray-50 p-5 sm:p-6">
+              <div className="absolute left-0 top-5 h-10 w-1 rounded-r-full bg-gray-950" />
 
               <div className="flex gap-3">
                 <Cookie
                   size={18}
-                  className="mt-1 shrink-0 text-indigo-500"
+                  className="mt-1 shrink-0 text-gray-800"
                 />
 
                 <p className="text-sm leading-7 text-gray-600">
@@ -147,8 +148,8 @@ export default function CookiePolicyPage() {
 
         {/* Cookie overview cards */}
         <div className="mt-5 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <Cookie size={18} />
             </div>
 
@@ -161,8 +162,8 @@ export default function CookiePolicyPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <BarChart3 size={18} />
             </div>
 
@@ -176,8 +177,8 @@ export default function CookiePolicyPage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <LockKeyhole size={18} />
             </div>
 
@@ -192,12 +193,12 @@ export default function CookiePolicyPage() {
         </div>
 
         {/* Policy content */}
-        <div className="mt-5 rounded-[28px] border border-gray-200/80 bg-white shadow-[0_20px_60px_-35px_rgba(15,23,42,0.25)]">
+        <div className="mt-5 rounded-[28px] border border-gray-200 bg-white shadow-[0_20px_60px_-35px_rgba(0,0,0,0.18)]">
           <div className="p-5 sm:p-8 lg:p-10">
             {/* Section heading */}
             <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-5">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-500">
                   Please read carefully
                 </p>
 
@@ -206,7 +207,7 @@ export default function CookiePolicyPage() {
                 </h2>
               </div>
 
-              <div className="hidden h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-gray-400 sm:flex">
+              <div className="hidden h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-500 sm:flex">
                 <Cookie size={18} />
               </div>
             </div>
@@ -228,7 +229,7 @@ export default function CookiePolicyPage() {
                     <div className="flex gap-4 sm:gap-6">
                       {/* Number */}
                       <div className="shrink-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 text-[10px] font-black tracking-wider text-indigo-500 ring-1 ring-gray-100 transition-all duration-300 group-hover:bg-indigo-600 group-hover:text-white group-hover:ring-indigo-600">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-[10px] font-black tracking-wider text-gray-600 ring-1 ring-gray-200 transition-all duration-300 group-hover:bg-gray-950 group-hover:text-white group-hover:ring-gray-950">
                           {section.number}
                         </div>
                       </div>
@@ -238,7 +239,7 @@ export default function CookiePolicyPage() {
                         <div className="flex items-center gap-2">
                           <Icon
                             size={16}
-                            className="text-indigo-500 transition-colors group-hover:text-indigo-600"
+                            className="text-gray-500 transition-colors group-hover:text-gray-950"
                           />
 
                           <h2 className="text-[17px] font-black tracking-tight text-gray-950 sm:text-lg">
@@ -259,10 +260,10 @@ export default function CookiePolicyPage() {
         </div>
 
         {/* Browser management card */}
-        <div className="mt-5 overflow-hidden rounded-[24px] border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 shadow-sm">
+        <div className="mt-5 overflow-hidden rounded-[24px] border border-gray-200 bg-gradient-to-r from-gray-100 via-white to-gray-50 shadow-sm">
           <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm ring-1 ring-indigo-100">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-gray-900 shadow-sm ring-1 ring-gray-200">
                 <Settings2 size={18} />
               </div>
 
@@ -279,16 +280,16 @@ export default function CookiePolicyPage() {
             </div>
 
             <div className="flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-600 shadow-sm">
-              <LockKeyhole size={14} className="text-indigo-500" />
+              <LockKeyhole size={14} className="text-gray-700" />
               Browser controls
             </div>
           </div>
         </div>
 
         {/* Bottom trust strip */}
-        <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-gray-200/80 bg-white/80 p-5 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-900">
               <ShieldCheck size={17} />
             </div>
 
@@ -305,7 +306,7 @@ export default function CookiePolicyPage() {
 
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gray-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-600"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gray-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-gray-700"
           >
             Visit PhoneBhai
             <ChevronRight size={14} />
