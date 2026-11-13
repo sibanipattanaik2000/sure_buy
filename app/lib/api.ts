@@ -337,6 +337,23 @@ export async function getProduct<T = Product>(id: string) {
   });
 }
 
+export interface DeliveryServiceability {
+  serviceable: boolean;
+  courierCount: number;
+  courierName: string | null;
+  etd: string | null;
+  estimatedDeliveryDays: number | null;
+}
+
+export async function checkDeliveryServiceability(pincode: string) {
+  return apiRequest<DeliveryServiceability>(
+    `/delivery/serviceability?pincode=${encodeURIComponent(pincode)}`,
+    {
+      method: "GET",
+    },
+  );
+}
+
 /* =========================================================
    ORDERS
 ========================================================= */
@@ -385,6 +402,18 @@ export interface Order {
 
   createdAt: string;
   updatedAt?: string;
+
+shiprocketOrderId?: string | null;
+shiprocketShipmentId?: string | null;
+shiprocketAwbCode?: string | null;
+shiprocketCourierName?: string | null;
+shiprocketTrackingUrl?: string | null;
+shiprocketStatus?: string | null;
+shiprocketStatusCode?: string | null;
+shiprocketLastEventAt?: string | null;
+shiprocketPickupScheduledAt?: string | null;
+shiprocketShippedAt?: string | null;
+shiprocketDeliveredAt?: string | null;
 }
 
 export async function getOrders() {

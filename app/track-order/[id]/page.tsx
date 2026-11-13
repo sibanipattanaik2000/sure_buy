@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -54,6 +53,17 @@ type TrackOrder = {
     landmark?: string | null;
   } | null;
   items: TrackOrderItem[];
+  shiprocketOrderId?: string | null;
+  shiprocketShipmentId?: string | null;
+  shiprocketAwbCode?: string | null;
+  shiprocketCourierName?: string | null;
+  shiprocketTrackingUrl?: string | null;
+  shiprocketStatus?: string | null;
+  shiprocketStatusCode?: string | null;
+  shiprocketLastEventAt?: string | null;
+  shiprocketPickupScheduledAt?: string | null;
+  shiprocketShippedAt?: string | null;
+  shiprocketDeliveredAt?: string | null;
 };
 
 type ApiErrorLike = {
@@ -202,10 +212,8 @@ export default function TrackOrderPage() {
     if (status === "CANCELLED" || status === "REFUNDED") return -1;
     if (status === "DELIVERED") return 5;
 
-    if (
-      status === "OUT_FOR_DELIVERY" ||
-      status === "OUT FOR DELIVERY"
-    ) return 4;
+    if (status === "OUT_FOR_DELIVERY" || status === "OUT FOR DELIVERY")
+      return 4;
 
     if (status === "SHIPPED") return 3;
 
@@ -268,7 +276,6 @@ export default function TrackOrderPage() {
   return (
     <main className="min-h-screen bg-white text-black">
       <section className="mx-auto max-w-5xl px-5 py-8 lg:px-8 lg:py-12">
-
         {/* TITLE */}
         <div className="text-center">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">
@@ -343,11 +350,103 @@ export default function TrackOrderPage() {
           </div>
         </div>
 
+        {/* SHIPROCKET SHIPMENT DETAILS */}
+
+        <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-100">
+              <Truck size={22} className="text-black" />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-black text-black">
+                Shipment tracking
+              </h2>
+              <p className="text-xs text-gray-500">Live courier information</p>
+            </div>
+          </div>
+
+          {order.shiprocketAwbCode ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl bg-gray-50 p-4">
+                <p className="text-xs font-semibold text-gray-500">
+                  Courier partner
+                </p>
+                <p className="mt-1 text-sm font-black text-black">
+                  {order.shiprocketCourierName || "Assigned courier"}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-gray-50 p-4">
+                <p className="text-xs font-semibold text-gray-500">
+                  Shipment status
+                </p>
+                <p className="mt-1 text-sm font-black text-black">
+                  {formatStatus(order.shiprocketStatus || "Shipment booked")}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-gray-50 p-4 sm:col-span-2">
+                <p className="text-xs font-semibold text-gray-500">
+                  AWB / Tracking number
+                </p>
+                <p className="mt-1 break-all text-base font-black tracking-wide text-black">
+                  {order.shiprocketAwbCode}
+                </p>
+              </div>
+
+              {order.shiprocketPickupScheduledAt && (
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <p className="text-xs font-semibold text-gray-500">
+                    Pickup scheduled
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-black">
+                    {formatDate(order.shiprocketPickupScheduledAt)}
+                  </p>
+                </div>
+              )}
+
+              {order.shiprocketDeliveredAt && (
+                <div className="rounded-xl bg-green-50 p-4">
+                  <p className="text-xs font-semibold text-green-700">
+                    Delivered on
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-green-800">
+                    {formatDate(order.shiprocketDeliveredAt)}
+                  </p>
+                </div>
+              )}
+
+              {order.shiprocketTrackingUrl && (
+                <div className="sm:col-span-2">
+                  <a
+                    href={order.shiprocketTrackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-full items-center justify-center rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-gray-800 sm:w-auto"
+                  >
+                    Track with courier
+                    <ArrowLeft className="ml-2 h-4 w-4 rotate-180" />
+                  </a>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5">
+              <p className="text-sm font-bold text-gray-800">
+                Shipment details are not available yet
+              </p>
+              <p className="mt-1 text-xs leading-5 text-gray-500">
+                Courier details and your AWB number will appear here once the
+                shipment has been booked and the courier has been assigned.
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* TIMELINE */}
         <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-          <h2 className="text-xl font-black text-black">
-            Delivery progress
-          </h2>
+          <h2 className="text-xl font-black text-black">Delivery progress</h2>
 
           <p className="mt-2 text-sm text-gray-500">
             Follow your order from confirmation to delivery.
@@ -432,7 +531,6 @@ export default function TrackOrderPage() {
 
         {/* PRODUCT + ADDRESS */}
         <div className="mt-6 grid gap-6 md:grid-cols-2">
-
           {/* PRODUCT */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-black text-black">Your item</h2>
@@ -515,9 +613,7 @@ export default function TrackOrderPage() {
 
           {/* ADDRESS */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-black text-black">
-              Delivery address
-            </h2>
+            <h2 className="text-lg font-black text-black">Delivery address</h2>
 
             {!address ? (
               <p className="mt-5 text-sm text-gray-500">

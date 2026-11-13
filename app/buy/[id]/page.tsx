@@ -25,7 +25,11 @@ import {
 import { useWishlist } from "../../context/WishlistContext";
 import { useCheckout } from "@/app/context/CheckoutContext";
 import { useCart } from "../../context/CartContext";
-import { getProduct, getProducts } from "@/app/lib/api";
+import {
+  getProduct,
+  getProducts,
+  checkDeliveryServiceability,
+} from "@/app/lib/api";
 import Image from "next/image";
 import { getOptimizedImageUrl } from "@/app/lib/image";
 import { useAuth } from "@/app/context/AuthContext";
@@ -273,6 +277,11 @@ export default function ProductDetailsPage() {
   const [deliveryEstimate, setDeliveryEstimate] = useState<string | null>(null);
   const [deliveryChecked, setDeliveryChecked] = useState(false);
   const [deliveryError, setDeliveryError] = useState("");
+  const [isCheckingDelivery, setIsCheckingDelivery] = useState(false);
+  const [deliveryAvailable, setDeliveryAvailable] = useState<boolean | null>(
+    null,
+  );
+  const [deliveryCourier, setDeliveryCourier] = useState<string | null>(null);
   /* =======================================================
      VARIANT INITIALIZATION
   ======================================================= */
@@ -966,35 +975,69 @@ export default function ProductDetailsPage() {
 
     setSelectedImage(index);
   };
-  const handleCheckDelivery = () => {
+
+  const handleCheckDelivery = async () => {
     const pincode = deliveryPincode.trim();
 
     if (!/^\d{6}$/.test(pincode)) {
       setDeliveryError("Please enter a valid 6-digit PIN code.");
       setDeliveryEstimate(null);
       setDeliveryChecked(false);
+      setDeliveryAvailable(null);
       return;
     }
 
     setDeliveryError("");
+    setDeliveryEstimate(null);
+    setDeliveryAvailable(null);
+    setDeliveryCourier(null);
+    setDeliveryChecked(false);
+    setIsCheckingDelivery(true);
 
-    // Temporary UI estimate: 5 days.
-    // This will be replaced with Shiprocket's actual estimate.
-    const estimatedDate = new Date();
-    estimatedDate.setDate(estimatedDate.getDate() + 5);
+    try {
+      const response = await checkDeliveryServiceability(pincode);
 
-    const weekday = estimatedDate.toLocaleDateString("en-IN", {
-      weekday: "long",
-    });
+      if (!response.success || !response.data) {
+        throw new Error(
+          response.message || "Unable to check delivery availability.",
+        );
+      }
 
-    const formattedDate = estimatedDate.toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-    });
+      const result = response.data;
 
-    setDeliveryEstimate(`${weekday}, ${formattedDate}`);
-    setDeliveryChecked(true);
+      setDeliveryChecked(true);
+      setDeliveryAvailable(result.serviceable);
+      setDeliveryCourier(result.courierName);
+
+      if (!result.serviceable) {
+        setDeliveryEstimate(null);
+        return;
+      }
+
+      if (result.etd) {
+        setDeliveryEstimate(result.etd);
+      } else if (result.estimatedDeliveryDays) {
+        setDeliveryEstimate(
+          `${result.estimatedDeliveryDays} estimated delivery days`,
+        );
+      } else {
+        setDeliveryEstimate("Delivery available for this PIN code");
+      }
+    } catch (error) {
+      console.error("DELIVERY CHECK ERROR:", error);
+
+      setDeliveryError(
+        error instanceof Error
+          ? error.message
+          : "Unable to check delivery. Please try again.",
+      );
+
+      setDeliveryChecked(false);
+    } finally {
+      setIsCheckingDelivery(false);
+    }
   };
+
   /* =======================================================
      UI
   ======================================================= */
@@ -1510,26 +1553,27 @@ export default function ProductDetailsPage() {
                 </div>
               </div>
 
-              {/* DELIVERY */}
+              {/* SHIPROCKET DELIVERY CHECK */}
 
-              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+                <div className="mb-1 flex items-center gap-2">
                   <MapPin className="h-5 w-5 text-gray-800" />
                   <h3 className="text-base font-semibold text-gray-900">
                     Check delivery
                   </h3>
                 </div>
 
-                <p className="text-sm text-gray-500 mb-4">
-                  Enter your PIN code to check the estimated delivery date.
+                <p className="mb-4 text-sm text-gray-500">
+                  Enter your PIN code to check actual courier availability and
+                  estimated delivery.
                 </p>
 
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    handleCheckDelivery();
+                    void handleCheckDelivery();
                   }}
-                  className="flex flex-col sm:flex-row gap-2"
+                  className="flex flex-col gap-2 sm:flex-row"
                 >
                   <div className="relative flex-1">
                     <input
@@ -1542,31 +1586,36 @@ export default function ProductDetailsPage() {
                         const value = e.target.value
                           .replace(/\D/g, "")
                           .slice(0, 6);
+
                         setDeliveryPincode(value);
                         setDeliveryEstimate(null);
                         setDeliveryChecked(false);
+                        setDeliveryAvailable(null);
+                        setDeliveryCourier(null);
                         setDeliveryError("");
                       }}
                       placeholder="Enter 6-digit PIN code"
                       aria-label="Delivery PIN code"
-                      className="w-full h-12 rounded-xl border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                      className="h-12 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    disabled={deliveryPincode.length !== 6}
+                    disabled={
+                      deliveryPincode.length !== 6 || isCheckingDelivery
+                    }
                     className="h-12 rounded-xl bg-black px-6 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Check
+                    {isCheckingDelivery ? "Checking..." : "Check"}
                   </button>
                 </form>
 
                 {deliveryError && (
-                  <p className="mt-2 text-sm text-red-600">{deliveryError}</p>
+                  <p className="mt-3 text-sm text-red-600">{deliveryError}</p>
                 )}
 
-                {deliveryChecked && deliveryEstimate && (
+                {deliveryChecked && deliveryAvailable === true && (
                   <div className="mt-4 flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 p-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100">
                       <Truck className="h-5 w-5 text-green-700" />
@@ -1574,15 +1623,37 @@ export default function ProductDetailsPage() {
 
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-green-800">
-                        Estimated delivery by
+                        Delivery available
                       </p>
-                      <p className="mt-0.5 text-base font-bold text-gray-900">
-                        {deliveryEstimate}
-                      </p>
+
+                      {deliveryEstimate && (
+                        <p className="mt-1 text-base font-bold text-gray-900">
+                          {deliveryEstimate}
+                        </p>
+                      )}
+
+                      {deliveryCourier && (
+                        <p className="mt-1 text-xs text-gray-600">
+                          Available courier: {deliveryCourier}
+                        </p>
+                      )}
+
                       <p className="mt-1 text-xs text-gray-600">
-                        Delivery estimate for PIN code {deliveryPincode}
+                        Serviceability checked for PIN code {deliveryPincode}
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {deliveryChecked && deliveryAvailable === false && (
+                  <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3">
+                    <p className="text-sm font-semibold text-red-700">
+                      Delivery is currently unavailable
+                    </p>
+                    <p className="mt-1 text-xs text-red-600">
+                      Our courier partners are not currently servicing PIN code{" "}
+                      {deliveryPincode}. Please try another PIN code.
+                    </p>
                   </div>
                 )}
 
@@ -1590,7 +1661,7 @@ export default function ProductDetailsPage() {
                   <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
                     <Truck className="h-4 w-4 shrink-0" />
                     <span>
-                      Check your estimated delivery date before ordering.
+                      Check courier availability before placing your order.
                     </span>
                   </div>
                 )}
