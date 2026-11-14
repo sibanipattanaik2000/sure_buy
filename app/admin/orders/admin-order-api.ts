@@ -101,6 +101,8 @@ export async function getAdminOrders(params: {
   page?: number;
   limit?: number;
   search?: string;
+  filterMode?: "shiprocket" | "tracking" | "delivery";
+  statusFilter?: string;
 }) {
   const query = new URLSearchParams();
 
@@ -109,6 +111,14 @@ export async function getAdminOrders(params: {
 
   if (params.search?.trim()) {
     query.set("search", params.search.trim());
+  }
+
+  if (params.filterMode) {
+    query.set("filterMode", params.filterMode);
+  }
+
+  if (params.statusFilter && params.statusFilter !== "ALL") {
+    query.set("statusFilter", params.statusFilter);
   }
 
   return apiRequest<AdminOrdersResult>(

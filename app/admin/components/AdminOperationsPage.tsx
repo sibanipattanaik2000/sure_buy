@@ -40,11 +40,7 @@ function Status({ value }: { value: string | null | undefined }) {
   );
 }
 
-export default function AdminOperationsPage({
-  mode,
-}: {
-  mode: PageMode;
-}) {
+export default function AdminOperationsPage({ mode }: { mode: PageMode }) {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -67,6 +63,8 @@ export default function AdminOperationsPage({
         page,
         limit: 20,
         search,
+        filterMode: mode,
+        statusFilter,
       });
 
       if (!response.success || !response.data) {
@@ -80,7 +78,7 @@ export default function AdminOperationsPage({
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, mode, statusFilter]);
 
   useEffect(() => {
     void loadOrders();
@@ -181,27 +179,27 @@ export default function AdminOperationsPage({
       setActionId("");
     }
   }
+  const filteredOrders = orders;
+  // const filteredOrders = orders.filter((order) => {
+  //   if (statusFilter === "ALL") return true;
 
-  const filteredOrders = orders.filter((order) => {
-    if (statusFilter === "ALL") return true;
+  //   if (mode === "delivery") {
+  //     return order.status === statusFilter;
+  //   }
 
-    if (mode === "delivery") {
-      return order.status === statusFilter;
-    }
+  //   if (mode === "tracking") {
+  //     if (statusFilter === "TRACKED") return !!order.shiprocket.awbCode;
+  //     if (statusFilter === "NOT_TRACKED") return !order.shiprocket.awbCode;
+  //   }
 
-    if (mode === "tracking") {
-      if (statusFilter === "TRACKED") return !!order.shiprocket.awbCode;
-      if (statusFilter === "NOT_TRACKED") return !order.shiprocket.awbCode;
-    }
+  //   if (mode === "shiprocket") {
+  //     if (statusFilter === "CREATED") return !!order.shiprocket.shipmentId;
+  //     if (statusFilter === "NOT_CREATED") return !order.shiprocket.shipmentId;
+  //     if (statusFilter === "AWB_ASSIGNED") return !!order.shiprocket.awbCode;
+  //   }
 
-    if (mode === "shiprocket") {
-      if (statusFilter === "CREATED") return !!order.shiprocket.shipmentId;
-      if (statusFilter === "NOT_CREATED") return !order.shiprocket.shipmentId;
-      if (statusFilter === "AWB_ASSIGNED") return !!order.shiprocket.awbCode;
-    }
-
-    return true;
-  });
+  //   return true;
+  // });
 
   const config = {
     shiprocket: {
@@ -234,9 +232,7 @@ export default function AdminOperationsPage({
           <h1 className="mt-2 text-3xl font-black text-gray-950">
             {config.title}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {config.description}
-          </p>
+          <p className="mt-1 text-sm text-gray-500">{config.description}</p>
         </div>
 
         <button
@@ -265,7 +261,10 @@ export default function AdminOperationsPage({
 
         <select
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
+          onChange={(event) => {
+            setStatusFilter(event.target.value);
+            setPage(1);
+          }}
           className="rounded-xl border border-gray-400 bg-white px-3 py-2 text-sm font-semibold text-gray-500"
         >
           <option value="ALL">All Records</option>
@@ -357,10 +356,19 @@ export default function AdminOperationsPage({
                 {mode === "shiprocket" && (
                   <>
                     <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                      <Metric label="Shipment ID" value={ship.shipmentId || "—"} />
-                      <Metric label="AWB" value={ship.awbCode || "Not assigned"} />
+                      <Metric
+                        label="Shipment ID"
+                        value={ship.shipmentId || "—"}
+                      />
+                      <Metric
+                        label="AWB"
+                        value={ship.awbCode || "Not assigned"}
+                      />
                       <Metric label="Courier" value={ship.courierName || "—"} />
-                      <Metric label="COD balance" value={money(order.remainingAmount)} />
+                      <Metric
+                        label="COD balance"
+                        value={money(order.remainingAmount)}
+                      />
                     </div>
 
                     {uncertain && (
@@ -386,19 +394,15 @@ export default function AdminOperationsPage({
                           </ActionButton>
                         )}
 
-                      {ship.shipmentId &&
-                        !ship.awbCode &&
-                        !uncertain && (
-                          <ActionButton
-                            disabled={!!actionId}
-                            loading={actionId === `${order.id}:awb`}
-                            onClick={() =>
-                              void runShiprocketAction(order, "awb")
-                            }
-                          >
-                            Assign AWB
-                          </ActionButton>
-                        )}
+                      {ship.shipmentId && !ship.awbCode && !uncertain && (
+                        <ActionButton
+                          disabled={!!actionId}
+                          loading={actionId === `${order.id}:awb`}
+                          onClick={() => void runShiprocketAction(order, "awb")}
+                        >
+                          Assign AWB
+                        </ActionButton>
+                      )}
 
                       {ship.awbCode &&
                         !ship.pickupScheduledAt &&
@@ -445,9 +449,18 @@ export default function AdminOperationsPage({
 
                 {mode === "tracking" && (
                   <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <Metric label="AWB number" value={ship.awbCode || "Not assigned"} />
-                    <Metric label="Courier partner" value={ship.courierName || "Not assigned"} />
-                    <Metric label="Shipment status" value={ship.status || "Not updated"} />
+                    <Metric
+                      label="AWB number"
+                      value={ship.awbCode || "Not assigned"}
+                    />
+                    <Metric
+                      label="Courier partner"
+                      value={ship.courierName || "Not assigned"}
+                    />
+                    <Metric
+                      label="Shipment status"
+                      value={ship.status || "Not updated"}
+                    />
                     <Metric
                       label="Last update"
                       value={
@@ -475,9 +488,18 @@ export default function AdminOperationsPage({
                   <>
                     <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       <Metric label="Order status" value={order.status} />
-                      <Metric label="Payment status" value={order.paymentStatus} />
-                      <Metric label="Payment method" value={order.paymentMethod} />
-                      <Metric label="COD outstanding" value={money(order.remainingAmount)} />
+                      <Metric
+                        label="Payment status"
+                        value={order.paymentStatus}
+                      />
+                      <Metric
+                        label="Payment method"
+                        value={order.paymentMethod}
+                      />
+                      <Metric
+                        label="COD outstanding"
+                        value={money(order.remainingAmount)}
+                      />
                     </div>
 
                     <div className="mt-5 rounded-xl bg-gray-50 p-4">
@@ -486,7 +508,8 @@ export default function AdminOperationsPage({
                         Delivery address
                       </p>
                       <p className="mt-3 text-sm font-semibold text-gray-800">
-                        {order.shippingAddress.fullName} · {order.shippingAddress.phone}
+                        {order.shippingAddress.fullName} ·{" "}
+                        {order.shippingAddress.phone}
                       </p>
                       <p className="mt-1 text-sm leading-6 text-gray-600">
                         {order.shippingAddress.addressLine1}
@@ -530,9 +553,7 @@ export default function AdminOperationsPage({
           </button>
           <button
             disabled={page >= totalPages || loading}
-            onClick={() =>
-              setPage((value) => Math.min(totalPages, value + 1))
-            }
+            onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
             className="rounded-lg border border-gray-200 p-2 disabled:opacity-30"
             aria-label="Next page"
           >

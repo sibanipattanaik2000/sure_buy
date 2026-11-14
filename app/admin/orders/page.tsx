@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -37,7 +37,6 @@ import {
   generateAdminShiprocketManifest,
   type AdminOrder,
 } from "./admin-order-api";
-
 const money = (value: number) =>
   `₹${Number(value || 0).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
@@ -69,7 +68,7 @@ const statusStyle = (status: string) => {
 export default function AdminOrdersPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-
+  const cashCollectionKeyRef = useRef<string | null>(null);
   const [refundActionId, setRefundActionId] = useState<string | null>(null);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [search, setSearch] = useState("");
@@ -131,6 +130,8 @@ export default function AdminOrdersPage() {
   }, [authLoading, user, loadOrders]);
 
   const openCollection = (order: AdminOrder) => {
+    cashCollectionKeyRef.current = crypto.randomUUID();
+
     setSelectedOrder(order);
     setCashAmount(String(order.remainingAmount));
     setReferenceNote("");
@@ -161,13 +162,15 @@ export default function AdminOrdersPage() {
       const response = await recordAdminCashCollection(selectedOrder.id, {
         amount,
         referenceNote: referenceNote.trim(),
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: (cashCollectionKeyRef.current ??= crypto.randomUUID()),
       });
 
       if (!response.success) {
         throw new Error(response.message || "Unable to record collection");
       }
 
+      // Clear the key only after the server confirms success.
+      cashCollectionKeyRef.current = null;
       setSuccess(
         `${money(amount)} cash collection recorded for ${selectedOrder.orderNumber}.`,
       );
