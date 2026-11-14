@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-import Header from "./components/header";
-import Footer from "./components/footer";
-import MobileBackButton from "./components/MobileBackButton";
+// import Header from "./components/header";
+// import Footer from "./components/footer";
+// import MobileBackButton from "./components/MobileBackButton";
 import { WishlistProvider } from "./context/WishlistContext";
 import { CheckoutProvider } from "./context/CheckoutContext";
 import { CartProvider } from "./context/CartContext";
@@ -142,16 +142,12 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <AnalyticsTracker />
+
           <WishlistProvider>
             <CartProvider>
-              <Header />
-
               <CheckoutProvider>
-                <MobileBackButton />
                 <SiteChrome>{children}</SiteChrome>
               </CheckoutProvider>
-
-              <Footer />
             </CartProvider>
           </WishlistProvider>
         </AuthProvider>

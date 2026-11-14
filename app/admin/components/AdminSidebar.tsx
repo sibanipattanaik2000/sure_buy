@@ -1,8 +1,10 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+
 import {
   LayoutDashboard,
   ChartNoAxesCombined,
@@ -42,80 +44,105 @@ export default function AdminSidebar() {
 
   return (
     <>
+      {/* Mobile menu button */}
       <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed left-4 top-4 z-[80] rounded-xl bg-black p-3 text-white lg:hidden"
+        type="button"
+        onClick={() => setMobileOpen((value) => !value)}
+        aria-label="Toggle admin navigation"
+        className="fixed left-4 top-4 z-[90] rounded-xl bg-[#101014] p-3 text-white shadow-lg lg:hidden"
       >
-        {mobileOpen ? <X /> : <Menu />}
+        {mobileOpen ? <X size={21} /> : <Menu size={21} />}
       </button>
+
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-[70] bg-black/50 lg:hidden"
+        />
+      )}
 
       <aside
         className={[
-          "group fixed inset-y-0 left-0 z-[70] flex w-[72px] flex-col",
-          "overflow-hidden border-r border-white/10 bg-[#101014] text-white",
-          "transition-all duration-300 hover:w-[250px] focus-within:w-[250px]",
-          "lg:sticky lg:top-0 lg:h-screen",
+          "group fixed inset-y-0 left-0 z-[80] flex",
+          "w-[76px] flex-col overflow-hidden",
+          "border-r border-white/10 bg-[#101014] text-white",
+          "transition-[width,transform] duration-300 ease-in-out",
+          "hover:w-[260px] focus-within:w-[260px]",
+          "lg:translate-x-0",
           mobileOpen
-            ? "w-[250px]"
+            ? "!w-[260px] translate-x-0"
             : "-translate-x-full lg:translate-x-0",
         ].join(" ")}
       >
-        <div className="flex h-20 min-w-[250px] items-center gap-4 border-b border-white/10 px-5">
-          <div className="rounded-xl bg-white p-2 text-black">
-            <ShieldCheck size={24} />
+        {/* Brand */}
+        <div className="flex h-20 shrink-0 items-center gap-4 overflow-hidden border-b border-white/10 px-5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-black">
+            <ShieldCheck size={23} />
           </div>
 
-          <div className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <div className="min-w-0 whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
             <p className="font-black">PhoneBhai</p>
-            <p className="text-xs text-gray-500">ADMIN CONSOLE</p>
+            <p className="text-[10px] font-semibold tracking-[0.2em] text-gray-500">
+              ADMIN PANEL
+            </p>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto py-5">
-          {navigation.map((item) => {
-            const Icon = item.icon;
+        {/* Only vertical scrolling */}
+<nav className="admin-sidebar-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-5">          <div className="space-y-2">
+            {navigation.map((item) => {
+              const Icon = item.icon;
 
-            const active =
-              pathname === item.href ||
-              (item.href !== "/admin" &&
-                pathname.startsWith(item.href));
+              const active =
+                pathname === item.href ||
+                (item.href !== "/admin" &&
+                  pathname.startsWith(item.href + "/"));
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                title={item.label}
-                className={[
-                  "mx-3 flex min-w-[220px] items-center gap-4 rounded-xl px-4 py-3",
-                  "transition-colors",
-                  active
-                    ? "bg-white text-black"
-                    : "text-gray-400 hover:bg-white/10 hover:text-white",
-                ].join(" ")}
-              >
-                <Icon size={21} />
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={item.label}
+                  onClick={() => setMobileOpen(false)}
+                  className={[
+                    "flex h-12 w-full min-w-0 items-center gap-4 rounded-xl px-3",
+                    "transition-colors duration-200",
+                    active
+                      ? "bg-white text-black"
+                      : "text-gray-400 hover:bg-white/10 hover:text-white",
+                  ].join(" ")}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
 
-                <span className="text-sm font-semibold opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
+                  <span className="whitespace-nowrap text-sm font-semibold opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
-        <button
-          onClick={async () => {
-            await logout();
-            window.location.href = "/admin/login";
-          }}
-          className="mx-3 mb-5 flex min-w-[220px] items-center gap-4 rounded-xl px-4 py-3 text-gray-400 hover:bg-red-500/10 hover:text-red-400"
-        >
-          <LogOut size={21} />
-          <span className="text-sm font-semibold opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
-            Sign out
-          </span>
-        </button>
+        {/* Logout */}
+        <div className="shrink-0 border-t border-white/10 p-2">
+          <button
+            type="button"
+            onClick={async () => {
+              await logout();
+              window.location.replace("/admin/login");
+            }}
+            className="flex h-12 w-full items-center gap-4 overflow-hidden rounded-xl px-3 text-gray-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+
+            <span className="whitespace-nowrap text-sm font-semibold opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+              Sign out
+            </span>
+          </button>
+        </div>
       </aside>
     </>
   );

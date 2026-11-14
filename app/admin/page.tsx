@@ -100,7 +100,7 @@ export default function AdminDashboardPage() {
           <select
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
-            className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold"
+            className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-500"
           >
             <option value={7}>Last 7 days</option>
             <option value={30}>Last 30 days</option>
@@ -109,7 +109,7 @@ export default function AdminDashboardPage() {
 
           <button
             onClick={() => void load()}
-            className="rounded-xl border border-gray-200 bg-white p-3"
+            className="rounded-xl border border-gray-200 bg-white p-3 text-gray-600"
           >
             <RefreshCw size={18} />
           </button>
@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <section className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h2 className="text-lg font-black">Popular pages</h2>
+              <h2 className="text-lg font-black text-gray-900">Popular pages</h2>
               <p className="mt-1 text-sm text-gray-500">
                 Pages receiving the most visits.
               </p>
@@ -200,7 +200,7 @@ export default function AdminDashboardPage() {
             </section>
 
             <section className="rounded-2xl border border-gray-200 bg-white p-6">
-              <h2 className="text-lg font-black">Quick management</h2>
+              <h2 className="text-lg font-black text-gray-900">Quick management</h2>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 {[
@@ -214,7 +214,7 @@ export default function AdminDashboardPage() {
                   <Link
                     key={href}
                     href={href}
-                    className="flex items-center justify-between rounded-xl border border-gray-100 p-4 text-sm font-bold hover:bg-gray-50"
+                    className="flex items-center justify-between rounded-xl border border-gray-100 p-4 text-sm font-bold hover:bg-gray-50 text-gray-600 transition-colors duration-200"
                   >
                     {label}
                     <ArrowUpRight size={17} />

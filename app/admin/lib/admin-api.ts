@@ -17,9 +17,7 @@ export type AnalyticsOverview = {
 };
 
 export async function getAdminAnalytics(days = 7) {
-  return apiRequest<AnalyticsOverview>(
-    `/admin/analytics?days=${days}`,
-  );
+  return apiRequest<AnalyticsOverview>(`/admin/analytics?days=${days}`);
 }
 
 export async function getAdminPayments(search = "") {
@@ -46,5 +44,44 @@ export async function updateOrderItemImei(
       method: "PATCH",
       body: JSON.stringify({ imei }),
     },
+  );
+}
+export type AdminCustomer = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  createdAt: string;
+  totalOrders: number;
+};
+
+export type AdminCustomersResult = {
+  customers: AdminCustomer[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+export async function getAdminCustomers(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
+  const query = new URLSearchParams();
+
+  query.set("page", String(params.page ?? 1));
+  query.set("limit", String(params.limit ?? 20));
+
+  if (params.search?.trim()) {
+    query.set("search", params.search.trim());
+  }
+
+  return apiRequest<AdminCustomersResult>(
+    `/admin/customers?${query.toString()}`,
+    { method: "GET" },
   );
 }

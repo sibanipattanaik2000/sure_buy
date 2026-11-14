@@ -995,8 +995,7 @@ export default function ProductDetailsPage() {
     setIsCheckingDelivery(true);
 
     try {
-      const response = await checkDeliveryServiceability(pincode);
-
+      const response = await checkDeliveryServiceability(pincode, "PREPAID");
       if (!response.success || !response.data) {
         throw new Error(
           response.message || "Unable to check delivery availability.",

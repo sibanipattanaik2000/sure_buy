@@ -87,3 +87,12 @@ body {
     animation: none !important;
   }
 }
+/* Hide admin sidebar scrollbar but keep scrolling enabled */
+.admin-sidebar-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-sidebar-scroll::-webkit-scrollbar {
+  display: none;
+}
