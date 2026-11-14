@@ -442,6 +442,11 @@ export async function createOrder(payload: {
   addressId: string;
   paymentMethod: "COD" | "UPI" | "CARD" | "EMI";
   couponCode?: string;
+  items?: {
+    productId: number;
+    variantId?: number | null;
+    quantity: number;
+  }[];
 }) {
   return apiRequest<Order>("/orders", {
     method: "POST",

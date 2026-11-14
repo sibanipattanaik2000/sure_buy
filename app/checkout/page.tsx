@@ -38,8 +38,7 @@ export default function CheckoutPage() {
     useCheckout();
 
   const { clearCart } = useCart();
-  const { products, paymentMethod } = checkout;
-
+  const { products, paymentMethod, source } = checkout;
   const [form, setForm] = useState<DeliveryAddress>({
     fullName: "",
     phone: "",
@@ -381,7 +380,7 @@ export default function CheckoutPage() {
       /*
        * GET EXISTING ADDRESSES
        */
-            // Verify Shiprocket delivery availability before saving
+      // Verify Shiprocket delivery availability before saving
       // the address or creating the PhoneBhai order.
       const deliveryCheck = await checkDeliveryServiceability(
         pincode,
@@ -544,6 +543,11 @@ export default function CheckoutPage() {
       const orderResponse = await createOrder({
         addressId,
         paymentMethod: backendPaymentMethod,
+        items: products.map((product) => ({
+          productId: Number(product.id),
+          variantId: product.variantId ?? null,
+          quantity: Math.max(1, Math.floor(Number(product.quantity) || 1)),
+        })),
         ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
       });
 
@@ -722,8 +726,14 @@ export default function CheckoutPage() {
        * CLEAR CLIENT STATE
        */
 
+      /*
+       * Clear the cart only after confirmed payment
+       * and only when the customer checked out from the cart.
+       *
+       * Buy Now must preserve the customer's existing cart.
+       */
       try {
-        if (backendPaymentMethod === "COD") {
+        if (source === "cart") {
           await clearCart();
         }
       } catch (cartError) {

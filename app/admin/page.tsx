@@ -163,10 +163,10 @@ export default function AdminDashboardPage() {
                 {data?.popularPages.map((page) => (
                   <div key={page.path}>
                     <div className="flex justify-between gap-3 text-sm">
-                      <span className="truncate font-semibold">
+                      <span className="truncate font-semibold text-gray-500">
                         {page.path}
                       </span>
-                      <span className="font-bold">{page.views} views</span>
+                      <span className="font-bold text-gray-700">{page.views} views</span>
                     </div>
 
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
