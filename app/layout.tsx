@@ -8,7 +8,8 @@ import { WishlistProvider } from "./context/WishlistContext";
 import { CheckoutProvider } from "./context/CheckoutContext";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
-
+import AnalyticsTracker from "./admin/components/AnalyticsTracker";
+import SiteChrome from "./components/SiteChrome";
 const SITE_URL = "https://www.phonebhai.com";
 
 export const metadata: Metadata = {
@@ -140,13 +141,14 @@ export default function RootLayout({
 
       <body>
         <AuthProvider>
+          <AnalyticsTracker />
           <WishlistProvider>
             <CartProvider>
               <Header />
 
               <CheckoutProvider>
                 <MobileBackButton />
-                {children}
+                <SiteChrome>{children}</SiteChrome>
               </CheckoutProvider>
 
               <Footer />

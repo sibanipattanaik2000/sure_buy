@@ -2,13 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Loader2,
-  RefreshCw,
-  Search,
-  Wallet,
-  ReceiptText,
-} from "lucide-react";
+import { Loader2, RefreshCw, Search, Wallet, ReceiptText, PackageCheck, ExternalLink, Truck } from "lucide-react";
 
 import { useAuth } from "@/app/context/AuthContext";
 
@@ -18,6 +12,10 @@ import {
   confirmAdminCashRefund,
   reconcileAdminRazorpayRefund,
   retryAdminRazorpayRefund,
+  createAdminShiprocketShipment,
+  assignAdminShiprocketAwb,
+  scheduleAdminShiprocketPickup,
+  generateAdminShiprocketManifest,
   type AdminOrder,
 } from "./admin-order-api";
 
@@ -46,6 +44,12 @@ export default function AdminOrdersPage() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [shiprocketActionId, setShiprocketActionId] = useState<string | null>(
+    null,
+  );
+  const [manifestLinks, setManifestLinks] = useState<Record<string, string>>(
+    {},
+  );
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -65,9 +69,7 @@ export default function AdminOrdersPage() {
       setOrders(response.data.orders ?? []);
       setTotalPages(response.data.pagination?.totalPages ?? 1);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to load orders",
-      );
+      setError(err instanceof Error ? err.message : "Unable to load orders");
     } finally {
       setLoading(false);
     }
@@ -113,14 +115,11 @@ export default function AdminOrdersPage() {
     setSuccess("");
 
     try {
-      const response = await recordAdminCashCollection(
-        selectedOrder.id,
-        {
-          amount,
-          referenceNote: referenceNote.trim(),
-          idempotencyKey: crypto.randomUUID(),
-        },
-      );
+      const response = await recordAdminCashCollection(selectedOrder.id, {
+        amount,
+        referenceNote: referenceNote.trim(),
+        idempotencyKey: crypto.randomUUID(),
+      });
 
       if (!response.success) {
         throw new Error(response.message || "Unable to record collection");
@@ -137,9 +136,7 @@ export default function AdminOrdersPage() {
       await loadOrders();
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to record cash collection",
+        err instanceof Error ? err.message : "Unable to record cash collection",
       );
     } finally {
       setSavingOrderId(null);
@@ -178,10 +175,7 @@ export default function AdminOrdersPage() {
       }
 
       if (action === "reconcile") {
-        const response = await reconcileAdminRazorpayRefund(
-          order.id,
-          refundId,
-        );
+        const response = await reconcileAdminRazorpayRefund(order.id, refundId);
 
         if (!response.success) {
           throw new Error(response.message || "Unable to reconcile refund");
@@ -215,14 +209,101 @@ export default function AdminOrdersPage() {
 
       await loadOrders();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Refund action failed",
-      );
+      setError(err instanceof Error ? err.message : "Refund action failed");
     } finally {
       setRefundActionId(null);
     }
   };
+  const handleShiprocketAction = async (
+    order: AdminOrder,
+    action: "create" | "awb" | "pickup" | "manifest",
+  ) => {
+    if (shiprocketActionId) return;
 
+    const labels = {
+      create: "create the shipment",
+      awb: "assign the AWB",
+      pickup: "schedule the pickup",
+      manifest: "generate the manifest",
+    };
+
+    if (
+      !window.confirm(
+        `Are you sure you want to ${labels[action]} for ${order.orderNumber}?`,
+      )
+    ) {
+      return;
+    }
+
+    setShiprocketActionId(`${order.id}:${action}`);
+    setError("");
+    setSuccess("");
+
+    try {
+      if (action === "create") {
+        const response = await createAdminShiprocketShipment(order.id);
+
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Shipment creation failed.");
+        }
+
+        setSuccess("Shiprocket shipment created.");
+      } else if (action === "awb") {
+        const response = await assignAdminShiprocketAwb(order.id);
+
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "AWB assignment failed.");
+        }
+
+        setSuccess(
+          response.data.alreadyAssigned
+            ? "AWB is already assigned."
+            : `AWB assigned: ${response.data.awbCode ?? ""}`,
+        );
+      } else if (action === "pickup") {
+        const response = await scheduleAdminShiprocketPickup(order.id);
+
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Pickup scheduling failed.");
+        }
+
+        setSuccess(
+          response.data.alreadyScheduled
+            ? "Pickup was already requested."
+            : "Pickup request submitted.",
+        );
+      } else {
+        const response = await generateAdminShiprocketManifest(order.id);
+
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Manifest generation failed.");
+        }
+
+        const url = response.data.manifest_url;
+
+        if (url && /^https?:\/\//i.test(url)) {
+          setManifestLinks((current) => ({
+            ...current,
+            [order.id]: url,
+          }));
+        }
+
+        setSuccess(
+          url
+            ? "Manifest generated successfully."
+            : "Manifest request completed. Check your Shiprocket dashboard.",
+        );
+      }
+
+      await loadOrders();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Shiprocket operation failed.",
+      );
+    } finally {
+      setShiprocketActionId(null);
+    }
+  };
   if (authLoading || !user || user.role !== "ADMIN") {
     return (
       <main className="min-h-screen bg-gray-50 p-8">
@@ -330,9 +411,15 @@ export default function AdminOrdersPage() {
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <Metric label="Order total" value={money(order.totalAmount)} />
+                  <Metric
+                    label="Order total"
+                    value={money(order.totalAmount)}
+                  />
                   <Metric label="Collected" value={money(order.paidAmount)} />
-                  <Metric label="Remaining" value={money(order.remainingAmount)} />
+                  <Metric
+                    label="Remaining"
+                    value={money(order.remainingAmount)}
+                  />
                   <Metric label="Items" value={String(order.items.length)} />
                 </div>
 
@@ -361,7 +448,153 @@ export default function AdminOrdersPage() {
                     ))}
                   </div>
                 </div>
+                <div className="mt-5 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="flex items-center gap-2 text-sm font-black text-gray-900">
+                      <Truck size={17} />
+                      Shiprocket delivery
+                    </p>
 
+                    <span className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-gray-700">
+                      {order.shiprocket.status || "Not created"}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <Metric
+                      label="Shipment ID"
+                      value={order.shiprocket.shipmentId || "—"}
+                    />
+                    <Metric
+                      label="AWB"
+                      value={order.shiprocket.awbCode || "Not assigned"}
+                    />
+                    <Metric
+                      label="Courier"
+                      value={order.shiprocket.courierName || "—"}
+                    />
+                    <Metric
+                      label="Shiprocket order"
+                      value={order.shiprocket.orderId || "—"}
+                    />
+                  </div>
+
+                  {order.paymentMethod === "COD" && (
+                    <p className="mt-3 text-xs text-gray-600">
+                      Outstanding COD amount:{" "}
+                      <strong>{money(order.remainingAmount)}</strong>
+                    </p>
+                  )}
+
+                  {[
+                    "CREATION_UNCERTAIN",
+                    "AWB_ASSIGNMENT_UNCERTAIN",
+                    "PICKUP_REQUEST_UNCERTAIN",
+                  ].includes(order.shiprocket.status || "") && (
+                    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                      This request has an uncertain result. Verify it in
+                      Shiprocket before attempting another operation. Do not
+                      retry blindly.
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {!order.shiprocket.shipmentId &&
+                      !["CREATING", "CREATION_UNCERTAIN"].includes(
+                        order.shiprocket.status || "",
+                      ) && (
+                        <button
+                          type="button"
+                          disabled={!!shiprocketActionId}
+                          onClick={() =>
+                            void handleShiprocketAction(order, "create")
+                          }
+                          className="rounded-lg bg-black px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                        >
+                          Create shipment
+                        </button>
+                      )}
+
+                    {order.shiprocket.shipmentId &&
+                      !order.shiprocket.awbCode &&
+                      !["AWB_ASSIGNING", "AWB_ASSIGNMENT_UNCERTAIN"].includes(
+                        order.shiprocket.status || "",
+                      ) && (
+                        <button
+                          type="button"
+                          disabled={!!shiprocketActionId}
+                          onClick={() =>
+                            void handleShiprocketAction(order, "awb")
+                          }
+                          className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                        >
+                          Assign AWB
+                        </button>
+                      )}
+
+                    {order.shiprocket.awbCode &&
+                      !order.shiprocket.pickupScheduledAt &&
+                      ![
+                        "PICKUP_REQUESTING",
+                        "PICKUP_REQUEST_UNCERTAIN",
+                        "PICKUP REQUESTED",
+                        "PICKUP SCHEDULED",
+                      ].includes(order.shiprocket.status || "") && (
+                        <button
+                          type="button"
+                          disabled={!!shiprocketActionId}
+                          onClick={() =>
+                            void handleShiprocketAction(order, "pickup")
+                          }
+                          className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                        >
+                          Schedule pickup
+                        </button>
+                      )}
+
+                    {order.shiprocket.awbCode &&
+                      (Boolean(order.shiprocket.pickupScheduledAt) ||
+                        ["PICKUP REQUESTED", "PICKUP SCHEDULED"].includes(
+                          order.shiprocket.status || "",
+                        )) && (
+                        <button
+                          type="button"
+                          disabled={!!shiprocketActionId}
+                          onClick={() =>
+                            void handleShiprocketAction(order, "manifest")
+                          }
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-700 disabled:opacity-50"
+                        >
+                          Generate manifest
+                        </button>
+                      )}
+
+                    {order.shiprocket.trackingUrl &&
+                      /^https?:\/\//i.test(order.shiprocket.trackingUrl) && (
+                        <a
+                          href={order.shiprocket.trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-700"
+                        >
+                          <ExternalLink size={13} />
+                          Track shipment
+                        </a>
+                      )}
+
+                    {manifestLinks[order.id] && (
+                      <a
+                        href={manifestLinks[order.id]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-bold text-green-700"
+                      >
+                        <PackageCheck size={13} />
+                        Open manifest
+                      </a>
+                    )}
+                  </div>
+                </div>
                 <div className="mt-5 border-t border-gray-100 pt-4">
                   <p className="text-xs font-black uppercase tracking-wide text-gray-400">
                     Payment history
@@ -394,9 +627,7 @@ export default function AdminOrdersPage() {
                               </p>
                             </div>
 
-                            <p className="font-bold">
-                              {money(payment.amount)}
-                            </p>
+                            <p className="font-bold">{money(payment.amount)}</p>
                           </div>
 
                           {/* REFUNDS BELONG TO THIS PAYMENT */}
@@ -580,7 +811,6 @@ export default function AdminOrdersPage() {
 
             <label className="mt-5 block text-sm font-bold">
               Cash amount received
-
               <input
                 type="number"
                 min="0.01"
@@ -594,7 +824,6 @@ export default function AdminOrdersPage() {
 
             <label className="mt-4 block text-sm font-bold">
               Receipt / reference note (optional)
-
               <input
                 value={referenceNote}
                 maxLength={250}
@@ -630,7 +859,6 @@ export default function AdminOrdersPage() {
                 ) : (
                   <Wallet size={16} />
                 )}
-
                 Save collection
               </button>
             </div>

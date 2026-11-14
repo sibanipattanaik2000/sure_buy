@@ -1,6 +1,5 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "https://api.phonebhai.com/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ?? "https://api.phonebhai.com/api/v1";
 
 export type ApiResponse<T> = {
   success: boolean;
@@ -345,13 +344,24 @@ export interface DeliveryServiceability {
   estimatedDeliveryDays: number | null;
 }
 
-export async function checkDeliveryServiceability(pincode: string) {
-  return apiRequest<DeliveryServiceability>(
-    `/delivery/serviceability?pincode=${encodeURIComponent(pincode)}`,
-    {
-      method: "GET",
-    },
-  );
+export async function checkDeliveryServiceability(
+  pincode: string,
+  paymentMethod: "COD" | "PREPAID",
+) {
+  const params = new URLSearchParams({
+    pincode,
+    paymentMethod,
+  });
+
+  return apiRequest<{
+    serviceable: boolean;
+    courierCount: number;
+    courierName: string | null;
+    etd: string | null;
+    estimatedDeliveryDays: number | null;
+  }>(`/delivery/serviceability?${params.toString()}`, {
+    method: "GET",
+  });
 }
 
 /* =========================================================
@@ -403,17 +413,17 @@ export interface Order {
   createdAt: string;
   updatedAt?: string;
 
-shiprocketOrderId?: string | null;
-shiprocketShipmentId?: string | null;
-shiprocketAwbCode?: string | null;
-shiprocketCourierName?: string | null;
-shiprocketTrackingUrl?: string | null;
-shiprocketStatus?: string | null;
-shiprocketStatusCode?: string | null;
-shiprocketLastEventAt?: string | null;
-shiprocketPickupScheduledAt?: string | null;
-shiprocketShippedAt?: string | null;
-shiprocketDeliveredAt?: string | null;
+  shiprocketOrderId?: string | null;
+  shiprocketShipmentId?: string | null;
+  shiprocketAwbCode?: string | null;
+  shiprocketCourierName?: string | null;
+  shiprocketTrackingUrl?: string | null;
+  shiprocketStatus?: string | null;
+  shiprocketStatusCode?: string | null;
+  shiprocketLastEventAt?: string | null;
+  shiprocketPickupScheduledAt?: string | null;
+  shiprocketShippedAt?: string | null;
+  shiprocketDeliveredAt?: string | null;
 }
 
 export async function getOrders() {
@@ -450,7 +460,7 @@ export interface CreatePaymentOrderResponse {
   amountInPaise: number;
   currency: string;
   keyId: string;
-    /**
+  /**
    * COD orders require a fixed ₹500 advance.
    * The backend is the source of truth for this value.
    */
@@ -1034,9 +1044,7 @@ export async function createProductMediaUploadUrl(payload: {
   );
 }
 
-export async function createAdminProduct(
-  payload: CreateAdminProductPayload,
-) {
+export async function createAdminProduct(payload: CreateAdminProductPayload) {
   return apiRequest<unknown>("/admin/products", {
     method: "POST",
     body: JSON.stringify(payload),

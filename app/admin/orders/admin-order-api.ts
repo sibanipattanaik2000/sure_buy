@@ -69,7 +69,19 @@ export type AdminOrder = {
     subtotal: number;
     imageUrl?: string | null;
   }>;
-
+  shiprocket: {
+    orderId: string | null;
+    shipmentId: string | null;
+    awbCode: string | null;
+    courierName: string | null;
+    trackingUrl: string | null;
+    status: string | null;
+    statusCode: string | null;
+    lastEventAt: string | null;
+    pickupScheduledAt: string | null;
+    shippedAt: string | null;
+    deliveredAt: string | null;
+  };
   payments: AdminOrderPayment[];
   createdAt: string;
   updatedAt: string;
@@ -181,4 +193,46 @@ export async function recordAdminCashCollection(
       }),
     },
   );
+}
+export async function createAdminShiprocketShipment(orderId: string) {
+  return apiRequest<{
+    success: boolean;
+    shipmentId: string;
+    shiprocketOrderId: string;
+    status: string;
+    codAmount: number;
+  }>(`/admin/orders/${encodeURIComponent(orderId)}/shiprocket`, {
+    method: "POST",
+  });
+}
+
+export async function assignAdminShiprocketAwb(orderId: string) {
+  return apiRequest<{
+    alreadyAssigned: boolean;
+    awbCode: string | null;
+    courierName: string | null;
+    shipmentId?: string;
+  }>(`/admin/orders/${encodeURIComponent(orderId)}/shiprocket/awb`, {
+    method: "POST",
+  });
+}
+
+export async function scheduleAdminShiprocketPickup(orderId: string) {
+  return apiRequest<{
+    alreadyScheduled: boolean;
+    pickupScheduledAt: string | null;
+    status: string;
+  }>(`/admin/orders/${encodeURIComponent(orderId)}/shiprocket/pickup`, {
+    method: "POST",
+  });
+}
+
+export async function generateAdminShiprocketManifest(orderId: string) {
+  return apiRequest<{
+    status?: number;
+    manifest_url?: string;
+    message?: string;
+  }>(`/admin/orders/${encodeURIComponent(orderId)}/shiprocket/manifest`, {
+    method: "POST",
+  });
 }

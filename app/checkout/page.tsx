@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { DeliveryAddress, useCheckout } from "../context/CheckoutContext";
 import {
   addCartItem,
+  checkDeliveryServiceability,
   createAddress,
   createOrder,
   createPaymentOrder,
@@ -301,7 +302,7 @@ export default function CheckoutPage() {
       !city ||
       !state
     ) {
-      setError("Please fill in all delivery address details.");
+      setError("Please fill in all delivery address details");
 
       window.scrollTo({
         top: 0,
@@ -312,17 +313,29 @@ export default function CheckoutPage() {
     }
 
     if (!/^[6-9]\d{9}$/.test(phone)) {
-      setError("Please enter a valid 10-digit mobile number.");
+      setError("Please enter a valid 10-digit mobile number");
       return;
     }
 
     if (!/^\d{6}$/.test(pincode)) {
-      setError("Please enter a valid 6-digit PIN code.");
+      setError("Please enter a valid 6-digit PIN code");
+      return;
+    }
+
+    if (!/^7[5-7]\d{4}$/.test(pincode)) {
+      setError(
+        "PhoneBhai currently delivers only within Odisha. Please enter an Odisha PIN code",
+      );
+      return;
+    }
+
+    if (!/^(odisha|orissa)$/i.test(state.trim())) {
+      setError("Please select Odisha as your delivery state");
       return;
     }
 
     if (fullName.length < 2) {
-      setError("Full name must be at least 2 characters.");
+      setError("Full name must be at least 2 characters");
       return;
     }
 
@@ -332,7 +345,7 @@ export default function CheckoutPage() {
     }
 
     if (state.length < 2) {
-      setError("Please enter a valid state.");
+      setError("Please enter a valid state");
       return;
     }
 
@@ -343,12 +356,12 @@ export default function CheckoutPage() {
     const addressLine1 = `${address}, ${area}`.trim();
 
     if (addressLine1.length < 5) {
-      setError("Please enter a complete delivery address.");
+      setError("Please enter a complete delivery address");
       return;
     }
 
     if (addressLine1.length > 200) {
-      setError("Delivery address is too long. Please shorten it.");
+      setError("Delivery address is too long. Please shorten it");
       return;
     }
 
@@ -357,7 +370,7 @@ export default function CheckoutPage() {
      */
 
     if (!paymentMethod) {
-      setError("Please select a payment method.");
+      setError("Please select a payment method");
       return;
     }
 
@@ -368,7 +381,18 @@ export default function CheckoutPage() {
       /*
        * GET EXISTING ADDRESSES
        */
+            // Verify Shiprocket delivery availability before saving
+      // the address or creating the PhoneBhai order.
+      const deliveryCheck = await checkDeliveryServiceability(
+        pincode,
+        paymentMethod === "cod" ? "COD" : "PREPAID",
+      );
 
+      if (!deliveryCheck.success || !deliveryCheck.data?.serviceable) {
+        throw new Error(
+          "Delivery is not available for this PIN code and selected payment method.",
+        );
+      }
       const addressesResponse = await getAddresses();
 
       if (!addressesResponse.success) {
