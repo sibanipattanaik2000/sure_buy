@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -54,9 +53,7 @@ const statusStyle = (status: string) => {
     return "bg-gray-950 text-white";
   }
 
-  if (
-    ["CANCELLED", "FAILED", "REJECTED"].includes(value)
-  ) {
+  if (["CANCELLED", "FAILED", "REJECTED"].includes(value)) {
     return "bg-gray-200 text-gray-700";
   }
 
@@ -123,7 +120,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     if (!authLoading && user?.role !== "ADMIN") {
-      router.replace("/");
+      router.replace("/admin/login");
     }
   }, [authLoading, user, router]);
 
@@ -503,8 +500,7 @@ export default function AdminOrdersPage() {
 
                         <div className="min-w-0">
                           <p className="font-bold text-gray-950">
-                            {order.customer.firstName}{" "}
-                            {order.customer.lastName}
+                            {order.customer.firstName} {order.customer.lastName}
                           </p>
                           <p className="mt-1 text-sm text-gray-600">
                             {order.customer.phone}
@@ -655,8 +651,8 @@ export default function AdminOrdersPage() {
                         <AlertCircle size={17} className="mt-0.5 shrink-0" />
                         <p>
                           This request has an uncertain result. Verify it in
-                          Shiprocket before attempting another operation. Do
-                          not retry blindly.
+                          Shiprocket before attempting another operation. Do not
+                          retry blindly.
                         </p>
                       </div>
                     )}
@@ -679,10 +675,9 @@ export default function AdminOrdersPage() {
 
                       {order.shiprocket.shipmentId &&
                         !order.shiprocket.awbCode &&
-                        ![
-                          "AWB_ASSIGNING",
-                          "AWB_ASSIGNMENT_UNCERTAIN",
-                        ].includes(order.shiprocket.status || "") && (
+                        !["AWB_ASSIGNING", "AWB_ASSIGNMENT_UNCERTAIN"].includes(
+                          order.shiprocket.status || "",
+                        ) && (
                           <ActionButton
                             disabled={!!shiprocketActionId}
                             onClick={() =>
@@ -976,7 +971,9 @@ export default function AdminOrdersPage() {
             <button
               type="button"
               disabled={page >= totalPages || loading}
-              onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+              onClick={() =>
+                setPage((value) => Math.min(totalPages, value + 1))
+              }
               className="inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2.5 text-sm font-bold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next
@@ -1076,8 +1073,8 @@ export default function AdminOrdersPage() {
               <div className="mt-4 flex items-start gap-2 rounded-xl border border-gray-400 bg-gray-100 p-3 text-xs leading-5 text-gray-700">
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                 <p>
-                  Only record money that has actually been received. The
-                  server checks the latest outstanding balance before saving.
+                  Only record money that has actually been received. The server
+                  checks the latest outstanding balance before saving.
                 </p>
               </div>
 

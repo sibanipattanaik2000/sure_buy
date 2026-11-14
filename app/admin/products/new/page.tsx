@@ -238,8 +238,7 @@ if (
 !loading &&
 user?.role !== "ADMIN"
 ) {
-router.replace("/");
-}
+router.replace("/admin/login");}
 }, [loading, user, router]);
 
 /*

@@ -164,8 +164,7 @@ AUTH
 
 useEffect(() => {
 if (!authLoading && user?.role !== "ADMIN") {
-router.replace("/");
-}
+router.replace("/admin/login");}
 }, [authLoading, user, router]);
 
 /* =======================================================
