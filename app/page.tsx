@@ -922,7 +922,7 @@ export default function Home() {
       setError(null);
       const response = await getProducts({
         page: 1,
-        limit: 100,
+        limit: 24,
         category: "Smartphones",
       });
       const data = Array.isArray(response.data) ? response.data : [];

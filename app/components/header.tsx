@@ -2,17 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Heart,
-  ShoppingBag,
-  UserRound,
-  ChevronDown,
-} from "lucide-react";
+import { Heart, ShoppingBag, UserRound, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
+import BrandLogo from "../admin/components/BrandLogo";
 
 const NAV_ITEMS = [
   { href: "/buy", label: "Buy", hasDropdown: true },
@@ -37,29 +33,9 @@ export default function Header() {
       {/* ========== DESKTOP + MOBILE TOP HEADER ========== */}
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          
           {/* LOGO */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                <line x1="12" y1="18" x2="12.01" y2="18" />
-              </svg>
-            </div>
-            <span className="text-xl font-bold tracking-tight text-gray-900">
-              PhoneBhai
-            </span>
-          </Link>
 
+          <BrandLogo />
           {/* DESKTOP CENTER NAV */}
           <nav className="hidden items-center gap-1 lg:flex">
             {NAV_ITEMS.map((item) => {
@@ -177,9 +153,7 @@ export default function Header() {
           <Link
             href="/"
             className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 ${
-              pathname === "/"
-                ? "text-indigo-600"
-                : "text-gray-500"
+              pathname === "/" ? "text-indigo-600" : "text-gray-500"
             }`}
           >
             <svg
@@ -202,9 +176,7 @@ export default function Header() {
           <Link
             href="/buy"
             className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 ${
-              pathname.startsWith("/buy")
-                ? "text-indigo-600"
-                : "text-gray-500"
+              pathname.startsWith("/buy") ? "text-indigo-600" : "text-gray-500"
             }`}
           >
             <ShoppingBag size={22} strokeWidth={1.8} />
@@ -215,18 +187,14 @@ export default function Header() {
           <Link
             href="/wishlist"
             className={`relative flex flex-1 flex-col items-center justify-center gap-1 py-2 ${
-              pathname === "/wishlist"
-                ? "text-indigo-600"
-                : "text-gray-500"
+              pathname === "/wishlist" ? "text-indigo-600" : "text-gray-500"
             }`}
           >
             <div className="relative">
               <Heart
                 size={22}
                 strokeWidth={1.8}
-                className={
-                  wishlistCount > 0 ? "fill-red-500 text-red-500" : ""
-                }
+                className={wishlistCount > 0 ? "fill-red-500 text-red-500" : ""}
               />
               {wishlistCount > 0 && (
                 <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[9px] font-bold text-white">

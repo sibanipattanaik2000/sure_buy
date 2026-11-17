@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -92,7 +91,9 @@ export default function AdminSidebar() {
         </div>
 
         {/* Only vertical scrolling */}
-<nav className="admin-sidebar-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-5">          <div className="space-y-2">
+        <nav className="admin-sidebar-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-5">
+          {" "}
+          <div className="space-y-2">
             {navigation.map((item) => {
               const Icon = item.icon;
 
