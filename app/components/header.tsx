@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Heart, ShoppingBag, UserRound, ChevronDown } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Heart,
+  ShoppingBag,
+  UserRound,
+  ChevronDown,
+  ArrowLeft,
+} from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
 
@@ -23,6 +29,7 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 export default function Header() {
+  const router = useRouter();
   const pathname = usePathname();
   const { wishlistCount } = useWishlist();
   const { cartCount } = useCart();
@@ -34,8 +41,25 @@ export default function Header() {
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* LOGO */}
-
-          <BrandLogo />
+          <div className="flex min-w-0 items-center gap-1">
+            {pathname !== "/" && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push("/");
+                  }
+                }}
+                aria-label="Go back"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-50 active:scale-95 lg:hidden"
+              >
+                <ArrowLeft size={22} strokeWidth={2.2} />
+              </button>
+            )}
+            <BrandLogo />
+          </div>{" "}
           {/* DESKTOP CENTER NAV */}
           <nav className="hidden items-center gap-1 lg:flex">
             {NAV_ITEMS.map((item) => {
@@ -117,7 +141,6 @@ export default function Header() {
               );
             })}
           </nav>
-
           {/* RIGHT ICONS (Desktop + Mobile) */}
           <div className="flex items-center gap-1 sm:gap-2">
             {/* Cart */}

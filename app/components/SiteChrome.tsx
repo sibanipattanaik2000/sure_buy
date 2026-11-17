@@ -4,7 +4,6 @@
 import { usePathname } from "next/navigation";
 import Header from "./header";
 import Footer from "./footer";
-import MobileBackButton from "./MobileBackButton";
 
 export default function SiteChrome({
   children,
@@ -18,8 +17,6 @@ export default function SiteChrome({
   return (
     <>
       {!isAdminRoute && <Header />}
-
-      {!isAdminRoute && <MobileBackButton />}
 
       {children}
 
