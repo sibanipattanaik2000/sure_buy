@@ -1622,7 +1622,7 @@ export default function ProductDetailsPage() {
 
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-green-800">
-                        Delivery available
+                        Delivery Available
                       </p>
 
                       {deliveryEstimate && (
