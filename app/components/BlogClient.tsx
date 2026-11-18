@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -12,11 +11,7 @@ import {
   X,
   Sparkles,
 } from "lucide-react";
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-} from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 type Article = {
   id: number;
@@ -183,8 +178,7 @@ function ArticleImage({
 export default function BlogClient() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedArticle, setSelectedArticle] =
-    useState<Article | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
 
   const reduceMotion = useReducedMotion();
   const featuredArticle = articles[0];
@@ -194,8 +188,7 @@ export default function BlogClient() {
 
     return articles.filter((article) => {
       const matchesCategory =
-        activeCategory === "All" ||
-        article.category === activeCategory;
+        activeCategory === "All" || article.category === activeCategory;
 
       const matchesSearch =
         !query ||
@@ -244,91 +237,18 @@ export default function BlogClient() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#f7f7f5] text-[#111111]">
       {/* HERO */}
-      <section className="relative overflow-hidden bg-[#090909] px-5 pb-14 pt-16 text-white sm:px-8 sm:pb-20 sm:pt-24 lg:px-12 lg:pb-24 lg:pt-28">
-        <div className="pointer-events-none absolute -right-40 -top-40 h-[300px] w-[300px] rounded-full border border-white/[0.07] sm:h-[500px] sm:w-[500px]" />
-        <div className="pointer-events-none absolute -right-20 -top-20 h-[220px] w-[220px] rounded-full border border-white/[0.08] sm:h-[340px] sm:w-[340px]" />
-
-        <div className="relative mx-auto max-w-[1440px]">
-          <motion.div
-            initial={reduceMotion ? false : "hidden"}
-            animate={reduceMotion ? undefined : "visible"}
-            variants={fadeUp}
-            className="mb-7 flex items-center gap-3 sm:mb-8"
-          >
-            <span className="h-px w-8 bg-white sm:w-10" />
-            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/60 sm:text-xs sm:tracking-[0.35em]">
-              The PhoneBhai Journal
-            </span>
-          </motion.div>
-
-          <div className="grid items-center gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-            <motion.div
-              initial={reduceMotion ? false : "hidden"}
-              animate={reduceMotion ? undefined : "visible"}
-              variants={fadeUp}
-            >
-              <h1 className="max-w-4xl text-[clamp(3.1rem,12vw,8.5rem)] font-black leading-[0.9] tracking-[-0.075em] sm:text-[clamp(4rem,9vw,8.5rem)]">
-                Tech.
-                <br />
-                <span className="text-white/35">Without</span>
-                <br />
-                The Noise.
-              </h1>
-
-              <div className="mt-8 flex flex-col gap-6 sm:mt-10 sm:flex-row sm:items-end sm:justify-between">
-                <p className="max-w-md text-sm leading-7 text-white/55 sm:text-base">
-                  Smart reads, honest insights and everything worth knowing
-                  about the technology in your pocket.
-                </p>
-
-                <a
-                  href="#latest"
-                  className="group inline-flex w-fit items-center gap-3 border-b border-white/40 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] transition hover:border-white sm:text-xs"
-                >
-                  Explore stories
-                  <ArrowDown
-                    size={15}
-                    className="transition-transform duration-300 group-hover:translate-y-1"
-                  />
-                </a>
-              </div>
-            </motion.div>
-
-            {/* Featured image: visible on mobile and tablet too */}
-            <motion.div
-              initial={reduceMotion ? false : { opacity: 0, x: 35 }}
-              animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative mx-auto w-full max-w-[420px] lg:ml-auto"
-            >
-              <div className="relative">
-                <div className="absolute -left-3 -top-3 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white text-black sm:-left-6 sm:-top-6 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
-                  <Sparkles size={22} strokeWidth={1.5} />
-                </div>
-
-                <div className="aspect-[16/10] overflow-hidden sm:aspect-[4/3] lg:aspect-[4/5]">
-                  <ArticleImage
-                    src={featuredArticle.image}
-                    alt="Featured smartphone editorial"
-                    className="h-full w-full grayscale transition-all duration-700 hover:scale-105 hover:grayscale-0"
-                  />
-                </div>
-
-                <div className="absolute -bottom-4 left-3 bg-white px-4 py-3 text-black shadow-xl sm:-bottom-5 sm:-left-6 sm:px-6 sm:py-4">
-                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/45 sm:text-[9px] sm:tracking-[0.25em]">
-                    Curiosity looks good on you.
-                  </p>
-                  <p className="mt-1 text-base font-black tracking-tight sm:text-lg">
-                    Stay in the know.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
+      <section className="relative w-full overflow-hidden bg-[#111] text-white">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-24">
+          {/* LEFT CONTENT */}
+          <div className="relative z-10 min-w-0 w-full">
+            {/* Keep your existing hero heading, description and button here */}
           </div>
 
-          <div className="mt-16 flex flex-col gap-2 border-t border-white/15 pt-5 text-[8px] font-bold uppercase tracking-[0.2em] text-white/35 sm:mt-20 sm:flex-row sm:items-center sm:justify-between sm:text-[10px] sm:tracking-[0.25em]">
-            <span>Ideas for a smarter digital life</span>
-            <span>Read. Discover. Decide.</span>
+          {/* RIGHT IMAGE — visible on mobile AND desktop */}
+          <div className="relative block min-w-0 w-full">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl sm:aspect-[16/10] lg:aspect-[4/5]">
+              {/* Keep your existing hero image here */}
+            </div>
           </div>
         </div>
       </section>
@@ -579,8 +499,8 @@ export default function BlogClient() {
             </h2>
 
             <p className="mt-6 max-w-md text-sm leading-7 text-white/50 sm:mt-7">
-              Done reading? Explore smartphones and discover a device that
-              fits your world.
+              Done reading? Explore smartphones and discover a device that fits
+              your world.
             </p>
           </div>
 
@@ -612,15 +532,11 @@ export default function BlogClient() {
               aria-modal="true"
               aria-labelledby="article-modal-title"
               initial={
-                reduceMotion
-                  ? false
-                  : { opacity: 0, y: 35, scale: 0.98 }
+                reduceMotion ? false : { opacity: 0, y: 35, scale: 0.98 }
               }
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={
-                reduceMotion
-                  ? undefined
-                  : { opacity: 0, y: 25, scale: 0.98 }
+                reduceMotion ? undefined : { opacity: 0, y: 25, scale: 0.98 }
               }
               transition={{ duration: reduceMotion ? 0 : 0.3 }}
               onClick={(event) => event.stopPropagation()}
