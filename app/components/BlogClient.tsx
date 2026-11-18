@@ -39,9 +39,9 @@ const articles: Article[] = [
   {
     id: 1,
     category: "Buying Guides",
-    title: "Buying a smartphone in 2026? Here's what actually matters.",
+    title: "Buying a smartphone in 2026? Here's what actually matters",
     excerpt:
-      "Forget the marketing noise. These are the features worth paying attention to before choosing your next smartphone.",
+      "Forget the marketing noise. These are the features worth paying attention to before choosing your next smartphone",
     date: "November 14, 2026",
     readTime: "6 min read",
     author: "PhoneBhai Editorial",
@@ -60,7 +60,7 @@ const articles: Article[] = [
     category: "Refurbished",
     title: "Refurbished vs. second-hand phones: know the difference.",
     excerpt:
-      "They may sound similar, but the buying experience and checks behind them can be very different.",
+      "They may sound similar, but the buying experience and checks behind them can be very different",
     date: "November 12, 2026",
     readTime: "5 min read",
     author: "PhoneBhai Editorial",
@@ -78,7 +78,7 @@ const articles: Article[] = [
     category: "Smartphone Tips",
     title: "5 simple habits that can help your phone battery last longer.",
     excerpt:
-      "Small everyday changes can make a meaningful difference to battery health and daily usage.",
+      "Small everyday changes can make a meaningful difference to battery health and daily usage",
     date: "November 10, 2026",
     readTime: "4 min read",
     author: "PhoneBhai Editorial",
@@ -96,7 +96,7 @@ const articles: Article[] = [
     category: "Comparisons",
     title: "Flagship or mid-range? Where should your money go?",
     excerpt:
-      "Premium phones are impressive, but a mid-range device might be all you need.",
+      "Premium phones are impressive, but a mid-range device might be all you need",
     date: "November 8, 2026",
     readTime: "7 min read",
     author: "PhoneBhai Editorial",
@@ -114,7 +114,7 @@ const articles: Article[] = [
     category: "Tech & Trends",
     title: "Why smartphone cameras are about more than megapixels.",
     excerpt:
-      "Sensor size, processing and stabilisation often matter more than a big number on the box.",
+      "Sensor size, processing and stabilisation often matter more than a big number on the box",
     date: "November 6, 2026",
     readTime: "5 min read",
     author: "PhoneBhai Editorial",
@@ -132,7 +132,7 @@ const articles: Article[] = [
     category: "Buying Guides",
     title: "A practical checklist before you buy your next phone.",
     excerpt:
-      "Keep this checklist handy and make a more confident decision before you place your order.",
+      "Keep this checklist handy and make a more confident decision before you place your order",
     date: "November 4, 2026",
     readTime: "4 min read",
     author: "PhoneBhai Editorial",
@@ -237,18 +237,91 @@ export default function BlogClient() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#f7f7f5] text-[#111111]">
       {/* HERO */}
-      <section className="relative w-full overflow-hidden bg-[#111] text-white">
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-2 lg:gap-12 lg:px-10 lg:py-24">
-          {/* LEFT CONTENT */}
-          <div className="relative z-10 min-w-0 w-full">
-            {/* Keep your existing hero heading, description and button here */}
+      <section className="relative overflow-hidden bg-[#090909] px-5 pb-14 pt-16 text-white sm:px-8 sm:pb-20 sm:pt-24 lg:px-12 lg:pb-24 lg:pt-28">
+        <div className="pointer-events-none absolute -right-40 -top-40 h-[300px] w-[300px] rounded-full border border-white/[0.07] sm:h-[500px] sm:w-[500px]" />
+        <div className="pointer-events-none absolute -right-20 -top-20 h-[220px] w-[220px] rounded-full border border-white/[0.08] sm:h-[340px] sm:w-[340px]" />
+
+        <div className="relative mx-auto max-w-[1440px]">
+          <motion.div
+            initial={reduceMotion ? false : "hidden"}
+            animate={reduceMotion ? undefined : "visible"}
+            variants={fadeUp}
+            className="mb-7 flex items-center gap-3 sm:mb-8"
+          >
+            <span className="h-px w-8 bg-white sm:w-10" />
+            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/60 sm:text-xs sm:tracking-[0.35em]">
+              The PhoneBhai Journal
+            </span>
+          </motion.div>
+
+          <div className="grid items-center gap-12 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <motion.div
+              initial={reduceMotion ? false : "hidden"}
+              animate={reduceMotion ? undefined : "visible"}
+              variants={fadeUp}
+            >
+              <h1 className="max-w-4xl text-[clamp(3.1rem,12vw,8.5rem)] font-black leading-[0.9] tracking-[-0.075em] sm:text-[clamp(4rem,9vw,8.5rem)]">
+                Tech
+                <br />
+                <span className="text-white/35">Without</span>
+                <br />
+                The Noise
+              </h1>
+
+              <div className="mt-8 flex flex-col gap-6 sm:mt-10 sm:flex-row sm:items-end sm:justify-between">
+                <p className="max-w-md text-sm leading-7 text-white/55 sm:text-base">
+                  Smart reads, honest insights and everything worth knowing
+                  about the technology in your pocket
+                </p>
+
+                <a
+                  href="#latest"
+                  className="group inline-flex w-fit items-center gap-3 border-b border-white/40 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] transition hover:border-white sm:text-xs"
+                >
+                  Explore stories
+                  <ArrowDown
+                    size={15}
+                    className="transition-transform duration-300 group-hover:translate-y-1"
+                  />
+                </a>
+              </div>
+            </motion.div>
+
+            {/* Featured image: visible on mobile and tablet too */}
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, x: 35 }}
+              animate={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative mx-auto w-full max-w-[420px] lg:ml-auto"
+            >
+              <div className="relative">
+                <div className="absolute -left-3 -top-3 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white text-black sm:-left-6 sm:-top-6 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+                  <Sparkles size={22} strokeWidth={1.5} />
+                </div>
+
+                <div className="aspect-[16/10] overflow-hidden sm:aspect-[4/3] lg:aspect-[4/5]">
+                  <ArticleImage
+                    src={featuredArticle.image}
+                    alt="Featured smartphone editorial"
+                    className="h-full w-full grayscale transition-all duration-700 hover:scale-105 hover:grayscale-0"
+                  />
+                </div>
+
+                <div className="absolute -bottom-4 left-3 bg-white px-4 py-3 text-black shadow-xl sm:-bottom-5 sm:-left-6 sm:px-6 sm:py-4">
+                  <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-black/45 sm:text-[9px] sm:tracking-[0.25em]">
+                    Curiosity looks good on you.
+                  </p>
+                  <p className="mt-1 text-base font-black tracking-tight sm:text-lg">
+                    Stay in the know.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
-          {/* RIGHT IMAGE — visible on mobile AND desktop */}
-          <div className="relative block min-w-0 w-full">
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl sm:aspect-[16/10] lg:aspect-[4/5]">
-              {/* Keep your existing hero image here */}
-            </div>
+          <div className="mt-16 flex flex-col gap-2 border-t border-white/15 pt-5 text-[8px] font-bold uppercase tracking-[0.2em] text-white/35 sm:mt-20 sm:flex-row sm:items-center sm:justify-between sm:text-[10px] sm:tracking-[0.25em]">
+            <span>Ideas for a smarter digital life</span>
+            <span>Read. Discover. Decide.</span>
           </div>
         </div>
       </section>
@@ -341,7 +414,7 @@ export default function BlogClient() {
               </h2>
               <p className="mt-3 max-w-md text-sm leading-6 text-black/50 sm:mt-4">
                 Explore guides, comparisons and ideas to help you make smarter
-                tech decisions.
+                tech decisions
               </p>
             </div>
 
@@ -464,7 +537,7 @@ export default function BlogClient() {
                 No stories found.
               </h3>
               <p className="mt-2 text-sm text-black/45">
-                Try another search or choose a different category.
+                Try another search or choose a different category
               </p>
               <button
                 onClick={() => {
@@ -500,7 +573,7 @@ export default function BlogClient() {
 
             <p className="mt-6 max-w-md text-sm leading-7 text-white/50 sm:mt-7">
               Done reading? Explore smartphones and discover a device that fits
-              your world.
+              your world
             </p>
           </div>
 
@@ -516,7 +589,18 @@ export default function BlogClient() {
           </a>
         </motion.div>
       </section>
+      {/* CTA - FOOTER SEPARATOR */}
+      <div className="relative bg-[#f7f7f5] px-5 py-8 sm:px-8 sm:py-10 lg:px-12">
+        <div className="mx-auto flex max-w-[1440px] items-center gap-4">
+          <span className="h-px flex-1 bg-black/10" />
 
+          <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-black/35 sm:text-[9px] sm:tracking-[0.4em]">
+            The PhoneBhai Experience
+          </span>
+
+          <span className="h-px flex-1 bg-black/10" />
+        </div>
+      </div>
       {/* ARTICLE READER MODAL */}
       <AnimatePresence>
         {selectedArticle && (
