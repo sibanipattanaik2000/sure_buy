@@ -220,7 +220,7 @@ export default function Header() {
                 className={wishlistCount > 0 ? "fill-red-500 text-red-500" : ""}
               />
               {wishlistCount > 0 && (
-                <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[9px] font-bold text-white">
+                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-bold text-white">
                   {wishlistCount > 99 ? "99+" : wishlistCount}
                 </span>
               )}
