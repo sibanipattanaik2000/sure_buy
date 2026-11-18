@@ -29,6 +29,7 @@ import {
   getProduct,
   getProducts,
   checkDeliveryServiceability,
+  apiRequest,
 } from "@/app/lib/api";
 import Image from "next/image";
 import { getOptimizedImageUrl } from "@/app/lib/image";
@@ -272,7 +273,8 @@ export default function ProductDetailsPage() {
   const [similarLoading, setSimilarLoading] = useState(false);
 
   /* Five-minute gift offer */
-  const [giftSeconds, setGiftSeconds] = useState(300);
+  const [giftSeconds, setGiftSeconds] = useState(0);
+  const [giftOfferId, setGiftOfferId] = useState<string | null>(null);
   const [deliveryPincode, setDeliveryPincode] = useState("");
   const [deliveryEstimate, setDeliveryEstimate] = useState<string | null>(null);
   const [deliveryChecked, setDeliveryChecked] = useState(false);
@@ -305,23 +307,61 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   useEffect(() => {
-    if (!product) return;
+    if (!product || !isAuthenticated) return;
 
-    setGiftSeconds(300);
+    let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | undefined;
 
-    const interval = window.setInterval(() => {
-      setGiftSeconds((current) => {
-        if (current <= 1) {
-          window.clearInterval(interval);
-          return 0;
-        }
+    const startOffer = async () => {
+      try {
+        const response = await apiRequest<{
+          id: string;
+          expiresAt: string;
+        }>("/gifts/offers", {
+          method: "POST",
+          body: JSON.stringify({
+            productId: product.id,
+          }),
+        });
 
-        return current - 1;
-      });
-    }, 1000);
+        if (!response.data || cancelled) return;
 
-    return () => window.clearInterval(interval);
-  }, [product?.id]);
+        setGiftOfferId(response.data.id);
+
+        const expiresAt = new Date(response.data.expiresAt).getTime();
+
+        const update = () => {
+          const remaining = Math.max(
+            0,
+            Math.ceil((expiresAt - Date.now()) / 1000),
+          );
+
+          setGiftSeconds(remaining);
+
+          if (remaining <= 0 && interval) {
+            clearInterval(interval);
+          }
+        };
+
+        update();
+        interval = setInterval(update, 1000);
+      } catch (error) {
+        console.error("Gift offer unavailable:", error);
+        setGiftOfferId(null);
+        setGiftSeconds(0);
+      }
+    };
+
+    setGiftOfferId(null);
+    setGiftSeconds(0);
+
+    void startOffer();
+
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+    };
+  }, [product?.id, isAuthenticated]);
 
   const giftOfferActive = giftSeconds > 0;
 
@@ -820,7 +860,7 @@ export default function ProductDetailsPage() {
       "",
 
     // Gift eligibility is carried with the frontend cart item.
-    giftOffer: giftOfferActive,
+    giftOfferId: giftOfferActive ? giftOfferId : undefined,
   };
 
   /* =======================================================

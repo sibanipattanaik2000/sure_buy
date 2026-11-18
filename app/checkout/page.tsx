@@ -549,6 +549,12 @@ export default function CheckoutPage() {
           quantity: Math.max(1, Math.floor(Number(product.quantity) || 1)),
         })),
         ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
+        ...(products.find((product) => product.giftOfferId)?.giftOfferId
+          ? {
+              giftOfferId: products.find((product) => product.giftOfferId)!
+                .giftOfferId,
+            }
+          : {}),
       });
 
       if (!orderResponse.success || !orderResponse.data) {

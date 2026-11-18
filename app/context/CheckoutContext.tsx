@@ -34,8 +34,8 @@ export type CheckoutProduct = {
 
   quantity?: number;
   cartId?: string;
+  giftOfferId?: string | null;
 };
-
 export type DeliveryAddress = {
   fullName: string;
   phone: string;
@@ -328,10 +328,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     try {
       const addressStorageKey = getSavedAddressStorageKey(userId);
 
-      localStorage.setItem(
-        addressStorageKey,
-        JSON.stringify(address),
-      );
+      localStorage.setItem(addressStorageKey, JSON.stringify(address));
     } catch (error) {
       console.error("Failed to save delivery address:", error);
     }
