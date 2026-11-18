@@ -19,7 +19,7 @@ import BrandLogo from "../admin/components/BrandLogo";
 const NAV_ITEMS = [
   { href: "/buy", label: "Buy", hasDropdown: true },
   { href: "/about", label: "About" },
-  { href: "/blogs", label: "Blogs" },
+  { href: "/blog", label: "Blogs" },
   { href: "/wishlist", label: "Wishlist", isWishlist: true },
 ];
 
