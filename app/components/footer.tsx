@@ -95,7 +95,7 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-[#0b0f19] text-white">
+    <footer className="bg-[#000000] text-white">
       {/* ========== NEWSLETTER ========== */}
       <div className="border-b border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-7 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">

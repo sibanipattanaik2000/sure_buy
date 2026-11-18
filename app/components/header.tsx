@@ -75,33 +75,33 @@ export default function Header() {
                   >
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium transition ${
-                        active
-                          ? "text-indigo-600"
-                          : "text-gray-700 hover:text-gray-900"
+                      className={`flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                        active ? "text-black" : "text-black hover:text-gray-400"
                       }`}
                     >
                       {item.label}
-                      <ChevronDown size={14} className="opacity-60" />
+                      <ChevronDown size={14} className="opacity-70" />
                     </Link>
 
                     {buyOpen && (
-                      <div className="absolute left-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl border border-gray-100 bg-white py-1.5 shadow-lg">
+                      <div className="absolute left-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl border border-gray-200 bg-white py-1.5 shadow-lg">
                         <Link
                           href="/buy"
-                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                          className="block px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-gray-100 hover:text-gray-500"
                         >
                           All Phones
                         </Link>
+
                         <Link
                           href="/buy?condition=LIKE_NEW"
-                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                          className="block px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-gray-100 hover:text-gray-500"
                         >
                           Like New
                         </Link>
+
                         <Link
                           href="/buy?condition=EXCELLENT"
-                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                          className="block px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-gray-100 hover:text-gray-500"
                         >
                           Excellent
                         </Link>
@@ -115,13 +115,12 @@ export default function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition ${
-                    active
-                      ? "text-indigo-600"
-                      : "text-gray-700 hover:text-gray-900"
+                  className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                    active ? "text-black" : "text-black hover:text-gray-400"
                   }`}
                 >
                   {item.label}
+
                   {item.isWishlist && (
                     <Heart
                       size={15}
@@ -132,8 +131,9 @@ export default function Header() {
                       }
                     />
                   )}
+
                   {item.isWishlist && wishlistCount > 0 && (
-                    <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white">
+                    <span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-bold text-white">
                       {wishlistCount > 99 ? "99+" : wishlistCount}
                     </span>
                   )}
@@ -176,7 +176,7 @@ export default function Header() {
           <Link
             href="/"
             className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 ${
-              pathname === "/" ? "text-indigo-600" : "text-gray-500"
+              pathname === "/" ? "text-black" : "text-gray-500"
             }`}
           >
             <svg
@@ -198,8 +198,8 @@ export default function Header() {
           {/* Buy */}
           <Link
             href="/buy"
-            className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 ${
-              pathname.startsWith("/buy") ? "text-indigo-600" : "text-gray-500"
+            className={`flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+              pathname.startsWith("/buy") ? "text-black" : "text-gray-500"
             }`}
           >
             <ShoppingBag size={22} strokeWidth={1.8} />
