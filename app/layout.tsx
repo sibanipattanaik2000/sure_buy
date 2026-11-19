@@ -10,6 +10,8 @@ import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
 import AnalyticsTracker from "./admin/components/AnalyticsTracker";
 import SiteChrome from "./components/SiteChrome";
+import OneSignalProvider from "./components/OneSignalProvider";
+
 const SITE_URL = "https://www.phonebhai.com";
 
 export const metadata: Metadata = {
@@ -142,7 +144,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <AnalyticsTracker />
-
+          <OneSignalProvider />
           <WishlistProvider>
             <CartProvider>
               <CheckoutProvider>
