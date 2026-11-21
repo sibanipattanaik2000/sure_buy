@@ -78,7 +78,7 @@ export default function WishlistPage() {
 
             <Link
               href="/buy"
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-indigo-700"
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-black px-6 py-3 text-sm font-bold text-white transition hover:bg-black/20"
             >
               Explore Phones
               <ArrowRight size={17} />
