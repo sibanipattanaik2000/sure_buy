@@ -643,7 +643,7 @@ function OrderCard({ order }: { order: Order }) {
             {order.status !== "Delivered" && order.status !== "Cancelled" && (
               <Link
                 href={`/orders/${order.id}`}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-xs font-black text-white shadow-sm transition-all hover:-translate-y-0.5 hover:bg-black/20 hover:shadow-md hover:shadow-black/20"
               >
                 Track order
                 <Truck size={15} />
