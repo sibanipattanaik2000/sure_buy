@@ -152,7 +152,7 @@ export default function WishlistPage() {
 
                     <Link
                       href={`/buy/${phone.id}`}
-                      className="flex h-10 items-center gap-2 rounded-xl bg-indigo-600 px-4 text-xs font-bold text-white transition hover:bg-indigo-700"
+                      className="flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-xs font-bold text-white transition hover:bg-black/20"
                     >
                       <ShoppingBag size={15} />
                       Buy
