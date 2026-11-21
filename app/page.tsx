@@ -208,7 +208,7 @@ function BrandLogos() {
   return (
     <section className="overflow-hidden border-y border-gray-200 bg-gray-50 py-7 sm:py-9">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="mb-5 flex items-end justify-between sm:mb-7">
+        <div className="mb-3 flex items-end justify-between sm:mb-5">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 sm:text-xs">
               Shop your favourite brands
@@ -237,7 +237,7 @@ function BrandLogos() {
             <Link
               key={`${brand.name}-${index}`}
               href={`/buy?brand=${encodeURIComponent(brand.name)}`}
-              className="group flex h-[76px] min-w-[145px] shrink-0 items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-black hover:shadow-md sm:h-[90px] sm:min-w-[185px] sm:gap-4 sm:rounded-2xl sm:px-7"
+              className="group flex h-[65px] min-w-[125px] shrink-0 items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-3 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-black hover:shadow-md sm:h-[80px] sm:min-w-[165px] sm:gap-4 sm:rounded-2xl sm:px-5"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 transition group-hover:bg-black sm:h-12 sm:w-12">
                 <img
@@ -783,7 +783,7 @@ function PhoneBhaiCycle() {
                 href="/buy"
                 className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-xs font-black text-black transition hover:bg-gray-200"
               >
-                Explore phones
+                Explore Phones
                 <ArrowRight size={15} />
               </Link>
             </div>
