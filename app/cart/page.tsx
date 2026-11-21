@@ -65,7 +65,7 @@ export default function CartPage() {
 
             <Link
               href="/buy"
-              className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-7 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:-translate-y-0.5 hover:bg-indigo-700"
+              className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-black px-7 text-sm font-bold text-white shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-black/20"
             >
               Continue shopping
               <ArrowRight size={17} />
