@@ -198,13 +198,15 @@ export default function Header() {
           {/* Buy */}
           <Link
             href="/buy"
-            className={`flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
-              pathname.startsWith("/buy") ? "text-black" : "text-gray-500"
+            className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 ${
+              pathname === "/buy" ? "text-black" : "text-gray-500"
             }`}
           >
             <ShoppingBag size={22} strokeWidth={1.8} />
             <span className="text-[10px] font-medium">Buy</span>
           </Link>
+
+          {/* Wishlist */}
 
           {/* Wishlist */}
           <Link
@@ -219,12 +221,14 @@ export default function Header() {
                 strokeWidth={1.8}
                 className={wishlistCount > 0 ? "fill-red-500 text-red-500" : ""}
               />
+
               {wishlistCount > 0 && (
-                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-2 -top-2 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-black px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white">
                   {wishlistCount > 99 ? "99+" : wishlistCount}
                 </span>
               )}
             </div>
+
             <span className="text-[10px] font-medium">Wishlist</span>
           </Link>
 

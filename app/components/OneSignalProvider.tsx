@@ -27,14 +27,22 @@ interface OneSignalInstance {
   };
 }
 
+// declare global {
+//   interface Window {
+//     OneSignalDeferred?: Array<
+//       (OneSignal: OneSignalInstance) => Promise<void> | void
+//     >;
+//   }
+// }
+
 declare global {
   interface Window {
     OneSignalDeferred?: Array<
       (OneSignal: OneSignalInstance) => Promise<void> | void
     >;
+    __phoneBhaiOneSignalInitPromise?: Promise<OneSignalInstance>;
   }
 }
-
 export default function OneSignalProvider() {
   const { user, loading } = useAuth();
 
@@ -60,34 +68,90 @@ export default function OneSignalProvider() {
   }, []);
 
   // Load and initialize the OneSignal SDK once.
+  // useEffect(() => {
+  //   let cancelled = false;
+
+  //   window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+  //   window.OneSignalDeferred.push(async (OneSignal) => {
+  //     await OneSignal.init({
+  //       appId: ONESIGNAL_APP_ID,
+  //       safari_web_id: ONESIGNAL_SAFARI_WEB_ID,
+  //       notifyButton: {
+  //         enable: false,
+  //       },
+  //     });
+
+  //     if (cancelled) return;
+
+  //     oneSignalRef.current = OneSignal;
+  //     setReady(true);
+  //   });
+
+  //   const existingScript = document.querySelector(
+  //     'script[src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"]',
+  //   );
+
+  //   if (!existingScript) {
+  //     const script = document.createElement("script");
+  //     script.src =
+  //       "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+  //     script.defer = true;
+  //     document.head.appendChild(script);
+  //   }
+
+  //   return () => {
+  //     cancelled = true;
+  //   };
+  // }, []);
+
+  // Load OneSignal only on the official production domain.
   useEffect(() => {
+    // Localhost, IP addresses and Vercel preview domains must not initialize
+    // this production OneSignal application.
+    if (window.location.hostname !== "www.phonebhai.com") {
+      console.info("PhoneBhai OneSignal disabled on local/preview domain.");
+      return;
+    }
+
     let cancelled = false;
 
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     window.OneSignalDeferred.push(async (OneSignal) => {
-      await OneSignal.init({
-        appId: ONESIGNAL_APP_ID,
-        safari_web_id: ONESIGNAL_SAFARI_WEB_ID,
-        notifyButton: {
-          enable: false,
-        },
-      });
+      try {
+        // Prevent duplicate initialization during React Strict Mode remounts.
+        if (!window.__phoneBhaiOneSignalInitPromise) {
+          window.__phoneBhaiOneSignalInitPromise = (async () => {
+            await OneSignal.init({
+              appId: ONESIGNAL_APP_ID,
+              safari_web_id: ONESIGNAL_SAFARI_WEB_ID,
+              notifyButton: {
+                enable: false,
+              },
+            });
 
-      if (cancelled) return;
+            return OneSignal;
+          })();
+        }
 
-      oneSignalRef.current = OneSignal;
-      setReady(true);
+        const instance = await window.__phoneBhaiOneSignalInitPromise;
+
+        if (cancelled) return;
+
+        oneSignalRef.current = instance;
+        setReady(true);
+      } catch (error) {
+        console.error("PhoneBhai OneSignal initialization failed:", error);
+      }
     });
 
-    const existingScript = document.querySelector(
-      'script[src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"]',
-    );
+    const scriptUrl =
+      "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
 
-    if (!existingScript) {
+    if (!document.querySelector(`script[src="${scriptUrl}"]`)) {
       const script = document.createElement("script");
-      script.src =
-        "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+      script.src = scriptUrl;
       script.defer = true;
       document.head.appendChild(script);
     }
