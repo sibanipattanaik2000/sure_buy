@@ -10,8 +10,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useState } from "react";
-import Image from "next/image";
-
+import { useAuth } from "../context/AuthContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import BrandLogo from "../admin/components/BrandLogo";
@@ -34,7 +33,9 @@ export default function Header() {
   const { wishlistCount } = useWishlist();
   const { cartCount } = useCart();
   const [buyOpen, setBuyOpen] = useState(false);
+  const { user, loading: authLoading } = useAuth();
 
+  const accountHref = authLoading ? "/account" : user ? "/account" : "/login";
   return (
     <>
       {/* ========== DESKTOP + MOBILE TOP HEADER ========== */}
@@ -159,7 +160,7 @@ export default function Header() {
 
             {/* Account */}
             <Link
-              href="/account"
+              href={accountHref}
               aria-label="Account"
               className="flex h-10 w-10 items-center justify-center rounded-full text-gray-700 transition hover:bg-gray-50 hover:text-indigo-600"
             >
@@ -234,11 +235,9 @@ export default function Header() {
 
           {/* Account */}
           <Link
-            href="/account"
+            href={accountHref}
             className={`flex flex-1 flex-col items-center justify-center gap-1 py-2 ${
-              pathname.startsWith("/account")
-                ? "text-black"
-                : "text-gray-500"
+              pathname.startsWith("/account") ? "text-black" : "text-gray-500"
             }`}
           >
             <UserRound size={22} strokeWidth={1.8} />
