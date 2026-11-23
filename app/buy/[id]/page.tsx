@@ -307,7 +307,7 @@ export default function ProductDetailsPage() {
   ======================================================= */
 
   useEffect(() => {
-    if (!product || !isAuthenticated) return;
+    if (!product ) return;
 
     let cancelled = false;
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -361,7 +361,7 @@ export default function ProductDetailsPage() {
       cancelled = true;
       if (interval) clearInterval(interval);
     };
-  }, [product?.id, isAuthenticated]);
+  }, [product?.id]);
 
   const giftOfferActive = giftSeconds > 0;
 
