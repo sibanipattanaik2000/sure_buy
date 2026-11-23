@@ -41,10 +41,7 @@ export default function LoginPage() {
     }
 
     const updateTimer = () => {
-      const remaining = Math.max(
-        0,
-        Math.ceil((expiresAt - Date.now()) / 1000),
-      );
+      const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
 
       setRemainingSeconds(remaining);
 
@@ -65,9 +62,10 @@ export default function LoginPage() {
     setExpiresAt(Date.now() + OTP_DURATION * 1000);
   };
 
-  const formattedTime = `${String(
-    Math.floor(remainingSeconds / 60),
-  ).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
+  const formattedTime = `${String(Math.floor(remainingSeconds / 60)).padStart(
+    2,
+    "0",
+  )}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
   const getErrorMessage = (err: unknown) => {
     if (err instanceof ApiError) return err.message;
@@ -203,16 +201,6 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-white px-4 py-10 text-black sm:px-6">
       <div className="mx-auto flex min-h-[80vh] w-full max-w-md flex-col justify-center">
-        <Link
-          href="/"
-          className="mb-8 inline-flex items-center gap-2 self-center text-xl font-black tracking-tight"
-        >
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black text-sm font-black text-white">
-            PB
-          </span>
-          PhoneBhai
-        </Link>
-
         <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
           {step === "phone" && (
             <>
@@ -307,10 +295,7 @@ export default function LoginPage() {
 
               <p className="mt-2 text-sm leading-6 text-gray-500">
                 Enter the 6-digit OTP sent to{" "}
-                <span className="font-semibold text-black">
-                  +91 {phone}
-                </span>
-                .
+                <span className="font-semibold text-black">+91 {phone}</span>.
               </p>
 
               <form onSubmit={handleVerify} className="mt-7 space-y-6">
@@ -334,9 +319,7 @@ export default function LoginPage() {
                         onChange={(event) =>
                           handleOtpChange(event.target.value, index)
                         }
-                        onKeyDown={(event) =>
-                          handleOtpKeyDown(event, index)
-                        }
+                        onKeyDown={(event) => handleOtpKeyDown(event, index)}
                         onPaste={index === 0 ? handleOtpPaste : undefined}
                         className="h-12 min-w-0 flex-1 rounded-xl border border-gray-300 text-center text-lg font-bold outline-none transition focus:border-black focus:ring-2 focus:ring-black/5"
                       />
@@ -403,7 +386,7 @@ export default function LoginPage() {
               </div>
 
               <p className="mt-5 text-center text-xs leading-5 text-gray-400">
-                Never share your OTP with anyone.
+                Never share your OTP with anyone
               </p>
             </>
           )}
@@ -417,8 +400,7 @@ export default function LoginPage() {
               <h1 className="text-2xl font-bold">Login successful!</h1>
 
               <p className="mt-3 text-sm leading-6 text-gray-500">
-                Your mobile number has been verified. Welcome back to
-                PhoneBhai.
+                Your mobile number has been verified. Welcome back to PhoneBhai
               </p>
 
               <p className="mt-6 text-sm font-semibold text-gray-700">
@@ -429,7 +411,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          Secure OTP-based login for your PhoneBhai account.
+          Secure OTP-based login for your PhoneBhai account
         </p>
       </div>
     </main>
