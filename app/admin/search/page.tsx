@@ -153,7 +153,7 @@ export default function AdminSearchPage() {
                 </p>
                 <UserRound className="text-gray-400" />
               </div>
-              <p className="mt-4 text-3xl font-black">
+              <p className="mt-4 text-3xl font-black text-black">
                 {results.customers.length}
               </p>
             </div>
@@ -165,7 +165,7 @@ export default function AdminSearchPage() {
                 </p>
                 <ShoppingBag className="text-gray-400" />
               </div>
-              <p className="mt-4 text-3xl font-black">
+              <p className="mt-4 text-3xl font-black text-black">
                 {results.orders.length}
               </p>
             </div>
