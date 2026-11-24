@@ -226,7 +226,7 @@ export default function AdminSearchPage() {
                         </div>
 
                         <div className="text-right">
-                          <p className="font-black">
+                          <p className="font-black text-black">
                             {money(order.totalAmount)}
                           </p>
                           <p className="mt-1 text-xs text-gray-500">
