@@ -56,22 +56,22 @@ type HomeProduct = Omit<Product, "images"> & {
 const heroBanners = [
   {
     id: 1,
-    image: "https://media.phonebhai.com/banners/banners/KPq9l.jpg",
+    image: "https://media.phonebhai.com/banners/banners/b1.webp",
     alt: "PhoneBhai premium smartphones",
   },
   {
     id: 2,
-    image: "https://media.phonebhai.com/banners/banners/dK67F.jpg",
+    image: "https://media.phonebhai.com/banners/banners/b2.webp",
     alt: "PhoneBhai affordable smartphones",
   },
   {
     id: 3,
-    image: "https://media.phonebhai.com/banners/banners/ksBX4.jpg",
+    image: "https://media.phonebhai.com/banners/banners/b3.webp",
     alt: "PhoneBhai verified smartphones",
   },
   {
     id: 4,
-    image: "https://media.phonebhai.com/banners/banners/tam8S.jpg",
+    image: "https://media.phonebhai.com/banners/banners/b4.webp",
     alt: "Shop smartphones at PhoneBhai",
   },
 ];
