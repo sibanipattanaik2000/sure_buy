@@ -148,9 +148,7 @@ function getProductHref(product: HomeProduct): string {
 
 function getProductImage(product: HomeProduct): ProductImage | null {
   const variantImages = (product.variants || [])
-    .flatMap((variant) =>
-      Array.isArray(variant.images) ? variant.images : [],
-    )
+    .flatMap((variant) => (Array.isArray(variant.images) ? variant.images : []))
     .filter((image) => Boolean(image?.url))
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
@@ -159,9 +157,8 @@ function getProductImage(product: HomeProduct): ProductImage | null {
       if (typeof image === "string") return { url: image };
       return image;
     })
-    .filter(
-      (image): image is ProductImage =>
-        Boolean(image && typeof image === "object" && image.url),
+    .filter((image): image is ProductImage =>
+      Boolean(image && typeof image === "object" && image.url),
     )
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
@@ -201,63 +198,30 @@ const shopButtonClass =
    BRAND LOGOS – seamless right → left infinite marquee
 ========================================================= */
 
-
 function BrandLogos() {
   const items = [...brandLogos, ...brandLogos, ...brandLogos];
 
   return (
-    <section className="overflow-hidden border-y border-gray-200 bg-gray-50 py-7 sm:py-9">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="mb-3 flex items-end justify-between sm:mb-5">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 sm:text-xs">
-              Shop your favourite brands
-            </p>
-            <h2 className="mt-1 text-xl font-black tracking-tight text-black sm:text-2xl">
-              Explore Top Brands
-            </h2>
-          </div>
-
-          <Link
-            href="/buy"
-            className="inline-flex shrink-0 items-center gap-1.5 text-[14px] font-bold text-black transition hover:underline sm:text-sm"
-          >
-            View all
-            <ArrowRight size={14} />
-          </Link>
-        </div>
-      </div>
-
-      <div className="relative">
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-gray-50 to-transparent sm:w-16" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-gray-50 to-transparent sm:w-16" />
-
-        <div className="phonebhai-brand-track flex w-max items-center gap-3 px-3 sm:gap-5 sm:px-6">
+    <section className="overflow-hidden border-y border-gray-100 bg-white py-3 sm:py-4">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6">
+        <div className="phonebhai-brand-track flex w-max items-center">
           {items.map((brand, index) => (
             <Link
               key={`${brand.name}-${index}`}
               href={`/buy?brand=${encodeURIComponent(brand.name)}`}
-              className="group flex h-[65px] min-w-[125px] shrink-0 items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-3 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-black hover:shadow-md sm:h-[80px] sm:min-w-[165px] sm:gap-4 sm:rounded-2xl sm:px-5"
+              className="flex h-10 min-w-[145px] shrink-0 items-center justify-center gap-2 border-r border-gray-200 px-5 sm:min-w-[190px] sm:px-8"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 transition group-hover:bg-black sm:h-12 sm:w-12">
-                <img
-                  src={`https://cdn.simpleicons.org/${brand.slug}/111111`}
-                  alt={brand.name}
-                  className="h-5 w-5 object-contain transition group-hover:brightness-0 group-hover:invert sm:h-6 sm:w-6"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              </div>
-
-              <span className="whitespace-nowrap text-sm font-black tracking-tight text-gray-900 transition group-hover:text-black sm:text-base">
+              <img
+                src={`https://cdn.simpleicons.org/${brand.slug}/111111`}
+                alt={brand.name}
+                className="h-5 w-5 object-contain"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+              <span className="text-xs font-extrabold text-gray-900 sm:text-sm">
                 {brand.name}
               </span>
-
-              <ArrowRight
-                size={14}
-                className="ml-auto text-gray-300 transition group-hover:translate-x-1 group-hover:text-black"
-              />
             </Link>
           ))}
         </div>
@@ -265,18 +229,18 @@ function BrandLogos() {
 
       <style jsx global>{`
         .phonebhai-brand-track {
-          animation: brand-marquee 18s linear infinite;
+          animation: phonebhai-brand-marquee 24s linear infinite;
         }
 
         .phonebhai-brand-track:hover {
           animation-play-state: paused;
         }
 
-        @keyframes brand-marquee {
-          0% {
+        @keyframes phonebhai-brand-marquee {
+          from {
             transform: translateX(0);
           }
-          100% {
+          to {
             transform: translateX(-33.333%);
           }
         }
@@ -284,7 +248,6 @@ function BrandLogos() {
     </section>
   );
 }
-
 
 /* =========================================================
    HERO SLIDER
@@ -310,7 +273,7 @@ function HeroSlider() {
 
   return (
     <section className="w-full overflow-hidden">
-      <div className="relative h-[210px] w-full sm:h-[300px] md:h-[360px] lg:h-[420px]">
+      <div className="relative aspect-[16/7] w-full sm:aspect-[21/7] lg:aspect-[21/6]">
         {heroBanners.map((banner, index) => (
           <motion.div
             key={banner.id}
@@ -405,9 +368,7 @@ function ProductCard({
   const rating = numberValue(product.rating);
   const imageUrl = image?.url || product.image || "";
 
-  const handleWishlist = async (
-    event: React.MouseEvent<HTMLButtonElement>,
-  ) => {
+  const handleWishlist = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     await toggleWishlist({
@@ -525,7 +486,8 @@ function ProductCard({
             <p className="truncate text-sm font-black text-gray-950 sm:text-lg">
               {priceLabel(product.price)}
             </p>
-            {numberValue(product.originalPrice) > numberValue(product.price) && (
+            {numberValue(product.originalPrice) >
+              numberValue(product.price) && (
               <p className="text-[8px] text-gray-400 line-through sm:text-[10px]">
                 {priceLabel(product.originalPrice)}
               </p>
@@ -584,26 +546,26 @@ function ProductSection({
   const visible = products.slice(0, 4);
 
   return (
-    <section className="bg-white px-3 py-6 sm:px-4 sm:py-8 lg:px-6">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-5 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+    <section className="bg-white px-3 py-6 sm:px-5 sm:py-8 lg:px-7">
+      <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-[230px_minmax(0,1fr)] lg:items-center lg:gap-7">
+        <div className="flex items-end justify-between gap-3 lg:block">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-700 sm:text-xs">
               {eyebrow}
             </p>
             <h2 className="mt-1 text-2xl font-black tracking-tight text-black sm:text-3xl">
               {title}
             </h2>
-            <p className="mt-1 max-w-md text-xs text-gray-500 sm:text-sm">
+            <p className="mt-1 max-w-xs text-xs leading-5 text-gray-500 sm:text-sm">
               {description}
             </p>
           </div>
+
           <Link
             href="/buy"
-            className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3.5 py-2 text-[10px] font-bold text-black transition hover:border-black hover:bg-black hover:text-white sm:text-xs"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3.5 py-2 text-[10px] font-bold text-black transition hover:border-black hover:bg-black hover:text-white sm:text-xs lg:mt-6"
           >
-            View all
-            <ArrowRight size={13} />
+            View all <ArrowRight size={13} />
           </Link>
         </div>
 
@@ -612,9 +574,9 @@ function ProductSection({
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="animate-pulse overflow-hidden rounded-xl border border-gray-100 bg-white"
+                className="animate-pulse overflow-hidden rounded-xl border border-gray-100"
               >
-                <div className="h-[150px] bg-gray-100 sm:h-[210px]" />
+                <div className="h-[145px] bg-gray-100 sm:h-[190px]" />
                 <div className="space-y-3 p-3">
                   <div className="h-3 w-1/3 rounded bg-gray-100" />
                   <div className="h-4 w-4/5 rounded bg-gray-100" />
@@ -713,38 +675,50 @@ const valueFeatures = [
 
 function WhyPhoneBhai() {
   return (
-    <section className="bg-white px-3 py-8 sm:px-5 sm:py-12 lg:px-8 lg:py-16">
-      <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.9fr_1.8fr] lg:items-center lg:gap-10">
-        <div>
-          <span className="inline-flex rounded-full border border-gray-200 px-3 py-1.5 text-[9px] font-bold text-gray-700 sm:text-[10px]">
-            Why PhoneBhai
-          </span>
-          <h2 className="mt-4 text-2xl font-black leading-tight tracking-tight text-black sm:text-3xl lg:text-4xl">
-            Refurbished phones
-            <span className="block text-indigo-600">Better value.</span>
-          </h2>
-          <p className="mt-3 max-w-sm text-xs leading-6 text-gray-500 sm:text-sm">
-            Quality-focused devices, fair prices and a smarter way to upgrade.
-          </p>
+    <section className="bg-white px-3 py-5 sm:px-5 lg:px-7">
+      <div className="relative mx-auto flex min-h-[150px] max-w-7xl items-center overflow-hidden rounded-2xl bg-[#f1efff]">
+        <div className="absolute inset-y-0 right-0 w-[68%]">
+          <Image
+            src={heroBanners[2].image}
+            alt="Refurbished smartphones at PhoneBhai"
+            fill
+            sizes="(max-width: 768px) 70vw, 900px"
+            className="object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#f1efff] via-[#f1efff]/65 to-transparent" />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-          {valueFeatures.map(({ icon: Icon, title, description }) => (
-            <div
-              key={title}
-              className="flex min-h-[130px] flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-4 text-center transition hover:border-gray-400 hover:shadow-md sm:min-h-[155px] sm:rounded-2xl sm:px-4"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-50 text-black sm:h-12 sm:w-12">
-                <Icon size={22} strokeWidth={2.2} />
-              </div>
-              <h3 className="mt-3 text-[11px] font-bold text-gray-950 sm:text-sm">
-                {title}
-              </h3>
-              <p className="mt-1 text-[9px] leading-4 text-gray-500 sm:text-[10px]">
-                {description}
+        <div className="relative z-10 max-w-lg px-5 py-6 sm:px-9 sm:py-8">
+          <div className="flex items-start gap-3">
+            <Recycle
+              size={34}
+              strokeWidth={2.5}
+              className="mt-1 shrink-0 text-emerald-600 sm:h-10 sm:w-10"
+            />
+
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">
+                Better value. Smarter choice.
               </p>
+
+              <h2 className="mt-1 text-xl font-black tracking-tight text-gray-950 sm:text-3xl">
+                Refurbished phones
+              </h2>
+
+              <p className="mt-1 max-w-xs text-[10px] leading-4 text-gray-600 sm:text-sm sm:leading-5">
+                High-quality pre-owned smartphones at prices that make upgrading
+                easier.
+              </p>
+
+              <Link
+                href="/buy"
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[10px] font-black text-gray-950 shadow-sm transition hover:bg-black hover:text-white sm:mt-4 sm:px-5 sm:py-2.5 sm:text-xs"
+              >
+                Explore refurbished phones
+                <ArrowRight size={13} />
+              </Link>
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </section>
@@ -791,14 +765,18 @@ function PhoneBhaiCycle() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
                 <Recycle size={24} className="text-indigo-300" />
-                <h3 className="mt-3 text-sm font-black text-white">Less waste</h3>
+                <h3 className="mt-3 text-sm font-black text-white">
+                  Less waste
+                </h3>
                 <p className="mt-1 text-[10px] leading-5 text-white/55">
                   Extend the useful life of smartphones.
                 </p>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.07] p-4">
                 <Wallet size={24} className="text-indigo-300" />
-                <h3 className="mt-3 text-sm font-black text-white">More value</h3>
+                <h3 className="mt-3 text-sm font-black text-white">
+                  More value
+                </h3>
                 <p className="mt-1 text-[10px] leading-5 text-white/55">
                   Find better value when upgrading.
                 </p>
@@ -890,9 +868,7 @@ function ReviewsSection() {
               <p className="mt-3 text-sm font-medium text-gray-800">
                 “{r.comment}”
               </p>
-              {r.sub && (
-                <p className="mt-0.5 text-sm text-gray-500">{r.sub}</p>
-              )}
+              {r.sub && <p className="mt-0.5 text-sm text-gray-500">{r.sub}</p>}
               <div className="mt-4 flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
                   {r.name.charAt(0)}
@@ -950,9 +926,7 @@ export default function Home() {
         });
         if (!active) return;
         setProducts(
-          Array.isArray(response.data)
-            ? (response.data as HomeProduct[])
-            : [],
+          Array.isArray(response.data) ? (response.data as HomeProduct[]) : [],
         );
         setError(null);
       } catch (err) {
@@ -974,10 +948,7 @@ export default function Home() {
   const freshArrivals = useMemo(() => products.slice(0, 4), [products]);
 
   const bestDeals = useMemo(
-    () =>
-      [...products]
-        .sort((a, b) => getSaving(b) - getSaving(a))
-        .slice(0, 4),
+    () => [...products].sort((a, b) => getSaving(b) - getSaving(a)).slice(0, 4),
     [products],
   );
 
@@ -998,17 +969,18 @@ export default function Home() {
 
       <PromoBanner />
 
+      <TrustStrip />
+
+      <WhyPhoneBhai />
+
       <ProductSection
         eyebrow="Better value"
         title="Best deals right now"
-        description="Find phones where the current price gives you the biggest saving."
+        description="Discover smartphones with great savings and verified details."
         products={bestDeals}
         loading={loading}
       />
 
-      <WhyPhoneBhai />
-      <PhoneBhaiCycle />
-      <TrustStrip />
       <ReviewsSection />
 
       {!loading && error && (
