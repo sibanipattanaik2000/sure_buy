@@ -56,7 +56,7 @@ type HomeProduct = Omit<Product, "images"> & {
 const heroBanners = [
   {
     id: 1,
-    image: "https://media.phonebhai.com/banners/banners/b1.webp",
+    image: "https://media.phonebhai.com/banners/banners/b1.png",
     alt: "PhoneBhai premium smartphones",
   },
   {
