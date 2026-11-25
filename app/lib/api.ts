@@ -442,6 +442,7 @@ export async function createOrder(payload: {
   addressId: string;
   paymentMethod: "COD" | "UPI" | "CARD" | "EMI";
   couponCode?: string;
+  giftOfferId?: string;
   items?: {
     productId: number;
     variantId?: number | null;
@@ -453,6 +454,19 @@ export async function createOrder(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export interface GiftOfferResponse {
+  id: string;
+  expiresAt: string;
+}
+
+export async function startGiftOffer(productId: number) {
+  return apiRequest<GiftOfferResponse>("/gifts/offers", {
+    method: "POST",
+    body: JSON.stringify({ productId }),
+  });
+}
+
 /* =========================================================
    PAYMENTS
 ========================================================= */

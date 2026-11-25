@@ -473,7 +473,7 @@ export default function CheckoutPage() {
        * NORMALIZE PAYMENT METHOD
        */
 
-      const backendPaymentMethod =
+      const backendPaymentMethod: "COD" | "UPI" | "EMI" | "CARD" =
         paymentMethod === "cod"
           ? "COD"
           : paymentMethod === "upi"
@@ -540,7 +540,18 @@ export default function CheckoutPage() {
        * CREATE BACKEND ORDER
        */
 
-      const orderResponse = await createOrder({
+      /*
+       * CREATE BACKEND ORDER
+       *
+       * If the gift offer is invalid or expired, retry
+       * without the gift. Never block the customer's order.
+       */
+
+      const giftProduct = products.find((product) =>
+        Boolean(product.giftOfferId),
+      );
+
+      const orderPayload = {
         addressId,
         paymentMethod: backendPaymentMethod,
         items: products.map((product) => ({
@@ -549,13 +560,62 @@ export default function CheckoutPage() {
           quantity: Math.max(1, Math.floor(Number(product.quantity) || 1)),
         })),
         ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
-        ...(products.find((product) => product.giftOfferId)?.giftOfferId
-          ? {
-              giftOfferId: products.find((product) => product.giftOfferId)!
-                .giftOfferId,
-            }
+        ...(giftProduct?.giftOfferId
+          ? { giftOfferId: giftProduct.giftOfferId }
           : {}),
-      });
+      };
+
+      const isInvalidGiftError = (message: string) => {
+        const normalized = message.toUpperCase();
+
+        return (
+          normalized.includes("GIFT_OFFER_EXPIRED") ||
+          normalized.includes("GIFT_OFFER_INVALID") ||
+          normalized.includes("INVALID_GIFT_OFFER") ||
+          normalized.includes("GIFT OFFER NOT FOUND") ||
+          normalized.includes("GIFT_OFFER_NOT_FOUND") ||
+          normalized.includes("GIFT_OFFER_ALREADY_USED")
+        );
+      };
+
+      let orderResponse: Awaited<ReturnType<typeof createOrder>>;
+
+      try {
+        orderResponse = await createOrder(orderPayload);
+      } catch (giftError) {
+        const message =
+          giftError instanceof Error ? giftError.message : String(giftError);
+
+        if (!giftProduct?.giftOfferId || !isInvalidGiftError(message)) {
+          throw giftError;
+        }
+
+        console.warn(
+          "Gift offer is invalid or expired. Retrying order without gift.",
+          message,
+        );
+
+        const { giftOfferId: _ignoredGiftOfferId, ...orderWithoutGift } =
+          orderPayload;
+
+        orderResponse = await createOrder(orderWithoutGift);
+      }
+
+      // Also handle APIs that return an error response instead of throwing.
+      if (
+        !orderResponse.success &&
+        giftProduct?.giftOfferId &&
+        isInvalidGiftError(orderResponse.message || "")
+      ) {
+        const { giftOfferId: _ignoredGiftOfferId, ...orderWithoutGift } =
+          orderPayload;
+
+        orderResponse = await createOrder(orderWithoutGift);
+      }
+
+      if (!orderResponse.success || !orderResponse.data) {
+        throw new Error(orderResponse.message || "Unable to place your order.");
+      }
 
       if (!orderResponse.success || !orderResponse.data) {
         throw new Error(orderResponse.message || "Unable to place your order.");
