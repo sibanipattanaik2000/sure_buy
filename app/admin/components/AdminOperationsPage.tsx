@@ -155,8 +155,7 @@ export default function AdminOperationsPage({ mode }: { mode: PageMode }) {
           throw new Error(response.message || "Manifest generation failed");
         }
 
-        const url = response.data.manifest_url;
-
+        const url = response.data.manifestUrl;
         if (url && /^https?:\/\//i.test(url)) {
           setManifestLinks((current) => ({
             ...current,

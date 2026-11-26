@@ -36,6 +36,7 @@ import {
   scheduleAdminShiprocketPickup,
   generateAdminShiprocketManifest,
   type AdminOrder,
+  generateAdminShiprocketLabel,
 } from "./admin-order-api";
 const money = (value: number) =>
   `₹${Number(value || 0).toLocaleString("en-IN", {
@@ -263,13 +264,14 @@ export default function AdminOrdersPage() {
 
   const handleShiprocketAction = async (
     order: AdminOrder,
-    action: "create" | "awb" | "pickup" | "manifest",
+    action: "create" | "awb" | "label" | "pickup" | "manifest",
   ) => {
     if (shiprocketActionId) return;
 
     const labels = {
       create: "create the shipment",
       awb: "assign the AWB",
+      label: "generate the shipping label",
       pickup: "schedule the pickup",
       manifest: "generate the manifest",
     };
@@ -294,7 +296,7 @@ export default function AdminOrdersPage() {
           throw new Error(response.message || "Shipment creation failed.");
         }
 
-        setSuccess("Shiprocket shipment created.");
+        setSuccess("Shiprocket shipment created successfully.");
       } else if (action === "awb") {
         const response = await assignAdminShiprocketAwb(order.id);
 
@@ -307,6 +309,20 @@ export default function AdminOrdersPage() {
             ? "AWB is already assigned."
             : `AWB assigned: ${response.data.awbCode ?? ""}`,
         );
+      } else if (action === "label") {
+        const response = await generateAdminShiprocketLabel(order.id);
+
+        if (!response.success || !response.data) {
+          throw new Error(
+            response.message || "Shipping label generation failed.",
+          );
+        }
+
+        setSuccess(
+          response.data.alreadyGenerated
+            ? "Shipping label already exists."
+            : "Shipping label generated successfully.",
+        );
       } else if (action === "pickup") {
         const response = await scheduleAdminShiprocketPickup(order.id);
 
@@ -317,28 +333,19 @@ export default function AdminOrdersPage() {
         setSuccess(
           response.data.alreadyScheduled
             ? "Pickup was already requested."
-            : "Pickup request submitted.",
+            : "Pickup request submitted successfully.",
         );
-      } else {
+      } else if (action === "manifest") {
         const response = await generateAdminShiprocketManifest(order.id);
 
         if (!response.success || !response.data) {
           throw new Error(response.message || "Manifest generation failed.");
         }
 
-        const url = response.data.manifest_url;
-
-        if (url && /^https?:\/\//i.test(url)) {
-          setManifestLinks((current) => ({
-            ...current,
-            [order.id]: url,
-          }));
-        }
-
         setSuccess(
-          url
-            ? "Manifest generated successfully."
-            : "Manifest request completed. Check your Shiprocket dashboard.",
+          response.data.alreadyGenerated
+            ? "Manifest already exists."
+            : "Manifest generated successfully.",
         );
       }
 
@@ -647,8 +654,14 @@ export default function AdminOrdersPage() {
 
                     {[
                       "CREATION_UNCERTAIN",
+                      "AWB_ASSIGNING",
                       "AWB_ASSIGNMENT_UNCERTAIN",
+                      "PICKUP_REQUESTING",
                       "PICKUP_REQUEST_UNCERTAIN",
+                      "LABEL_GENERATING",
+                      "LABEL_GENERATION_UNCERTAIN",
+                      "MANIFEST_GENERATING",
+                      "MANIFEST_GENERATION_UNCERTAIN",
                     ].includes(order.shiprocket.status || "") && (
                       <div className="mt-4 flex items-start gap-2 rounded-xl border border-gray-500 bg-white p-3 text-xs leading-5 text-gray-800">
                         <AlertCircle size={17} className="mt-0.5 shrink-0" />
@@ -690,7 +703,22 @@ export default function AdminOrdersPage() {
                             Assign AWB
                           </ActionButton>
                         )}
-
+                      {order.shiprocket.awbCode &&
+                        !order.shiprocket.labelUrl &&
+                        ![
+                          "LABEL_GENERATING",
+                          "LABEL_GENERATION_UNCERTAIN",
+                        ].includes(order.shiprocket.status || "") && (
+                          <ActionButton
+                            disabled={!!shiprocketActionId}
+                            onClick={() =>
+                              void handleShiprocketAction(order, "label")
+                            }
+                          >
+                            <PackageCheck size={14} />
+                            Generate label
+                          </ActionButton>
+                        )}
                       {order.shiprocket.awbCode &&
                         !order.shiprocket.pickupScheduledAt &&
                         ![
@@ -705,15 +733,20 @@ export default function AdminOrdersPage() {
                               void handleShiprocketAction(order, "pickup")
                             }
                           >
-                            Schedule pickup
+                            Schedule Pickup
                           </ActionButton>
                         )}
 
                       {order.shiprocket.awbCode &&
+                        !order.shiprocket.manifestUrl &&
                         (Boolean(order.shiprocket.pickupScheduledAt) ||
                           ["PICKUP REQUESTED", "PICKUP SCHEDULED"].includes(
                             order.shiprocket.status || "",
-                          )) && (
+                          )) &&
+                        ![
+                          "MANIFEST_GENERATING",
+                          "MANIFEST_GENERATION_UNCERTAIN",
+                        ].includes(order.shiprocket.status || "") && (
                           <ActionButton
                             variant="outline"
                             disabled={!!shiprocketActionId}
@@ -739,17 +772,31 @@ export default function AdminOrdersPage() {
                           </a>
                         )}
 
-                      {manifestLinks[order.id] && (
-                        <a
-                          href={manifestLinks[order.id]}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 py-2.5 text-xs font-bold text-gray-900 transition hover:bg-gray-200"
-                        >
-                          <PackageCheck size={14} />
-                          Open manifest
-                        </a>
-                      )}
+                      {order.shiprocket.labelUrl &&
+                        /^https?:\/\//i.test(order.shiprocket.labelUrl) && (
+                          <a
+                            href={order.shiprocket.labelUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 py-2.5 text-xs font-bold text-gray-900 transition hover:bg-gray-200"
+                          >
+                            <PackageCheck size={14} />
+                            Open shipping label
+                          </a>
+                        )}
+
+                      {order.shiprocket.manifestUrl &&
+                        /^https?:\/\//i.test(order.shiprocket.manifestUrl) && (
+                          <a
+                            href={order.shiprocket.manifestUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-500 bg-white px-3 py-2.5 text-xs font-bold text-gray-900 transition hover:bg-gray-200"
+                          >
+                            <PackageCheck size={14} />
+                            Open manifest
+                          </a>
+                        )}
                     </div>
                   </div>
 

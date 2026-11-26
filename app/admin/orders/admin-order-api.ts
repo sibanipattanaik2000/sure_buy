@@ -81,6 +81,14 @@ export type AdminOrder = {
     pickupScheduledAt: string | null;
     shippedAt: string | null;
     deliveredAt: string | null;
+    labelUrl: string | null;
+    manifestUrl: string | null;
+    job: {
+      status: string;
+      attempts: number;
+      nextAttemptAt: string;
+      lastError: string | null;
+    } | null;
   };
   payments: AdminOrderPayment[];
   createdAt: string;
@@ -121,12 +129,9 @@ export async function getAdminOrders(params: {
     query.set("statusFilter", params.statusFilter);
   }
 
-  return apiRequest<AdminOrdersResult>(
-    `/admin/orders?${query.toString()}`,
-    {
-      method: "GET",
-    },
-  );
+  return apiRequest<AdminOrdersResult>(`/admin/orders?${query.toString()}`, {
+    method: "GET",
+  });
 }
 
 export async function confirmAdminCashRefund(
@@ -190,19 +195,16 @@ export async function recordAdminCashCollection(
     paidAmount: number;
     remainingAmount: number;
     paymentStatus: string;
-  }>(
-    `/admin/orders/${encodeURIComponent(orderId)}/cash-collection`,
-    {
-      method: "POST",
-      headers: {
-        "Idempotency-Key": payload.idempotencyKey,
-      },
-      body: JSON.stringify({
-        amount: payload.amount,
-        referenceNote: payload.referenceNote,
-      }),
+  }>(`/admin/orders/${encodeURIComponent(orderId)}/cash-collection`, {
+    method: "POST",
+    headers: {
+      "Idempotency-Key": payload.idempotencyKey,
     },
-  );
+    body: JSON.stringify({
+      amount: payload.amount,
+      referenceNote: payload.referenceNote,
+    }),
+  });
 }
 export async function createAdminShiprocketShipment(orderId: string) {
   return apiRequest<{
@@ -239,10 +241,20 @@ export async function scheduleAdminShiprocketPickup(orderId: string) {
 
 export async function generateAdminShiprocketManifest(orderId: string) {
   return apiRequest<{
-    status?: number;
-    manifest_url?: string;
-    message?: string;
+    alreadyGenerated: boolean;
+    manifestUrl: string | null;
+    shipmentId: string | null;
   }>(`/admin/orders/${encodeURIComponent(orderId)}/shiprocket/manifest`, {
+    method: "POST",
+  });
+}
+
+export async function generateAdminShiprocketLabel(orderId: string) {
+  return apiRequest<{
+    alreadyGenerated: boolean;
+    labelUrl: string | null;
+    shipmentId: string | null;
+  }>(`/admin/orders/${encodeURIComponent(orderId)}/shiprocket/label`, {
     method: "POST",
   });
 }
